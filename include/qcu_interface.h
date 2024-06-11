@@ -6,7 +6,6 @@
 #include "qcu_macro.h"
 
 namespace qcu {
-constexpr int Ndim = 4;
 
 class Qcu {
     int inverterEnabled_;
@@ -15,8 +14,8 @@ class Qcu {
     double mass_;
     double kappa_;
 
-    QcuLattDesc<Ndim> lattDesc_;
-    QcuProcDesc<Ndim> procDesc_;
+    QcuLattDesc lattDesc_;
+    QcuProcDesc procDesc_;
     Dirac *dirac_;
 
     vector<void *> fermionIn_queue_;
