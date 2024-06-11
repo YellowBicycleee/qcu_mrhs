@@ -1,0 +1,39 @@
+cmake_minimum_required(VERSION 3.8)
+
+set(CMAKE_CUDA_ARCHITECTURES 70)    # for V100
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_STANDARD 17)
+
+project(QCU LANGUAGES C CXX CUDA) # project name = ${PROJECT_NAME}
+
+# shared library
+add_library(qcu 
+    SHARED
+    ${PROJECT_SOURCE_DIR}/src/interface.cpp
+    ${PROJECT_SOURCE_DIR}/src/qcu_interface.cpp  
+)
+target_include_directories(qcu 
+    PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(qcu
+	cudart
+	cudadevrt
+)
+
+# static library
+add_library(qcu_static
+    STATIC 
+    ${PROJECT_SOURCE_DIR}/src/interface.cpp
+    ${PROJECT_SOURCE_DIR}/src/qcu_interface.cpp   
+)
+
+target_link_libraries(qcu_static
+	cudart
+	cudadevrt
+)
+
+target_include_directories(qcu_static 
+    PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
