@@ -2,21 +2,35 @@
 #include <cstdio>
 
 #include "qcu.h"
-static inline void qcuException(const char *message) {
-    fprintf(stderr, "Error: %s\n", message);
-    exit(1);
-}
-static inline void notImplemented() { qcuException("Not implemented"); }
+#include "qcu_macro.h"
 
-void initGridSize(QcuGrid *grid, QcuParam *p_param) { notImplemented(); }
-void pushBackFermions(void *fermionOut, void *fermionIn) { notImplemented(); }
-void qcuDslash(int parity, int daggerFlag) { notImplemented(); }
-void qcuDslashXpay(int parity, int daggerFlag) { notImplemented(); }
-void loadQcuGauge(void *gauge) { notImplemented(); }
+void initGridSize(QcuGrid *grid, QcuParam *p_param) { 
+    errorQcu("Not implemented yet\n"); 
+}
+
+void pushBackFermions(void *fermionOut, void *fermionIn) { 
+    errorQcu("Not implemented yet\n");
+}
+
+void qcuDslash(int parity, int daggerFlag) {
+    errorQcu("Not implemented yet\n");
+}
+
+void qcuDslashXpay(int parity, int daggerFlag) { 
+    errorQcu("Not implemented yet\n");
+}
+
+void loadQcuGauge(void *gauge) {
+    errorQcu("Not implemented yet\n");
+}
+
 void getDslash(int dslashType, double mass, int nColors, int nInputs, int floatPrecision, int mInput) {
-    notImplemented();
+    errorQcu("Not implemented yet\n");
 }
+
 void qcuInvert(void *x_vector, void *b_vector, void *gauge, QcuParam *param, double p_max_prec, double p_kappa) {
-    notImplemented();
+    errorQcu("Not implemented yet\n");
 }
-void finalizeQcu() { notImplemented(); }
+void finalizeQcu() {
+    errorQcu("Not implemented yet\n");
+}
