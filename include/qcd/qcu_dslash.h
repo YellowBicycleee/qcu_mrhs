@@ -50,7 +50,7 @@ class Dslash {
     float dslashFlops_;
 
    public:
-    Dslash(const DslashParam& dslashParam) : dslashParam_(dslashParam) {}
+    Dslash(DslashParam& dslashParam) : dslashParam_(dslashParam) {}
     virtual ~Dslash() {}
     virtual void apply() = 0;
     virtual void preApply() = 0;
@@ -60,13 +60,12 @@ class Dslash {
 
 class WilsonDslash : public Dslash {
    public:
-    WilsonDslash(const DslashParam& dslashParam) : Dslash(dslashParam) {}
+    WilsonDslash(DslashParam& dslashParam) : Dslash(dslashParam) {}
     virtual ~WilsonDslash() {}
     virtual void apply();
     virtual void preApply();
     virtual void postApply();
-    // TODO : calc flops
-    virtual void flops() {}
+    virtual void flops();
 };
 
 }  // namespace qcu
