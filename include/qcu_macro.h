@@ -4,7 +4,6 @@
 // constexpr int Ndim = 4;
 constexpr int MAX_DIM = 4;
 
-enum QCU_PRECISION { QCU_HALF_PRECISION = 0, QCU_SINGLE_PRECISION = 1, QCU_DOUBLE_PRECISION, QCU_PRECISION_UNDEFINED };
 #define IDX2D(y, x, lx) ((y) * (lx) + (x))
 #define IDX3D(z, y, x, ly, lx) ((((z) * (ly)) + (y)) * (lx) + (x))
 #define IDX4D(t, z, y, x, lz, ly, lx) ((((t) * (lz) + (z)) * (ly) + (y)) * (lx) + (x))
