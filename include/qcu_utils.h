@@ -19,5 +19,5 @@ inline __device__ __host__ int index_4D(int t, int z, int y, int x, int Lz, int 
 
 inline __device__ __host__ int div_ceil(int a, int b) { return (a + b - 1) / b; }
 
-void get_gpu_id();
-void get_process_rank();
+int get_gpu_id();
+int get_process_rank();
