@@ -22,6 +22,16 @@ target_link_libraries(qcu
 	cudadevrt
 )
 
+add_executable(test_shift_data 
+    ${PROJECT_SOURCE_DIR}/src/tests/test_shift_datatype.cu
+)
+target_include_directories(test_shift_data
+    PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(test_shift_data
+    qcu
+)
 # # static library
 # add_library(qcu_static
 #     STATIC 
