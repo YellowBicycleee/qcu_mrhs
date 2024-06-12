@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 
-set(CMAKE_CUDA_ARCHITECTURES 70)    # for V100
+set(CMAKE_CUDA_ARCHITECTURES 80)    # for A100
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -11,6 +11,7 @@ add_library(qcu
     SHARED
     ${PROJECT_SOURCE_DIR}/src/interface.cpp
     ${PROJECT_SOURCE_DIR}/src/qcu_interface.cpp  
+    ${PROJECT_SOURCE_DIR}/src/qcd/qcu_wilson_dslash.cu
 )
 target_include_directories(qcu 
     PUBLIC
@@ -21,19 +22,19 @@ target_link_libraries(qcu
 	cudadevrt
 )
 
-# static library
-add_library(qcu_static
-    STATIC 
-    ${PROJECT_SOURCE_DIR}/src/interface.cpp
-    ${PROJECT_SOURCE_DIR}/src/qcu_interface.cpp   
-)
+# # static library
+# add_library(qcu_static
+#     STATIC 
+#     ${PROJECT_SOURCE_DIR}/src/interface.cpp
+#     ${PROJECT_SOURCE_DIR}/src/qcu_interface.cpp   
+# )
 
-target_link_libraries(qcu_static
-	cudart
-	cudadevrt
-)
+# target_link_libraries(qcu_static
+# 	cudart
+# 	cudadevrt
+# )
 
-target_include_directories(qcu_static 
-    PUBLIC
-    ${PROJECT_SOURCE_DIR}/include
-)
+# target_include_directories(qcu_static 
+#     PUBLIC
+#     ${PROJECT_SOURCE_DIR}/include
+# )
