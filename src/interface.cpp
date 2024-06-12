@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
 
 #include "qcu.h"
 #include "qcu_macro.h"
