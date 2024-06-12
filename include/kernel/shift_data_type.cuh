@@ -78,6 +78,37 @@ __forceinline__ __device__ __host__ float2 shiftDataType<float2, double2>(double
     return temp;
 }
 
+// half
+template <>
+__forceinline__ __device__ __host__ half shiftDataType<half, half>(half src) {
+    return src;
+}
+// half2
+template <>
+__forceinline__ __device__ __host__ half shiftDataType<half2, half2>(half2 src) {
+    return src;
+}
+// float 
+template <>
+__forceinline__ __device__ __host__ float shiftDataType<float, float>(float src) {
+    return src;
+}
+// float2 
+template <>
+__forceinline__ __device__ __host__ float2 shiftDataType<float2, float2>(float2 src) {
+    return src;
+}
+// double 
+template <>
+__forceinline__ __device__ __host__ double shiftDataType<double, double>(double src) {
+    return src;
+}
+// double 
+template <>
+__forceinline__ __device__ __host__ double2 shiftDataType<double2, double2>(double2 src) {
+    return src;
+}
+
 }  // namespace device
 
 }  // namespace qcu
