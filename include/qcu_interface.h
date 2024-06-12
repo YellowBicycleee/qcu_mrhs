@@ -2,11 +2,10 @@
 #include <vector>
 
 #include "desc/qcu_desc.h"
+#include "qcd/qcu_dslash.h"
 #include "qcu_enum.h"
 #include "qcu_macro.h"
-
 namespace qcu {
-
 class Qcu {
     int inverterEnabled_;
     int nColors_;
@@ -16,10 +15,11 @@ class Qcu {
 
     QcuLattDesc lattDesc_;
     QcuProcDesc procDesc_;
-    Dirac *dirac_;
+    // Dirac *dirac_;
+    Dslash *dslash_;
 
-    vector<void *> fermionIn_queue_;
-    vector<void *> fermionOut_queue_;
+    std::vector<void *> fermionIn_queue_;
+    std::vector<void *> fermionOut_queue_;
 
     void *gauge_;      // gauge field
     void *fp64Gauge_;  // double gauge field
@@ -44,7 +44,7 @@ class Qcu {
           kappa_(1.0 / (2.0 * (4.0 + mass))),
           lattDesc_(Lx, Ly, Lz, Lt),
           procDesc_(Gx, Gy, Gz, Gt),
-          dirac_(nullptr),
+          dslash_(nullptr),
           gauge_(nullptr),
           fp64Gauge_(nullptr),
           fp32Gauge_(nullptr),
@@ -58,8 +58,8 @@ class Qcu {
         // todo: allocations
     }
     ~Qcu() {
-        if (dirac_ != nullptr) {
-            delete dirac_;
+        if (dslash_ != nullptr) {
+            delete dslash_;
         }
     }
     // TODO
