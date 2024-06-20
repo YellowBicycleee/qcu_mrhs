@@ -3,16 +3,19 @@
 namespace qcu {
 
 template <typename Float = float>
-struct {
+struct Float2Wrapper {
     using Float2 = float2;
+    using AccFloat = float;
 };
 template <>
-struct<double> {
+struct Float2Wrapper<double> {
     using Float2 = double2;
+    using AccFloat = double;
 };
 template <>
-struct<half> {
+struct Float2Wrapper<half> {
     using Float2 = half2;
+    using AccFloat = float;
 };
 
-}
+}  // namespace qcu
