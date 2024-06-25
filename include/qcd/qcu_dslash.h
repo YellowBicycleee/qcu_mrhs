@@ -3,36 +3,43 @@
 #include "desc/qcu_desc.h"
 #include "qcu.h"
 #include "qcu_enum.h"
-
+#include <cuda.h>
+#include <cuda_runtime.h>
 namespace qcu {
 
 // clang-format off
 struct DslashParam {
+    QCU_PRECISION precision;
     int nColor;
-    int nInput;
+    int mInput;
     double kappa;
     int parity;
-    int daggerFlag;
+    bool daggerFlag;
 
     void* fermionIn_MRHS;
     void* fermionOut_MRHS;
     void* gauge;
     const QcuLattDesc& lattDesc;
     const QcuProcDesc& procDesc;
+    cudaStream_t stream1;
+    cudaStream_t stream2;
 
-    DslashParam(int p_nColor, 
-                int p_nInput, 
+    DslashParam(QCU_PRECISION p_precision,
+                int p_nColor, 
+                int p_mInput, 
                 double p_kappa, 
                 int p_parity,
-                int p_daggerFlag, 
+                bool p_daggerFlag, 
                 void* p_fermionIn_MRHS,
                 void* p_fermionOut_MRHS,
                 void* p_gauge, 
                 const QcuLattDesc& p_lattDesc,
-                const QcuProcDesc& p_procDesc
-            )
-        : nColor(p_nColor),
-          nInput(p_nInput),
+                const QcuProcDesc& p_procDesc,
+                cudaStream_t p_stream1 = NULL,
+                cudaStream_t p_stream2 = NULL)
+        : precision(p_precision),
+          nColor(p_nColor),
+          mInput(p_mInput),
           kappa(p_kappa),
           parity(p_parity),
           daggerFlag(p_daggerFlag),
@@ -40,7 +47,9 @@ struct DslashParam {
           fermionOut_MRHS(p_fermionOut_MRHS),
           gauge(p_gauge),
           procDesc(p_procDesc),
-          lattDesc(p_lattDesc) {}
+          lattDesc(p_lattDesc) , 
+          stream1(p_stream1),
+          stream2(p_stream2) {}
 };
 
 // clang-format on
