@@ -54,3 +54,8 @@ enum ShiftDirection {
     TO_COALESCE = 0,
     TO_NON_COALESCE = 1,
 };
+
+enum MatrixOrder {
+    ROW_MAJOR = 0,
+    COLUMN_MAJOR = 1,
+};
