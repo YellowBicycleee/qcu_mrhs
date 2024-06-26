@@ -48,7 +48,6 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
     int total_warps_row = div_ceil(n_color, WMMA_M);  // n color separate to M
     int total_warps_col = div_ceil(m_rhs, WMMA_N);    // m rhs separate to N
     int total_warps = total_warps_row * total_warps_col;
-    // int k_tiles = div_ceil(n_color, WMMA_K);            // n color separate to K
 
     Point point(x, y, z, t, parity);  // sink of point to calc
     Point mv_point;
@@ -82,31 +81,59 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
         // x fwd
         mv_point = point.move(FWD, X_DIM, half_Lx, Ly, Lz, Lt);
         point_gauge_matrix = point.getGaugeAddr(gauge, X_DIM, half_Lx, Lt, Lz, Lt, n_color);
-        point_in_matrix = point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        // clang-format off
-        x_dim_fwd_dir<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, 
-                            dagger_flag, n_color, m_rhs, warp_begin_row, warp_begin_col);
-        // clang-format on
-
+        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+        dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag, n_color,
+                              m_rhs, warp_begin_row, warp_begin_col, X_DIM, FWD);
         // x bwd
+        mv_point = point.move(BWD, X_DIM, half_Lx, Ly, Lz, Lt);
+        point_gauge_matrix = mv_point.getGaugeAddr(gauge, X_DIM, half_Lx, Lt, Lz, Lt, n_color);
+        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+        dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag, n_color,
+                              m_rhs, warp_begin_row, warp_begin_col, X_DIM, BWD);
 
         // y fwd
-
+        mv_point = point.move(FWD, Y_DIM, half_Lx, Ly, Lz, Lt);
+        point_gauge_matrix = point.getGaugeAddr(gauge, Y_DIM, half_Lx, Lt, Lz, Lt, n_color);
+        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+        dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag, n_color,
+                              m_rhs, warp_begin_row, warp_begin_col, Y_DIM, FWD);
         // y bwd
+        mv_point = point.move(BWD, Y_DIM, half_Lx, Ly, Lz, Lt);
+        point_gauge_matrix = mv_point.getGaugeAddr(gauge, Y_DIM, half_Lx, Lt, Lz, Lt, n_color);
+        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+        dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag, n_color,
+                              m_rhs, warp_begin_row, warp_begin_col, Y_DIM, BWD);
 
         // z fwd
-
+        mv_point = point.move(FWD, Z_DIM, half_Lx, Ly, Lz, Lt);
+        point_gauge_matrix = point.getGaugeAddr(gauge, Z_DIM, half_Lx, Lt, Lz, Lt, n_color);
+        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+        dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag, n_color,
+                              m_rhs, warp_begin_row, warp_begin_col, Z_DIM, FWD);
         // z bwd
+        mv_point = point.move(BWD, Z_DIM, half_Lx, Ly, Lz, Lt);
+        point_gauge_matrix = mv_point.getGaugeAddr(gauge, Z_DIM, half_Lx, Lt, Lz, Lt, n_color);
+        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+        dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag, n_color,
+                              m_rhs, warp_begin_row, warp_begin_col, Z_DIM, BWD);
 
         // t fwd
-
+        mv_point = point.move(FWD, Z_DIM, half_Lx, Ly, Lz, Lt);
+        point_gauge_matrix = point.getGaugeAddr(gauge, Z_DIM, half_Lx, Lt, Lz, Lt, n_color);
+        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+        dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag, n_color,
+                              m_rhs, warp_begin_row, warp_begin_col, T_DIM, FWD);
         // t bwd
+        mv_point = point.move(BWD, T_DIM, half_Lx, Ly, Lz, Lt);
+        point_gauge_matrix = mv_point.getGaugeAddr(gauge, T_DIM, half_Lx, Lt, Lz, Lt, n_color);
+        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+        dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag, n_color,
+                              m_rhs, warp_begin_row, warp_begin_col, T_DIM, BWD);
 
         // store L back to fermion out (global memory)
         point_out_matrix = point.getGatheredColorSpinorAddr(out, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-
-        warp_store_complex_from_smem_to_global(point_out_matrix, warp_begin_row, warp_begin_col, n_color, m_rhs, smem_L,
-                                               WMMA_M, WMMA_N);  // L1
+        warp_store_complex_from_smem_to_global(point_out_matrix, warp_begin_row, warp_begin_col, n_color, m_rhs,
+                                               smem_L + 0 * WMMA_M * WMMA_N * 2, WMMA_M, WMMA_N);  // L1
         warp_store_complex_from_smem_to_global(point_out_matrix, warp_begin_row, warp_begin_col, n_color, m_rhs,
                                                smem_L + 1 * WMMA_M * WMMA_N * 2, WMMA_M, WMMA_N);  // L2
         warp_store_complex_from_smem_to_global(point_out_matrix, warp_begin_row, warp_begin_col, n_color, m_rhs,
