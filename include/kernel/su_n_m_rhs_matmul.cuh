@@ -3,6 +3,8 @@
 #include <cuda_fp16.h>
 #include <mma.h>
 
+#include <cassert>
+
 #include "kernel/complex_matmul.cuh"
 #include "qcu_enum.h"
 #include "qcu_float_float2_wrapper.h"
@@ -31,16 +33,16 @@ using namespace nvcuda;
  *          smems are chunks separated by warp, calculated over caller function
  *          Matrix M donnot have to store in smem, just load from global memory to register, combine to T1, T2 elem then store T1 and T2
  *          smem STORE: T[1, 2] (combination of in)   R[1, 2](temp result)   L[1, 2](smem out)    U(gauge)
+ *          U : real: smem_mat_U                           imag: smem_mat_U + WMMA_M * WMMA_K
  *          T : real: smem_mat_T                           imag: smem_mat_T + WMMA_M * WMMA_N
  *          R : real: smem_mat_R                           imag: smem_mat_R + WMMA_M * WMMA_N
- *          U : real: smem_mat_U                           imag: smem_mat_U + WMMA_M * WMMA_K
 */
 template <typename Float>
-__device__ void x_dim_fwd_dir(Float* __restrict__ smem_mat_L,   Float* __restrict__ smem_mat_U, 
-                              Float* __restrict__ smem_mat_R,   Float* __restrict__ smem_mat_T,
-                              Float* __restrict__ global_gauge, Float* __restrict__ global_fermion_in, 
-                              bool dagger_flag, int n_color, int m_rhs, int warp_begin_row, int warp_begin_col) 
-{
+__device__ void dslash_mat_mul(Float* __restrict__ smem_mat_L, Float* __restrict__ smem_mat_U,
+                               Float* __restrict__ smem_mat_R, Float* __restrict__ smem_mat_T,
+                               Float* __restrict__ global_gauge, Float* __restrict__ global_fermion_in,
+                               bool dagger_flag, int n_color, int m_rhs, int warp_begin_row, int warp_begin_col,
+                               int dim, int dir) {
     // clang-format on
     using Float2 = typename Float2Wrapper<Float>::Float2;
     constexpr int WMMA_M = WMMA_Param<Float>::WMMA_M;
@@ -63,22 +65,27 @@ __device__ void x_dim_fwd_dir(Float* __restrict__ smem_mat_L,   Float* __restric
     wmma::fill_fragment(R2_real_frag, 0.0f);  // zero fitting R2_real_frag
     wmma::fill_fragment(R2_imag_frag, 0.0f);  // zero fitting R2_imag_frag
 
-    for (int i = 0; i < k_tiles; i++) {
-        bool if_dagger;
-        bool local_dagger_flag;
-        int gamma_idx;
-
-        // load U
+    bool if_dagger;
+    bool local_dagger_flag;
+    int gamma_idx = dim + 1;  // gamma{1,2,3,4} ----- gamma{X_DIM + 1, Y_DIM + 1, Z_DIM + 1, T_DIM + 1}
+    if (dir == FWD) {
         if_dagger = false;
+        local_dagger_flag = dagger_flag;
+    } else if (dir == BWD) {
+        if_dagger = true;
+        local_dagger_flag = !dagger_flag;
+    } else {
+        assert(0);
+    }
+
+    for (int i = 0; i < k_tiles; i++) {
+        // load U
         // global_iter_start_m = warp_begin_row, global_iter_start_n = i * WMMA_K
         load_complex_gauge_mat_from_global_to_smem(smem_U, WMMA_M, WMMA_K, global_gauge, warp_begin_row, i * WMMA_K,
                                                    if_dagger, n_color);
 
         // load T1,  T1 = M1 - iM4 = (M1.real + M4.imag) + i(M1.imag - M4.real)
-
         // load T1
-        gamma_idx = X_DIM + 1;  // gamma1
-        local_dagger_flag = dagger_flag;
         // global_iter_start_k = i * WMMA_K,      global_iter_start_n = warp_begin_col
         load_complex_fermion_mat_T1_from_global_to_smem(smem_T, WMMA_K, WMMA_N, global_fermion_in, i * WMMA_K,
                                                         warp_begin_col, gamma_idx, local_dagger_flag, n_color, m_rhs);
@@ -87,8 +94,6 @@ __device__ void x_dim_fwd_dir(Float* __restrict__ smem_mat_L,   Float* __restric
         tensor_core_complex_matmul(smem_U, smem_T, R1_real_frag, R1_imag_frag);
 
         // load T2
-        gamma_idx = X_DIM + 1;  // gamma1
-        local_dagger_flag = dagger_flag;
         // global_iter_start_k = i * WMMA_K,      global_iter_start_n = warp_begin_col
         load_complex_fermion_mat_T2_from_global_to_smem(smem_T, WMMA_K, WMMA_N, global_fermion_in, i * WMMA_K,
                                                         warp_begin_col, gamma_idx, local_dagger_flag, n_color, m_rhs);
@@ -97,8 +102,13 @@ __device__ void x_dim_fwd_dir(Float* __restrict__ smem_mat_L,   Float* __restric
 
     }  // for i : K_TILES
     // store to smem_R
-    wmma::store_matrix_sync(smem_R, R1_real_frag, WMMA_N, wmma::mem_row_major);
-    wmma::store_matrix_sync(smem_R + WMMA_M * WMMA_N, R1_imag_frag, WMMA_N, wmma::mem_row_major);
+    wmma::store_matrix_sync(smem_R + 0 * WMMA_M * WMMA_N, R1_real_frag, WMMA_N, wmma::mem_row_major);  // R1_real
+    wmma::store_matrix_sync(smem_R + 1 * WMMA_M * WMMA_N, R1_imag_frag, WMMA_N, wmma::mem_row_major);  // R1_imag
+    wmma::store_matrix_sync(smem_R + 2 * WMMA_M * WMMA_N, R2_real_frag, WMMA_N, wmma::mem_row_major);  // R2_real
+    wmma::store_matrix_sync(smem_R + 3 * WMMA_M * WMMA_N, R2_imag_frag, WMMA_N, wmma::mem_row_major);  // R2_imag
+    // acc to smem_L    TODO
+    calc_L_from_R1(smem_mat_L, smem_R, WMMA_M, WMMA_N, gamma_idx + 1, local_dagger_flag);
+    calc_L_from_R2(smem_mat_L, smem_R, WMMA_M, WMMA_N, gamma_idx + 1, local_dagger_flag);
 }
 
 }  // namespace device
