@@ -279,67 +279,67 @@ __device__ __forceinline__ void load_complex_gauge_mat_from_global_to_smem (
 
 template <typename Float>
 __device__ __forceinline__ void calc_L_from_R1(Float* __restrict__ smem_L, const Float* __restrict__ smem_R, int smem_m,
-                                               int smem_k, int gamma_idx, bool dagger_flag) {
+                                               int smem_n, int gamma_idx, bool dagger_flag) {
     // smem_L 布局：
-    // L1.real                    0-----(    smem_m * smem_k - 1)
-    // L1.imag      smem_m * smem_k-----(2 * smem_m * smem_k - 1)
-    // L2.real  2 * smem_m * smem_k-----(3 * smem_m * smem_k - 1)
-    // L2.imag  3 * smem_m * smem_k-----(4 * smem_m * smem_k - 1)
-    // L3.real  4 * smem_m * smem_k-----(5 * smem_m * smem_k - 1)
-    // L3.imag  5 * smem_m * smem_k-----(6 * smem_m * smem_k - 1)
-    // L4.real  6 * smem_m * smem_k-----(7 * smem_m * smem_k - 1)
-    // L4.imag  7 * smem_m * smem_k-----(8 * smem_m * smem_k - 1)
+    // L1.real                    0-----(    smem_m * smem_n - 1)
+    // L1.imag      smem_m * smem_n-----(2 * smem_m * smem_n - 1)
+    // L2.real  2 * smem_m * smem_n-----(3 * smem_m * smem_n - 1)
+    // L2.imag  3 * smem_m * smem_n-----(4 * smem_m * smem_n - 1)
+    // L3.real  4 * smem_m * smem_n-----(5 * smem_m * smem_n - 1)
+    // L3.imag  5 * smem_m * smem_n-----(6 * smem_m * smem_n - 1)
+    // L4.real  6 * smem_m * smem_n-----(7 * smem_m * smem_n - 1)
+    // L4.imag  7 * smem_m * smem_n-----(8 * smem_m * smem_n - 1)
 
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
 
-    for (int idx = threadIdx.x; idx < smem_m * smem_k; idx += WARP_SIZE) {
-        int smem_i = idx / smem_k;
-        int smem_j = idx % smem_k;
+    for (int idx = threadIdx.x; idx < smem_m * smem_n; idx += WARP_SIZE) {
+        int smem_i = idx / smem_n;
+        int smem_j = idx % smem_n;
 
         Float2 temp;
         // depend on R1
-        temp.x = smem_R[IDX3D(0, smem_i, smem_j, smem_m, smem_k)];  //  R1.real
-        temp.y = smem_R[IDX3D(1, smem_i, smem_j, smem_m, smem_k)];  //  R1.imag
+        temp.x = smem_R[IDX3D(0, smem_i, smem_j, smem_m, smem_n)];  //  R1.real
+        temp.y = smem_R[IDX3D(1, smem_i, smem_j, smem_m, smem_n)];  //  R1.imag
         __syncwarp();
         // L1 = L1 + R1
-        smem_L[IDX3D(0, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L1.real += R1.real
-        smem_L[IDX3D(1, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L1.imag += R1.imag
+        smem_L[IDX3D(0, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L1.real += R1.real
+        smem_L[IDX3D(1, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L1.imag += R1.imag
         switch (gamma_idx) {
             case 1: {                                                            // L4 = L4 + dagger_flag_sgn * iR1
                 if (!dagger_flag) {                                              // L4 = L4 + iR1
-                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_k)] -= temp.y;  // L4.real -= R1.imag
-                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L4.imag += R1.real
+                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_n)] -= temp.y;  // L4.real -= R1.imag
+                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L4.imag += R1.real
                 } else {                                                         // L4 = L4 - iR1
-                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L4.real += R1.imag
-                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_k)] -= temp.x;  // L4.imag -= R1.real
+                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L4.real += R1.imag
+                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L4.imag -= R1.real
                 }
             } break;
             case 2: {                                                            // L4 = L4 + dagger_flag_sgn * R1
                 if (!dagger_flag) {                                              // L4 = L4 + R1
-                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L4.real += R1.real
-                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L4.imag += R1.imag
+                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L4.real += R1.real
+                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L4.imag += R1.imag
                 } else {                                                         // L4 = L4 - R1
-                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_k)] -= temp.x;  // L4.real -= R1.real
-                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_k)] -= temp.y;  // L4.imag -= R1.imag
+                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L4.real -= R1.real
+                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_n)] -= temp.y;  // L4.imag -= R1.imag
                 }
             } break;
             case 3: {                                                            // L3 = L3 + iR1 * dagger_flag_sgn
                 if (!dagger_flag) {                                              // L3 = L3 + iR1
-                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_k)] -= temp.y;  // L3.real -= R1.imag
-                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L3.imag += R1.real
+                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] -= temp.y;  // L3.real -= R1.imag
+                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L3.imag += R1.real
                 } else {                                                         // L3 = L3 - iR1
-                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L3.real += R1.imag
-                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_k)] -= temp.x;  // L3.imag -= R1.real
+                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L3.real += R1.imag
+                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L3.imag -= R1.real
                 }
 
             } break;
             case 4: {                                                            // L3 = L3 - R1 * dagger_flag_sgn
                 if (!dagger_flag) {                                              // L3 = L3 - R1
-                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_k)] -= temp.x;  // L3.real -= R1.real
-                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_k)] -= temp.x;  // L3.imag -= R1.imag
+                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L3.real -= R1.real
+                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L3.imag -= R1.imag
                 } else {                                                         // L3 = L3 + R1
-                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L3.real += R1.real
-                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L3.imag += R1.imag
+                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L3.real += R1.real
+                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L3.imag += R1.imag
                 }
             } break;
             default:
@@ -352,66 +352,66 @@ __device__ __forceinline__ void calc_L_from_R1(Float* __restrict__ smem_L, const
 
 template <typename Float>
 __device__ __forceinline__ void calc_L_from_R2(Float* __restrict__ smem_L, const Float* __restrict__ smem_R, int smem_m,
-                                               int smem_k, int gamma_idx, bool dagger_flag) {
+                                               int smem_n, int gamma_idx, bool dagger_flag) {
     // smem_L 布局：
-    // L1.real                    0-----(    smem_m * smem_k - 1)
-    // L1.imag      smem_m * smem_k-----(2 * smem_m * smem_k - 1)
-    // L2.real  2 * smem_m * smem_k-----(3 * smem_m * smem_k - 1)
-    // L2.imag  3 * smem_m * smem_k-----(4 * smem_m * smem_k - 1)
-    // L3.real  4 * smem_m * smem_k-----(5 * smem_m * smem_k - 1)
-    // L3.imag  5 * smem_m * smem_k-----(6 * smem_m * smem_k - 1)
-    // L4.real  6 * smem_m * smem_k-----(7 * smem_m * smem_k - 1)
-    // L4.imag  7 * smem_m * smem_k-----(8 * smem_m * smem_k - 1)
+    // L1.real                    0-----(    smem_m * smem_n - 1)
+    // L1.imag      smem_m * smem_n-----(2 * smem_m * smem_n - 1)
+    // L2.real  2 * smem_m * smem_n-----(3 * smem_m * smem_n - 1)
+    // L2.imag  3 * smem_m * smem_n-----(4 * smem_m * smem_n - 1)
+    // L3.real  4 * smem_m * smem_n-----(5 * smem_m * smem_n - 1)
+    // L3.imag  5 * smem_m * smem_n-----(6 * smem_m * smem_n - 1)
+    // L4.real  6 * smem_m * smem_n-----(7 * smem_m * smem_n - 1)
+    // L4.imag  7 * smem_m * smem_n-----(8 * smem_m * smem_n - 1)
 
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
 
-    for (int idx = threadIdx.x; idx < smem_m * smem_k; idx += WARP_SIZE) {
-        int smem_i = idx / smem_k;
-        int smem_j = idx % smem_k;
+    for (int idx = threadIdx.x; idx < smem_m * smem_n; idx += WARP_SIZE) {
+        int smem_i = idx / smem_n;
+        int smem_j = idx % smem_n;
 
         Float2 temp;
         // load R2 elem
-        temp.x = smem_R[IDX3D(2, smem_i, smem_j, smem_m, smem_k)];  //  R2.real
-        temp.y = smem_R[IDX3D(3, smem_i, smem_j, smem_m, smem_k)];  //  R2.imag
+        temp.x = smem_R[IDX3D(2, smem_i, smem_j, smem_m, smem_n)];  //  R2.real
+        temp.y = smem_R[IDX3D(3, smem_i, smem_j, smem_m, smem_n)];  //  R2.imag
         __syncwarp();
         // L2 = L2 + R2
-        smem_L[IDX3D(2, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L2.real += R2.real
-        smem_L[IDX3D(3, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L2.imag += R2.imag
+        smem_L[IDX3D(2, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L2.real += R2.real
+        smem_L[IDX3D(3, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L2.imag += R2.imag
         switch (gamma_idx) {
             case 1: {                                                            // L3 = L3 + iR2 * dagger_flag_sgn
                 if (!dagger_flag) {                                              // L3 = L3 + iR2
-                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_k)] -= temp.y;  // L3.real -= R2.imag
-                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L3.imag += R2.real
+                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] -= temp.y;  // L3.real -= R2.imag
+                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L3.imag += R2.real
                 } else {                                                         // L3 = L3 - iR2
-                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L3.real += R2.imag
-                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_k)] -= temp.x;  // L3.imag -= R2.real
+                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L3.real += R2.imag
+                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L3.imag -= R2.real
                 }
             } break;
             case 2: {                                                            // L3 = L3 - R2 * dagger_flag_sgn
                 if (!dagger_flag) {                                              // L3 = L3 - R2
-                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_k)] -= temp.x;  // L3.real -= R2.real
-                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_k)] -= temp.y;  // L3.imag -= R2.imag
+                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L3.real -= R2.real
+                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] -= temp.y;  // L3.imag -= R2.imag
                 } else {                                                         // L3 = L3 + R2
-                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L3.real += R2.real
-                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L3.imag += R2.imag
+                    smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L3.real += R2.real
+                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L3.imag += R2.imag
                 }
             } break;
             case 3: {                                                            // L4 = L4 - iR2 * dagger_flag_sgn
                 if (!dagger_flag) {                                              // L4 = L4 - iR2
-                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L4.real += R2.imag
-                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_k)] -= temp.x;  // L4.imag -= R2.real
+                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L4.real += R2.imag
+                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L4.imag -= R2.real
                 } else {
-                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_k)] -= temp.y;  // L4.real -= R2.imag
-                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L4.imag += R2.real
+                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_n)] -= temp.y;  // L4.real -= R2.imag
+                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L4.imag += R2.real
                 }
             } break;
             case 4: {                                                            // L4 = L4 - R2 * dagger_flag_sgn
                 if (!dagger_flag) {                                              // L4 = L4 - R2
-                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_k)] -= temp.x;  // L4.real -= R2.real
-                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_k)] -= temp.y;  // L4.imag -= R2.imag
+                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L4.real -= R2.real
+                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_n)] -= temp.y;  // L4.imag -= R2.imag
                 } else {                                                         // L4 = L4 + R2
-                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_k)] += temp.x;  // L4.real += R2.real
-                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_k)] += temp.y;  // L4.imag += R2.imag
+                    smem_L[IDX3D(6, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L4.real += R2.real
+                    smem_L[IDX3D(7, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L4.imag += R2.imag
                 }
             } break;
             default:
