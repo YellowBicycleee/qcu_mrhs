@@ -12,6 +12,7 @@ add_library(qcu
     ${PROJECT_SOURCE_DIR}/src/interface.cpp
     ${PROJECT_SOURCE_DIR}/src/qcu_interface.cpp  
     ${PROJECT_SOURCE_DIR}/src/qcd/qcu_wilson_dslash.cu
+    ${PROJECT_SOURCE_DIR}/src/data_format/qcu_data_format_shift.cu
 )
 target_include_directories(qcu 
     PUBLIC
