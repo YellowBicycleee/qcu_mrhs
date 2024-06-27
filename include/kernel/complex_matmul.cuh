@@ -277,6 +277,9 @@ __device__ __forceinline__ void load_complex_gauge_mat_from_global_to_smem (
 }
 // clang-format on
 
+// smem_m ---- WMMA_M
+// smem_n ---- WMMA_N
+// one warp add these WMMA_M * WMMA_N elements from R1 to L1, L3/L4
 template <typename Float>
 __device__ __forceinline__ void calc_L_from_R1(Float* __restrict__ smem_L, const Float* __restrict__ smem_R, int smem_m,
                                                int smem_n, int gamma_idx, bool dagger_flag) {
@@ -336,7 +339,7 @@ __device__ __forceinline__ void calc_L_from_R1(Float* __restrict__ smem_L, const
             case 4: {                                                            // L3 = L3 - R1 * dagger_flag_sgn
                 if (!dagger_flag) {                                              // L3 = L3 - R1
                     smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L3.real -= R1.real
-                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] -= temp.x;  // L3.imag -= R1.imag
+                    smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] -= temp.y;  // L3.imag -= R1.imag
                 } else {                                                         // L3 = L3 + R1
                     smem_L[IDX3D(4, smem_i, smem_j, smem_m, smem_n)] += temp.x;  // L3.real += R1.real
                     smem_L[IDX3D(5, smem_i, smem_j, smem_m, smem_n)] += temp.y;  // L3.imag += R1.imag
@@ -362,6 +365,7 @@ __device__ __forceinline__ void calc_L_from_R2(Float* __restrict__ smem_L, const
     // L3.imag  5 * smem_m * smem_n-----(6 * smem_m * smem_n - 1)
     // L4.real  6 * smem_m * smem_n-----(7 * smem_m * smem_n - 1)
     // L4.imag  7 * smem_m * smem_n-----(8 * smem_m * smem_n - 1)
+    // if dagger_flag is 0, then dagger_flag_sgn = 1, else dagger_flag_sgn = - 1
 
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
 
