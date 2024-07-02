@@ -12,6 +12,7 @@ namespace device {
 
 // Gather separated FP64 color spinor to FP16 color spinor.
 // Float2_dst and Float2_src must be half2, float2, or double2.
+// global_src_array must be an device pointer array.
 template <typename Float2_dst, typename Float2_src>
 __device__ __forceinline__ void gather_color_spinor (Float2_dst*  __restrict__ global_dst_ptr,
                                                      Float2_src** __restrict__ global_src_array,
