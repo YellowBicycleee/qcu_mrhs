@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.8)
 
 set(CMAKE_CUDA_ARCHITECTURES 80)    # for A100
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -g -G -O0") # -G 表示生成GPU调试信息，-O0 禁止优化以便于调试
+set(CMAKE_BUILD_TYPE Debug) # 设定默认构建类型为Debug
 
 project(QCU LANGUAGES C CXX CUDA) # project name = ${PROJECT_NAME}
 
@@ -17,6 +20,7 @@ add_library(qcu
 target_include_directories(qcu 
     PUBLIC
     ${PROJECT_SOURCE_DIR}/include
+    /usr/local/cuda/bin/../targets/x86_64-linux/include
 )
 target_link_libraries(qcu
 	cudart
@@ -33,19 +37,29 @@ target_include_directories(test_shift_data
 target_link_libraries(test_shift_data
     qcu
 )
-# # static library
-# add_library(qcu_static
-#     STATIC 
-#     ${PROJECT_SOURCE_DIR}/src/interface.cpp
-#     ${PROJECT_SOURCE_DIR}/src/qcu_interface.cpp   
-# )
 
-# target_link_libraries(qcu_static
-# 	cudart
-# 	cudadevrt
-# )
 
-# target_include_directories(qcu_static 
-#     PUBLIC
-#     ${PROJECT_SOURCE_DIR}/include
-# )
+add_executable(test_dslash
+    ${PROJECT_SOURCE_DIR}/src/tests/test.cu
+)
+target_include_directories(test_dslash
+    PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(test_dslash
+    qcu
+    cudart
+)
+
+
+add_executable(test_gather
+    ${PROJECT_SOURCE_DIR}/src/tests/test_gather.cu
+)
+target_include_directories(test_gather
+    PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(test_gather
+    qcu
+    cudart
+)
