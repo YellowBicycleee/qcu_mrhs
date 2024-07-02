@@ -1,4 +1,4 @@
-#include "qcu_interface.h"
+#include "qcu_interface.cuh"
 
 #include <cassert>
 #include <cstdlib>
