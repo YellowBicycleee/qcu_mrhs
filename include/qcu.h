@@ -20,7 +20,7 @@ void loadQcuGauge(void *gauge, int floatPrecision);  // double precision
 void getDslash(int dslashType, double mass);         // dslash precision
 // void qcuInvert(void *x_vector, void *b_vector, void *gauge, QcuParam *param, double p_max_prec, double p_kappa);
 void finalizeQcu();
-void start_dslash(int parity, bool daggerFlag);
+void start_dslash(int parity, int daggerFlag);
 
 #ifdef __cplusplus
 }

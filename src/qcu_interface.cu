@@ -72,7 +72,6 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
 }
 
 void Qcu::loadGauge(void* gauge, QCU_PRECISION floatPrecision) {
-    errorQcu("Not implemented yet\n");  // TODO
     gauge_ = gauge;
     int Lx = lattDesc_.dims[X_DIM];
     int Ly = lattDesc_.dims[Y_DIM];

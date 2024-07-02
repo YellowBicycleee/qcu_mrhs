@@ -30,20 +30,17 @@ void pushBackFermions(void *fermionOut, void *fermionIn) {
     }
 }
 
-// void qcuDslash(int parity, int daggerFlag) { errorQcu("Not implemented yet\n"); }
 
-// void qcuDslashXpay(int parity, int daggerFlag) { errorQcu("Not implemented yet\n"); }
 
 void loadQcuGauge(void *gauge, int floatPrecision) { qcu_ptr->loadGauge(gauge, (QCU_PRECISION)floatPrecision); }
 
 void getDslash(int dslashType, double mass) {
-    errorQcu("Not implemented yet\n");
     qcu_ptr->getDslash((DSLASH_TYPE)dslashType, mass);
 }
 
-void start_dslash(int parity, bool daggerFlag) {
+void start_dslash(int parity, int daggerFlag) {
     if (qcu_ptr) {
-        qcu_ptr->startDslash(parity, (int)daggerFlag);
+        qcu_ptr->startDslash(parity, (bool)daggerFlag);
     } else {
         errorQcu("Qcu is not initialized\n");
     }

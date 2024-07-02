@@ -64,6 +64,7 @@ void WilsonDslash::apply() {
             break;
         case QCU_SINGLE_PRECISION:
             errorQcu("Not implemented yet\n");  // TODO
+            assert(0);
             break;
         case QCU_DOUBLE_PRECISION:
             ApplyWilsonDslash_Mrhs<double>(static_cast<double*>(dslashParam_.fermionOut_MRHS), 
@@ -76,6 +77,7 @@ void WilsonDslash::apply() {
             break;
         default:
             errorQcu("Not implemented yet\n");  // TODO
+            assert(0);
             break;
     }
     // clang-format on

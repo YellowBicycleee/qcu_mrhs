@@ -13,9 +13,17 @@ namespace device {
 // float vector len = 2 * len
 template <typename Float2_dst, typename Float2_src>
 static __global__ void copyComplexVector(Float2_dst* __restrict__ dst, const Float2_src* __restrict__ src, int len) {
-    // errorQcu("Not implemented\n");
-    printf("Not implemented\n");
-    assert(0);
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    int stride = blockDim.x * gridDim.x;
+    Float2_dst temp;
+    for (int i = idx; i < len; i += stride) {
+        // temp = __half22float2(src[i]);  // or  temp.x = __half2float(src[i].x); temp.y = __half2float(src[i].y);
+        // temp.x = (src[i].x);
+        // temp.y = __half2float(src[i].y);
+        // dst[i] = temp;
+        temp = shiftDataType<Float2_dst, Float2_src>(src[i]);
+        dst[i] = temp;
+    }
 }
 
 template <>
