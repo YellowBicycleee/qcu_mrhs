@@ -17,7 +17,7 @@ void Qcu::allocateMemory() {
     int vol = Lx * Ly * Lz * Lt;
     int colorSpinorMrhs_size = vol * Ns * nColors_ * mInput_;  // even and odd
     int gauge_size = DIRECTIONS * vol * nColors_ * nColors_;   // even and odd
-    switch (dslashFloatPrecision) {
+    switch (dslashFloatPrecision_) {
         case QCU_HALF_PRECISION: {
             CHECK_CUDA(cudaMalloc(&fermionIn_MRHS_, 2 * colorSpinorMrhs_size * sizeof(half)));
             CHECK_CUDA(cudaMalloc(&fermionOut_MRHS_, 2 * colorSpinorMrhs_size * sizeof(half)));

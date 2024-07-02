@@ -35,32 +35,7 @@ class Qcu {
     void *fermionOut_MRHS_;
 
     void allocateMemory();
-    void freeMemory() {
-        if (dslashParam_ != nullptr) {
-            delete dslashParam_;
-        }
-        if (dslash_ != nullptr) {
-            delete dslash_;
-        }
-        if (gauge_ != nullptr) {
-            CHECK_CUDA(cudaFree(gauge_));
-        }
-        if (fp64Gauge_ != nullptr) {
-            CHECK_CUDA(cudaFree(fp64Gauge_));
-        }
-        if (fp32Gauge_ != nullptr) {
-            CHECK_CUDA(cudaFree(fp32Gauge_));
-        }
-        if (fp16Gauge_ != nullptr) {
-            CHECK_CUDA(cudaFree(fp16Gauge_));
-        }
-        if (fermionIn_MRHS_ != nullptr) {
-            CHECK_CUDA(cudaFree(fermionIn_MRHS_));
-        }
-        if (fermionOut_MRHS_ != nullptr) {
-            CHECK_CUDA(cudaFree(fermionOut_MRHS_));
-        }
-    }
+    void freeMemory();
 
    public:
     Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt, QCU_PRECISION inputFloatPrecision,
