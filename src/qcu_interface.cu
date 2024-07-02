@@ -120,12 +120,23 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     int Lt = lattDesc_.dims[T_DIM];
     dslashParam_->parity = parity;
     dslashParam_->daggerFlag = daggerFlag;
+
     dslashParam_->fermionIn_MRHS = fermionIn_MRHS_;
     dslashParam_->fermionOut_MRHS = fermionOut_MRHS_;
+#define DEBUG
+#ifdef DEBUG
+    printf("fermionIn_queue_.size() = %d, fermionIn_MRHS_ = %p, fermionOut_MRHS_ = %p\n", 
+            fermionIn_queue_.size(), fermionIn_MRHS_ , fermionOut_MRHS_);
+#endif
 
     colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, fermionIn_queue_.data(), inputFloatPrecision_, Lx, Ly, Lz,
                       Lt, nColors_, mInput_, NULL);
+    CHECK_CUDA(cudaDeviceSynchronize());
+#ifdef DEBUG
+    printf("colorSpinorGather done\n");
+#endif
     dslash_->apply();
+    // CHECK_CUDA(cudaGetLastError());
     CHECK_CUDA(cudaDeviceSynchronize());
 
     colorSpinorScatter(fermionOut_queue_.data(), inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly,
