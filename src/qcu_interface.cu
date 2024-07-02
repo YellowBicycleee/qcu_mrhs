@@ -1,12 +1,74 @@
-#include "qcu_interface.cuh"
+#include <cuda_fp16.h>
 
 #include <cassert>
 #include <cstdlib>
 
 #include "data_format/qcu_data_format_shift.cuh"
+#include "qcu_interface.h"
 #include "qcu_macro.h"
-
 namespace qcu {
+
+void Qcu::allocateMemory() {
+    int Lx = lattDesc_.dims[X_DIM];
+    int Ly = lattDesc_.dims[Y_DIM];
+    int Lz = lattDesc_.dims[Z_DIM];
+    int Lt = lattDesc_.dims[T_DIM];
+
+    int vol = Lx * Ly * Lz * Lt;
+    int colorSpinorMrhs_size = vol * Ns * nColors_ * mInput_;  // even and odd
+    int gauge_size = DIRECTIONS * vol * nColors_ * nColors_;   // even and odd
+    switch (dslashFloatPrecision) {
+        case QCU_HALF_PRECISION: {
+            CHECK_CUDA(cudaMalloc(&fermionIn_MRHS_, 2 * colorSpinorMrhs_size * sizeof(half)));
+            CHECK_CUDA(cudaMalloc(&fermionOut_MRHS_, 2 * colorSpinorMrhs_size * sizeof(half)));
+        } break;
+        case QCU_SINGLE_PRECISION: {
+            CHECK_CUDA(cudaMalloc(&fermionIn_MRHS_, 2 * colorSpinorMrhs_size * sizeof(float)));
+            CHECK_CUDA(cudaMalloc(&fermionOut_MRHS_, 2 * colorSpinorMrhs_size * sizeof(float)));
+        } break;
+        case QCU_DOUBLE_PRECISION: {
+            CHECK_CUDA(cudaMalloc(&fermionIn_MRHS_, 2 * colorSpinorMrhs_size * sizeof(double)));
+            CHECK_CUDA(cudaMalloc(&fermionOut_MRHS_, 2 * colorSpinorMrhs_size * sizeof(double)));
+        } break;
+
+        default:
+            break;
+    }
+    // gauge field
+    //     void *fp64Gauge_;  // double gauge field
+    // void *fp32Gauge_;  // single gauge field
+    // void *fp16Gauge_;  // half gauge field
+    CHECK_CUDA(cudaMalloc(&fp64Gauge_, 2 * gauge_size * sizeof(double)));
+    CHECK_CUDA(cudaMalloc(&fp32Gauge_, 2 * gauge_size * sizeof(float)));
+    CHECK_CUDA(cudaMalloc(&fp16Gauge_, 2 * gauge_size * sizeof(half)));
+}
+
+void Qcu::freeMemory() {
+    if (dslashParam_ != nullptr) {
+        delete dslashParam_;
+    }
+    if (dslash_ != nullptr) {
+        delete dslash_;
+    }
+    if (gauge_ != nullptr) {
+        CHECK_CUDA(cudaFree(gauge_));
+    }
+    if (fp64Gauge_ != nullptr) {
+        CHECK_CUDA(cudaFree(fp64Gauge_));
+    }
+    if (fp32Gauge_ != nullptr) {
+        CHECK_CUDA(cudaFree(fp32Gauge_));
+    }
+    if (fp16Gauge_ != nullptr) {
+        CHECK_CUDA(cudaFree(fp16Gauge_));
+    }
+    if (fermionIn_MRHS_ != nullptr) {
+        CHECK_CUDA(cudaFree(fermionIn_MRHS_));
+    }
+    if (fermionOut_MRHS_ != nullptr) {
+        CHECK_CUDA(cudaFree(fermionOut_MRHS_));
+    }
+}
 
 void Qcu::getDslash(DSLASH_TYPE dslashType, double mass) {
     if (nullptr != dslash_) {

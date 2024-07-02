@@ -3,7 +3,7 @@
 #include <cstdlib>
 
 #include "qcu.h"
-#include "qcu_interface.cuh"
+#include "qcu_interface.h"
 #include "qcu_macro.h"
 
 static qcu::Qcu *qcu_ptr = nullptr;
