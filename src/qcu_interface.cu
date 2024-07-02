@@ -120,6 +120,8 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     int Lt = lattDesc_.dims[T_DIM];
     dslashParam_->parity = parity;
     dslashParam_->daggerFlag = daggerFlag;
+    dslashParam_->fermionIn_MRHS = fermionIn_MRHS_;
+    dslashParam_->fermionOut_MRHS = fermionOut_MRHS_;
 
     colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, fermionIn_queue_.data(), inputFloatPrecision_, Lx, Ly, Lz,
                       Lt, nColors_, mInput_, NULL);

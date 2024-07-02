@@ -8,7 +8,7 @@ namespace qcu {
 
 template <typename DestFloat, typename SrcFloat>
 static void copyVector_Complex(void* __restrict__ dst, void* __restrict__ src, int complex_vector_length,
-                        cudaStream_t stream) {
+                               cudaStream_t stream) {
     using DestFloat2 = typename qcu::Float2Wrapper<DestFloat>::Float2;
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
     int block_size = 256;
@@ -21,7 +21,7 @@ static void copyVector_Complex(void* __restrict__ dst, void* __restrict__ src, i
 
 template <typename DestFloat, typename SrcFloat>
 static void copyVector_Complex_Async(void* __restrict__ dst, void* __restrict__ src, int complex_vector_length,
-                              cudaStream_t stream) {
+                                     cudaStream_t stream) {
     using DestFloat2 = typename qcu::Float2Wrapper<DestFloat>::Float2;
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
     int block_size = 256;
@@ -57,6 +57,7 @@ void colorSpinorGather(void* __restrict__ global_dst_ptr, void* __restrict__ glo
                                     Lx, Ly, Lz, Lt, n_color, m_input);
 
     CHECK_CUDA(cudaGetLastError());
+    CHECK_CUDA(cudaStreamSynchronize(stream));
 }
 
 template <typename DstFloat>
