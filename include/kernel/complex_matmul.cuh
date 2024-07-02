@@ -346,6 +346,7 @@ __device__ __forceinline__ void calc_L_from_R1(Float* __restrict__ smem_L, const
                 }
             } break;
             default:
+                printf("gamma idx = %d is not supported!\n", gamma_idx);
                 assert(0);
                 break;
         }  // end switch
