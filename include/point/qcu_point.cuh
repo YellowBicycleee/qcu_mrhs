@@ -69,8 +69,8 @@ class Point {
         }
     }
 
-    template <typename Float2>
-    __device__ __forceinline__ Float2* getGaugeAddr (Float2* base, int dim, int half_Lx, int Ly, int Lz, int Lt, int n_color) const {
+    template <typename Float>
+    __device__ __forceinline__ Float* getGaugeAddr (Float* base, int dim, int half_Lx, int Ly, int Lz, int Lt, int n_color) const {
         return base + 2 * (((dim * 2 + parity_) * half_Lx * Ly * Lz * Lt + IDX4D(t_, z_, y_, x_, Lz, Ly, half_Lx))) * n_color * n_color;
     }
     template <typename Float>
