@@ -107,8 +107,8 @@ __device__ void dslash_mat_mul(Float* __restrict__ smem_mat_L, Float* __restrict
     wmma::store_matrix_sync(smem_R + 2 * WMMA_M * WMMA_N, R2_real_frag, WMMA_N, wmma::mem_row_major);  // R2_real
     wmma::store_matrix_sync(smem_R + 3 * WMMA_M * WMMA_N, R2_imag_frag, WMMA_N, wmma::mem_row_major);  // R2_imag
     // acc to smem_L    TODO
-    calc_L_from_R1(smem_mat_L, smem_R, WMMA_M, WMMA_N, gamma_idx + 1, local_dagger_flag);
-    calc_L_from_R2(smem_mat_L, smem_R, WMMA_M, WMMA_N, gamma_idx + 1, local_dagger_flag);
+    calc_L_from_R1(smem_mat_L, smem_R, WMMA_M, WMMA_N, gamma_idx, local_dagger_flag);
+    calc_L_from_R2(smem_mat_L, smem_R, WMMA_M, WMMA_N, gamma_idx, local_dagger_flag);
 }
 
 }  // namespace device
