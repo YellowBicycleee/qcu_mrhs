@@ -123,25 +123,35 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
 
     dslashParam_->fermionIn_MRHS = fermionIn_MRHS_;
     dslashParam_->fermionOut_MRHS = fermionOut_MRHS_;
-#define DEBUG
-#ifdef DEBUG
-    printf("fermionIn_queue_.size() = %d, fermionIn_MRHS_ = %p, fermionOut_MRHS_ = %p\n", 
-            fermionIn_queue_.size(), fermionIn_MRHS_ , fermionOut_MRHS_);
-#endif
 
-    colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, fermionIn_queue_.data(), inputFloatPrecision_, Lx, Ly, Lz,
+    // lookup table
+    void* d_lookup_table_in;
+    void* d_lookup_table_out;
+    CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * fermionIn_queue_.size()));
+    CHECK_CUDA(cudaMalloc(&d_lookup_table_out, sizeof(void*) * fermionOut_queue_.size()));
+
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_in, fermionIn_queue_.data(), sizeof(void*) * fermionIn_queue_.size(), 
+                        cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
+                        cudaMemcpyHostToDevice));
+
+    colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz,
                       Lt, nColors_, mInput_, NULL);
+
     CHECK_CUDA(cudaDeviceSynchronize());
-#ifdef DEBUG
-    printf("colorSpinorGather done\n");
-#endif
+
     dslash_->apply();
-    // CHECK_CUDA(cudaGetLastError());
+    // DEBUG
+    // CHECK_CUDA(cudaMemcpy(fermionOut_MRHS_, fermionIn_MRHS_, 2 * sizeof(double) * Lx/2 * Ly * Lz * Lt * Nd * nColors_ * mInput_, cudaMemcpyDeviceToDevice));
+    // CHECK_CUDA(cudaDeviceSynchronize());
+
+
+    colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly,
+                       Lz, Lt, nColors_, mInput_, NULL);
     CHECK_CUDA(cudaDeviceSynchronize());
 
-    colorSpinorScatter(fermionOut_queue_.data(), inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly,
-                       Lz, Lt, nColors_, mInput_, NULL);
-
+    CHECK_CUDA(cudaFree(d_lookup_table_in));
+    CHECK_CUDA(cudaFree(d_lookup_table_out));
     fermionIn_queue_.clear();
     fermionOut_queue_.clear();
 }
