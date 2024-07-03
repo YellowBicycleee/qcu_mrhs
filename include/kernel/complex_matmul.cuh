@@ -253,7 +253,7 @@ __device__ __forceinline__ void load_complex_gauge_mat_from_global_to_smem (
             global_i = global_iter_start_m + smem_i;
             global_j = global_iter_start_n + smem_j;
             if (global_i < n_color && global_j < n_color) {
-                temp = reinterpret_cast<const Float2*>(global_mem)[IDX3D(0, global_i, global_j, n_color, n_color)]; // U elem
+                temp = reinterpret_cast<const Float2*>(global_mem)[IDX2D(global_i, global_j, n_color)]; // U elem
             } else {
                 temp.x = temp.y = 0.0;  // padding
             }
