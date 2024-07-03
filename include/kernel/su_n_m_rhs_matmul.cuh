@@ -65,14 +65,14 @@ __device__ void dslash_mat_mul(Float* __restrict__ smem_mat_L, Float* __restrict
     wmma::fill_fragment(R2_real_frag, 0.0f);  // zero fitting R2_real_frag
     wmma::fill_fragment(R2_imag_frag, 0.0f);  // zero fitting R2_imag_frag
 
-    bool if_dagger;
+    bool if_dagger_u;
     bool local_dagger_flag;
     int gamma_idx = dim + 1;  // gamma{1,2,3,4} ----- gamma{X_DIM + 1, Y_DIM + 1, Z_DIM + 1, T_DIM + 1}
     if (dir == FWD) {
-        if_dagger = false;
+        if_dagger_u = false;
         local_dagger_flag = dagger_flag;
     } else if (dir == BWD) {
-        if_dagger = true;
+        if_dagger_u = true;
         local_dagger_flag = !dagger_flag;
     } else {
         assert(0);
@@ -82,7 +82,7 @@ __device__ void dslash_mat_mul(Float* __restrict__ smem_mat_L, Float* __restrict
         // load U
         // global_iter_start_m = warp_begin_row, global_iter_start_n = i * WMMA_K
         load_complex_gauge_mat_from_global_to_smem(smem_U, WMMA_M, WMMA_K, global_gauge, warp_begin_row, i * WMMA_K,
-                                                   if_dagger, n_color);
+                                                   if_dagger_u, n_color);
 
         // load T1,  T1 = M1 - iM4 = (M1.real + M4.imag) + i(M1.imag - M4.real)
         // load T1
