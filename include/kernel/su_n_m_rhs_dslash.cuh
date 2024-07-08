@@ -119,7 +119,7 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
 
         // t fwd
         mv_point = point.move(FWD, T_DIM, half_Lx, Ly, Lz, Lt);
-        point_gauge_matrix = point.getGaugeAddr(gauge, Z_DIM, half_Lx, Lt, Lz, Lt, n_color);
+        point_gauge_matrix = point.getGaugeAddr(gauge, T_DIM, half_Lx, Lt, Lz, Lt, n_color);
         point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
         dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag, n_color,
                               m_rhs, warp_begin_row, warp_begin_col, T_DIM, FWD);
