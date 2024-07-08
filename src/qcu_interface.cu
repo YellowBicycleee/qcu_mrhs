@@ -162,7 +162,7 @@ void Qcu::loadGauge(void* gauge, QCU_PRECISION floatPrecision) {
     int Ly = lattDesc_.dims[Y_DIM];
     int Lz = lattDesc_.dims[Z_DIM];
     int Lt = lattDesc_.dims[T_DIM];
-    int complex_vector_length = DIRECTIONS * Lx * Ly * Lz * Lt * nColors_ * nColors_;
+    int complex_vector_length = Nd * Lx * Ly * Lz * Lt * nColors_ * nColors_;
     assert(floatPrecision == QCU_DOUBLE_PRECISION || floatPrecision == QCU_SINGLE_PRECISION ||
            floatPrecision == QCU_HALF_PRECISION);
     copyComplexVector_interface(fp64Gauge_, QCU_DOUBLE_PRECISION, gauge_, floatPrecision, complex_vector_length);
