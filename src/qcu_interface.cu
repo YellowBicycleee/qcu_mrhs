@@ -16,7 +16,8 @@ void Qcu::allocateMemory() {
 
     int vol = Lx * Ly * Lz * Lt;
     int colorSpinorMrhs_size = vol * Ns * nColors_ * mInput_;  // even and odd
-    int gauge_size = DIRECTIONS * vol * nColors_ * nColors_;   // even and odd
+    int gauge_size = Nd * vol * nColors_ * nColors_;   // even and odd
+
     switch (dslashFloatPrecision_) {
         case QCU_HALF_PRECISION: {
             CHECK_CUDA(cudaMalloc(&fermionIn_MRHS_, 2 * colorSpinorMrhs_size * sizeof(half)));
@@ -35,9 +36,6 @@ void Qcu::allocateMemory() {
             break;
     }
     // gauge field
-    //     void *fp64Gauge_;  // double gauge field
-    // void *fp32Gauge_;  // single gauge field
-    // void *fp16Gauge_;  // half gauge field
     CHECK_CUDA(cudaMalloc(&fp64Gauge_, 2 * gauge_size * sizeof(double)));
     CHECK_CUDA(cudaMalloc(&fp32Gauge_, 2 * gauge_size * sizeof(float)));
     CHECK_CUDA(cudaMalloc(&fp16Gauge_, 2 * gauge_size * sizeof(half)));
@@ -123,6 +121,7 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
 
     dslashParam_->fermionIn_MRHS = fermionIn_MRHS_;
     dslashParam_->fermionOut_MRHS = fermionOut_MRHS_;
+    // DEBUG
 
     // lookup table
     void* d_lookup_table_in;
@@ -130,24 +129,23 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * fermionIn_queue_.size()));
     CHECK_CUDA(cudaMalloc(&d_lookup_table_out, sizeof(void*) * fermionOut_queue_.size()));
 
-    CHECK_CUDA(cudaMemcpy(d_lookup_table_in, fermionIn_queue_.data(), sizeof(void*) * fermionIn_queue_.size(), 
-                        cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_in, fermionIn_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
+                          cudaMemcpyHostToDevice));
     CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
-                        cudaMemcpyHostToDevice));
+                          cudaMemcpyHostToDevice));
 
-    colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz,
-                      Lt, nColors_, mInput_, NULL);
+    colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz, Lt,
+                      nColors_, mInput_, NULL);
 
     CHECK_CUDA(cudaDeviceSynchronize());
 
     dslash_->apply();
     // DEBUG
-    // CHECK_CUDA(cudaMemcpy(fermionOut_MRHS_, fermionIn_MRHS_, 2 * sizeof(double) * Lx/2 * Ly * Lz * Lt * Nd * nColors_ * mInput_, cudaMemcpyDeviceToDevice));
-    // CHECK_CUDA(cudaDeviceSynchronize());
+    // CHECK_CUDA(cudaMemcpy(fermionOut_MRHS_, fermionIn_MRHS_, 2 * sizeof(double) * Lx/2 * Ly * Lz * Lt * Nd * nColors_
+    // * mInput_, cudaMemcpyDeviceToDevice)); CHECK_CUDA(cudaDeviceSynchronize());
 
-
-    colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly,
-                       Lz, Lt, nColors_, mInput_, NULL);
+    colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly, Lz,
+                       Lt, nColors_, mInput_, NULL);
     CHECK_CUDA(cudaDeviceSynchronize());
 
     CHECK_CUDA(cudaFree(d_lookup_table_in));
@@ -163,8 +161,11 @@ void Qcu::loadGauge(void* gauge, QCU_PRECISION floatPrecision) {
     int Lz = lattDesc_.dims[Z_DIM];
     int Lt = lattDesc_.dims[T_DIM];
     int complex_vector_length = Nd * Lx * Ly * Lz * Lt * nColors_ * nColors_;
+    
     assert(floatPrecision == QCU_DOUBLE_PRECISION || floatPrecision == QCU_SINGLE_PRECISION ||
            floatPrecision == QCU_HALF_PRECISION);
+    // fp64Gauge_ = gauge;
+    // CHECK_CUDA(cudaMemcpy(fp64Gauge_, gauge, sizeof(double) * 2 * complex_vector_length, cudaMemcpyDeviceToDevice));
     copyComplexVector_interface(fp64Gauge_, QCU_DOUBLE_PRECISION, gauge_, floatPrecision, complex_vector_length);
     copyComplexVector_interface(fp32Gauge_, QCU_SINGLE_PRECISION, gauge_, floatPrecision, complex_vector_length);
     copyComplexVector_interface(fp16Gauge_, QCU_HALF_PRECISION, gauge_, floatPrecision, complex_vector_length);
