@@ -21,10 +21,8 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
     int gamma_idx /* 1, 2, 3, 4 */ , int dagger_flag /* 0 1 */, int n_color, int m_rhs) 
 {
     // smem_T 布局：
-    // Float: smem_T1_real  0                  -----(    smem_k * smem_n - 1)
-    // Float: smem_T1_imag      smem_k * smem_n-----(2 * smem_k * smem_n - 1)
-    // Float: smem_T2_real  2 * smem_k * smem_n-----(3 * smem_k * smem_n - 1)
-    // Float: smem_T2_imag  3 * smem_k * smem_n-----(4 * smem_k * smem_n - 1)
+    // Float: smem_T_real  0                  -----(    smem_k * smem_n - 1)
+    // Float: smem_T_imag      smem_k * smem_n-----(2 * smem_k * smem_n - 1)
 
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;    
 
@@ -36,12 +34,10 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
         int global_j = global_iter_start_n + smem_j;
         Float2 temp1;
         Float2 temp2;
-
+        
         if (global_i >= n_color || global_j >= m_rhs) {   // 0 - padding
-            smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T1.real
-            smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T1.imag
-            // smem_T[IDX3D(2, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T2.real
-            // smem_T[IDX3D(3, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T2.imag
+            smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T.real
+            smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T.imag
         }
         else {
             switch (gamma_idx) {
@@ -56,7 +52,7 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
                         smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp1.y - temp2.x;  // M1.imag - M4.real
                     } else {                                                        // T1 = M1 + iM4
                         smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x - temp2.y;  // M1.real - M4.imag
-                        smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp2.y + temp1.y;  // M1.imag + M4.imag
+                        smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp2.y + temp1.x;  // M1.imag + M4.imag
                     }
                 }
 
