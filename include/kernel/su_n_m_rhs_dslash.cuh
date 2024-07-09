@@ -64,7 +64,7 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
         int warp_begin_col = virtual_warp_id_j * WMMA_N;
 
         // clear L[1, 2, 3, 4] (real and imag part)
-        for (int i = 0; i < WMMA_M * WMMA_N; i += WARP_SIZE) {
+        for (int i = threadIdx.x; i < WMMA_M * WMMA_N; i += WARP_SIZE) {
             int local_i = i / WMMA_N;
             int local_j = i % WMMA_N;
             smem_L[IDX3D(0, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L1 real
