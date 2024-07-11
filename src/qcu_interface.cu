@@ -6,6 +6,7 @@
 #include "data_format/qcu_data_format_shift.cuh"
 #include "qcu_interface.h"
 #include "qcu_macro.h"
+#include "timer/timer.h"
 namespace qcu {
 
 void Qcu::allocateMemory() {
@@ -134,18 +135,30 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
                           cudaMemcpyHostToDevice));
 
-    colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz, Lt,
-                      nColors_, mInput_, NULL);
-
+    // colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz, Lt,
+    //                   nColors_, mInput_, NULL);
+    TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz, Lt,
+                      nColors_, mInput_, NULL), 0, "gather");
     CHECK_CUDA(cudaDeviceSynchronize());
 
-    dslash_->apply();
+    // real op
+    // char* dslash_str = "wilson dslash";
+    double num_op = Lx * Ly * Lz * Lt / 2 * 8 * (
+        Ns / 2 * nColors_ * 2 * mInput_ + // combine , T1 = M1 + M2
+        Ns / 2 * nColors_ * (nColors_ * 6 + nColors_ * 2) +         // (a+bi) * (c+di) = (ac-bd) + (ad+bc)i
+        Ns * nColors_ * mInput_ * 2                     // 4 * (L <--- T)
+    );
+    TIMER_EVENT(dslash_->apply(), num_op, "wilson dslash");
+
+    // dslash_->apply();
     // DEBUG
     // CHECK_CUDA(cudaMemcpy(fermionOut_MRHS_, fermionIn_MRHS_, 2 * sizeof(double) * Lx/2 * Ly * Lz * Lt * Nd * nColors_
     // * mInput_, cudaMemcpyDeviceToDevice)); CHECK_CUDA(cudaDeviceSynchronize());
 
-    colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly, Lz,
-                       Lt, nColors_, mInput_, NULL);
+    TIMER_EVENT(colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly, Lz,
+                       Lt, nColors_, mInput_, NULL), 0, "scatter");
+    // colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly, Lz,
+    //                    Lt, nColors_, mInput_, NULL);
     CHECK_CUDA(cudaDeviceSynchronize());
 
     CHECK_CUDA(cudaFree(d_lookup_table_in));
