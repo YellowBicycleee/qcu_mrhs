@@ -80,6 +80,7 @@ void WilsonDslash::apply() {
             assert(0);
             break;
     }
+    CHECK_CUDA(cudaStreamSynchronize(dslashParam_.stream1));
     // clang-format on
 }
 void WilsonDslash::preApply() {
