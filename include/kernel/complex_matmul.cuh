@@ -34,25 +34,23 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
         int global_j = global_iter_start_n + smem_j;
         Float2 temp1;
         Float2 temp2;
-        
-        if (global_i >= n_color || global_j >= m_rhs) {   // 0 - padding
-            smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T.real
-            smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T.imag
-        }
-        else {
+
+        if (global_i < n_color && global_j < m_rhs) {
             switch (gamma_idx) {
             case 1:
                 {
                     // T1 = M1 - iM4
                     temp1 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(0, global_i, global_j, n_color, m_rhs)]; // M1 elem
                     temp2 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(3, global_i, global_j, n_color, m_rhs)]; // M4 elem
+
+
                     // combine and store to smem
                     if (dagger_flag == 0) {                                         // T1 = M1 - iM4
                         smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x + temp2.y;  // M1.real + M4.imag
                         smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp1.y - temp2.x;  // M1.imag - M4.real
                     } else {                                                        // T1 = M1 + iM4
                         smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x - temp2.y;  // M1.real - M4.imag
-                        smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp2.y + temp1.x;  // M1.imag + M4.imag
+                        smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp1.y + temp2.x;  // M1.imag + M4.real
                     }
                 }
 
@@ -62,7 +60,7 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
                 {   // T1 = M1 + M4
                     temp1 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(0, global_i, global_j, n_color, m_rhs)]; // M1 elem
                     temp2 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(3, global_i, global_j, n_color, m_rhs)]; // M4 elem
-                    
+                   
                     // combine and store to smem
                     if (dagger_flag == 0) {
                         smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x + temp2.x;  // M1.real + M4.real
@@ -79,7 +77,7 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
                 {   // T1 = M1 - iM3
                     temp1 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(0, global_i, global_j, n_color, m_rhs)]; // M1 elem
                     temp2 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(2, global_i, global_j, n_color, m_rhs)]; // M3 elem
-
+                   
                     // combine and store to smem
                     if (dagger_flag == 0) {
                         smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x + temp2.y;  // T1.real = M1.real + M3.imag
@@ -93,10 +91,10 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
 
             case 4:
                 {   // T1 = M1 - M3, T2 = M2 - M4
-
                     // T1 = M1 - M3
                     temp1 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(0, global_i, global_j, n_color, m_rhs)]; // M1 elem
                     temp2 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(2, global_i, global_j, n_color, m_rhs)]; // M3 elem
+                
                     // combine and store to smem
                     if (dagger_flag == 0) {  // T1 = M1 - M3
                         smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x - temp2.x;  // T1.real = M1.real - M3.real
@@ -112,7 +110,12 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
                 assert(0);
                 break;
             } // end switch
-        } // end if-else 
+        } else {  // 0 - padding
+            smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T.real
+            smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T.imag
+            // __syncwarp();
+        }   // end if-else
+        __syncwarp();
     } // end for
     __syncwarp();
 }
@@ -160,7 +163,7 @@ __device__ __forceinline__ void load_complex_fermion_mat_T2_from_global_to_smem(
                         smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp1.y - temp2.x;  // M2.imag - M3.real 
                     } else {
                         smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x - temp2.y;  // M2.real - M3.imag
-                        smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp2.y + temp1.y;  // M2.imag + M3.imag
+                        smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp1.y + temp2.x;  // M2.imag + M3.imag
                     }
                 }
 
@@ -175,8 +178,8 @@ __device__ __forceinline__ void load_complex_fermion_mat_T2_from_global_to_smem(
                         smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x - temp2.x;  // M2.real - M3.real
                         smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp1.y - temp2.y;  // M2.imag - M3.imag
                     } else {
-                        smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x + temp1.x;  // M2.real + M3.real
-                        smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp2.x + temp1.y;  // M2.imag + M3.imag
+                        smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x + temp2.x;  // M2.real + M3.real
+                        smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp1.y + temp2.y;  // M2.imag + M3.imag
                     }
 
                 } 
@@ -190,10 +193,10 @@ __device__ __forceinline__ void load_complex_fermion_mat_T2_from_global_to_smem(
                     
                     // combine and store to smem
                     if (dagger_flag == 0) {  // T2 = M2 + iM4
-                        smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x + temp2.y;  // T2.real = M2.real - M4.imag
+                        smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x - temp2.y;  // T2.real = M2.real - M4.imag
                         smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp1.y + temp2.x;  // T2.imag = M2.imag + M4.real
                     } else {            // T2 = M2 - iM4
-                        smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x - temp2.y;  // T2.real = M2.real + M4.imag
+                        smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x + temp2.y;  // T2.real = M2.real + M4.imag
                         smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = temp1.y - temp2.x;  // T2.imag = M2.imag - M4.real
                     }
                 }
@@ -221,6 +224,7 @@ __device__ __forceinline__ void load_complex_fermion_mat_T2_from_global_to_smem(
                 break;
             } // end switch
         } // end if-else 
+        __syncwarp();
     } // end for
     __syncwarp();
 }
@@ -246,6 +250,7 @@ __device__ __forceinline__ void load_complex_gauge_mat_from_global_to_smem (
         Float2 temp;
     
         if (!if_dagger) {
+        // if (true) {
             global_i = global_iter_start_m + smem_i;
             global_j = global_iter_start_n + smem_j;
             if (global_i < n_color && global_j < n_color) {
@@ -463,6 +468,7 @@ __device__ __forceinline__ void tensor_core_complex_matmul(
     __syncwarp();
     wmma::mma_sync(C_real_frag, A_real_frag, B_real_frag, C_real_frag);  // Cr = Cr + Ar * Br
     wmma::mma_sync(C_real_frag, A_imag_frag, B_imag_frag, C_real_frag);  // Cr = Cr - Ai * Bi
+    __syncwarp();
 }
 
 template <typename Float>
