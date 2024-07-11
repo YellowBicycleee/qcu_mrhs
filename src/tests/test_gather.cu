@@ -19,7 +19,7 @@ double compare (double *a, double *b, int len) {
     return res;
 }
 
-double print12(double *a) {
+void print12(double *a) {
     for (int i = 0; i < 12; ++i) {
         printf("%lf ", a[i]);
         if (i % 4 == 3) {
