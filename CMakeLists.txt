@@ -40,7 +40,7 @@ target_link_libraries(test_shift_data
 
 
 add_executable(test_dslash
-    ${PROJECT_SOURCE_DIR}/src/tests/test.cu
+    ${PROJECT_SOURCE_DIR}/src/tests/test_wilson_dslash.cu
 )
 target_include_directories(test_dslash
     PUBLIC
