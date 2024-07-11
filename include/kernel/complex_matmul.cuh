@@ -244,7 +244,8 @@ __device__ __forceinline__ void load_complex_gauge_mat_from_global_to_smem (
     for (int idx = threadIdx.x; idx < smem_m * smem_k; idx += WARP_SIZE) {
         // smem is always row-major
         int smem_i = idx / smem_k;
-        int smem_j = idx % smem_k;
+        // int smem_j = idx % smem_k;
+        int smem_j = idx & (smem_k - 1);
         int global_i;
         int global_j;
         Float2 temp;
@@ -298,7 +299,8 @@ __device__ __forceinline__ void calc_L_from_R1(Float* __restrict__ smem_L, const
 
     for (int idx = threadIdx.x; idx < smem_m * smem_n; idx += WARP_SIZE) {
         int smem_i = idx / smem_n;
-        int smem_j = idx % smem_n;
+        // int smem_j = idx % smem_n;
+        int smem_j = idx & (smem_n - 1);
 
         Float2 temp;
         // depend on R1
@@ -373,7 +375,8 @@ __device__ __forceinline__ void calc_L_from_R2(Float* __restrict__ smem_L, const
 
     for (int idx = threadIdx.x; idx < smem_m * smem_n; idx += WARP_SIZE) {
         int smem_i = idx / smem_n;
-        int smem_j = idx % smem_n;
+        // int smem_j = idx % smem_n;
+        int smem_j = idx & (smem_n - 1);
 
         Float2 temp;
         // load R2 elem
@@ -481,7 +484,8 @@ __device__ __forceinline__ void warp_store_complex_from_smem_to_global(Float* __
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
     for (int i = threadIdx.x; i < smem_m * smem_n; i += WARP_SIZE) {
         int local_i = threadIdx.x / smem_n;
-        int local_j = threadIdx.x % smem_n;
+        // int local_j = threadIdx.x % smem_n;
+        int local_j = threadIdx.x & (smem_n - 1);
         int global_i = global_tile_start_m + local_i;
         int global_j = global_tile_start_n + local_j;
 

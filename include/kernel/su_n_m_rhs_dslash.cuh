@@ -66,7 +66,8 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
         // clear L[1, 2, 3, 4] (real and imag part)
         for (int i = threadIdx.x; i < WMMA_M * WMMA_N; i += WARP_SIZE) {
             int local_i = i / WMMA_N;
-            int local_j = i % WMMA_N;
+            // int local_j = i % WMMA_N;
+            int local_j = i & (WMMA_N - 1);
             // if (blockIdx.x ==0) {
             //     printf("i = %d, j = %d\n", local_i, local_j);
             // }
@@ -80,16 +81,6 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
             smem_L[IDX3D(7, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L4 imag
         }
         __syncwarp();
-        // if (threadIdx.x == 0 &&  blockIdx.x == 0) {
-        //     printf("DEBUG: DSLASH SMEM_L1_real ##############\n");
-        //     for (int i = 0; i < WMMA_M * 8; ++i) {
-        //         for (int j = 0; j < WMMA_N; ++j) {
-        //             printf("%f ", smem_L[IDX3D(0, i, j, WMMA_M, WMMA_N)]);
-        //         }
-        //         printf("\n");
-        //     }
-        //     printf("INFO PRINT END##########################\n");
-        // }
 
 
         // x fwd
