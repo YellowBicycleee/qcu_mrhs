@@ -67,6 +67,9 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
         for (int i = threadIdx.x; i < WMMA_M * WMMA_N; i += WARP_SIZE) {
             int local_i = i / WMMA_N;
             int local_j = i % WMMA_N;
+            // if (blockIdx.x ==0) {
+            //     printf("i = %d, j = %d\n", local_i, local_j);
+            // }
             smem_L[IDX3D(0, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L1 real
             smem_L[IDX3D(1, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L1 imag
             smem_L[IDX3D(2, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L2 real
@@ -77,6 +80,17 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
             smem_L[IDX3D(7, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L4 imag
         }
         __syncwarp();
+        // if (threadIdx.x == 0 &&  blockIdx.x == 0) {
+        //     printf("DEBUG: DSLASH SMEM_L1_real ##############\n");
+        //     for (int i = 0; i < WMMA_M * 8; ++i) {
+        //         for (int j = 0; j < WMMA_N; ++j) {
+        //             printf("%f ", smem_L[IDX3D(0, i, j, WMMA_M, WMMA_N)]);
+        //         }
+        //         printf("\n");
+        //     }
+        //     printf("INFO PRINT END##########################\n");
+        // }
+
 
         // x fwd
         mv_point = point.move(FWD, X_DIM, half_Lx, Ly, Lz, Lt);
@@ -134,13 +148,17 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
         point_out_matrix = point.getGatheredColorSpinorAddr(out, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
         warp_store_complex_from_smem_to_global(point_out_matrix, warp_begin_row, warp_begin_col, n_color, m_rhs,
                                                smem_L + 0 * WMMA_M * WMMA_N * 2, WMMA_M, WMMA_N);  // L1
-        warp_store_complex_from_smem_to_global(point_out_matrix, warp_begin_row, warp_begin_col, n_color, m_rhs,
-                                               smem_L + 1 * WMMA_M * WMMA_N * 2, WMMA_M, WMMA_N);  // L2
-        warp_store_complex_from_smem_to_global(point_out_matrix, warp_begin_row, warp_begin_col, n_color, m_rhs,
-                                               smem_L + 2 * WMMA_M * WMMA_N * 2, WMMA_M, WMMA_N);  // L3
-        warp_store_complex_from_smem_to_global(point_out_matrix, warp_begin_row, warp_begin_col, n_color, m_rhs,
-                                               smem_L + 3 * WMMA_M * WMMA_N * 2, WMMA_M, WMMA_N);  // L4
+        warp_store_complex_from_smem_to_global(point_out_matrix + 1 * 2 * n_color * m_rhs, warp_begin_row,
+                                               warp_begin_col, n_color, m_rhs, smem_L + 1 * WMMA_M * WMMA_N * 2, WMMA_M,
+                                               WMMA_N);  // L2
+        warp_store_complex_from_smem_to_global(point_out_matrix + 2 * 2 * n_color * m_rhs, warp_begin_row,
+                                               warp_begin_col, n_color, m_rhs, smem_L + 2 * WMMA_M * WMMA_N * 2, WMMA_M,
+                                               WMMA_N);  // L3
+        warp_store_complex_from_smem_to_global(point_out_matrix + 3 * 2 * n_color * m_rhs, warp_begin_row,
+                                               warp_begin_col, n_color, m_rhs, smem_L + 3 * WMMA_M * WMMA_N * 2, WMMA_M,
+                                               WMMA_N);  // L4
         __syncwarp();
+
     }  // end for
 }
 
