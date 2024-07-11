@@ -5,6 +5,7 @@
 #include "qcu_enum.h"
 #include "qcu_macro.h"
 using namespace qcu;
+using namespace std;
 
 QcuGrid initGridSize(int Nx, int Ny, int Nz, int Nt) {
     QcuGrid grid;
@@ -28,7 +29,7 @@ void allocateFermion(vector<void*>& fermionArr, int mInput, int colorSpinor_vlen
     void* fermion;
     for (int i = 0; i < mInput; ++i) {
         CHECK_CUDA(cudaMalloc(&fermion, 2 * sizeof(double) * colorSpinor_vlen));
-        fermionArr.push_back(fermionIn);
+        fermionArr.push_back(fermion);
     }
 }
 
@@ -56,7 +57,7 @@ int main() {
 
     int nColor = 3;
     int mInput = 1;
-    double kappa = 1.0;
+    // double kappa = 1.0;
     bool daggerFlag = false;
 
     QcuGrid process_grid = initGridSize(Nx, Ny, Nz, Nt);
@@ -77,7 +78,7 @@ int main() {
     allocateFermion(fermionOut_arr, mInput, colorSpinor_vlen);
 
     // begin
-    initGridSize(&process_grid, qcu_latt_param, nColor, mInput, inputFloatPrecision, dslashFloatPrecision);
+    initGridSize(&process_grid, &qcu_latt_param, nColor, mInput, inputFloatPrecision, dslashFloatPrecision);
     getDslash(DSLASH_WILSON, -3.5);
     loadQcuGauge(gauge, inputFloatPrecision);
 
@@ -85,8 +86,8 @@ int main() {
         for (int i = 0; i < mInput; i++) {
             void* fermionIn = fermionIn_arr[i];
             void* fermionOut = fermionOut_arr[i];
-            void* output = static_cast<void*>(static_cast<double*>(fermionOut) + pairty * 2 * colorSpinor_vlen / 2);
-            void* input = static_cast<void*>(static_cast<double*>(fermionIn) + (1 - pairty) * 2 * colorSpinor_vlen / 2);
+            void* output = static_cast<void*>(static_cast<double*>(fermionOut) + parity * 2 * colorSpinor_vlen / 2);
+            void* input = static_cast<void*>(static_cast<double*>(fermionIn) + (1 - parity) * 2 * colorSpinor_vlen / 2);
             pushBackFermions(output, input);
         }
         start_dslash(parity, daggerFlag);
