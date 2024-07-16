@@ -483,9 +483,9 @@ __device__ __forceinline__ void warp_store_complex_from_smem_to_global(Float* __
 ) {
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
     for (int i = threadIdx.x; i < smem_m * smem_n; i += WARP_SIZE) {
-        int local_i = threadIdx.x / smem_n;
+        int local_i = i / smem_n;
         // int local_j = threadIdx.x % smem_n;
-        int local_j = threadIdx.x & (smem_n - 1);
+        int local_j = i & (smem_n - 1);
         int global_i = global_tile_start_m + local_i;
         int global_j = global_tile_start_n + local_j;
 
@@ -494,6 +494,8 @@ __device__ __forceinline__ void warp_store_complex_from_smem_to_global(Float* __
             temp.x = warp_smem[IDX3D(0, local_i, local_j, smem_m, smem_n)];
             temp.y = warp_smem[IDX3D(1, local_i, local_j, smem_m, smem_n)];
             reinterpret_cast<Float2*>(global_mem)[IDX2D(global_i, global_j, global_total_n)] = temp;
+
+            
         }
     }
     __syncwarp();
