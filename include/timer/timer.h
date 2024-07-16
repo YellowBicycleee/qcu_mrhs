@@ -31,25 +31,31 @@ class Timer {
     }
 };
 
-inline double Gflops(size_t num, double time_second) { return num / (time_second * 1e9); }
+inline double Tflops(size_t num, double time_second) { return num / (time_second * 1e12); }
 
 // inline void timerEvent (const char* msg, ) {
 
 // }
+
+// clang-format off
 #define DEBUG
 #ifdef DEBUG
-#define TIMER_EVENT(cmd, num_op, msg) do {                                   \
-        Timer timer;                                                         \
-        timer.start();                                                       \
-        cmd;                                                                 \
-        timer.stop();                                                        \
-        printf("%s: %lf second\n", msg, timer.getElapsedTimeSecond());       \
+#define TIMER_EVENT(cmd, num_op, msg)                                                    \
+    do {                                                                                 \
+        Timer timer;                                                                     \
+        timer.start();                                                                   \
+        cmd;                                                                             \
+        timer.stop();                                                                    \
+        printf("%s: %lf second\n", msg, timer.getElapsedTimeSecond());                   \
+        printf("%s: Tflops = %lf\n", msg, Tflops(num_op, timer.getElapsedTimeSecond())); \
     } while (0)
 
 #else
-#define TIMER_EVENT(cmd, num_op, msg) do {                                   \
-        cmd;                                                                 \
-    } while (0)                                                                        
+#define TIMER_EVENT(cmd, num_op, msg) \
+    do {                              \
+        cmd;                          \
+    } while (0)
 
 #endif
- // printf("%s: Tflops = %lf\n", msg, timer.getElapsedTimeSecond() / (1e12));
+// clang-format on
+// printf("%s: Tflops = %lf\n", msg, timer.getElapsedTimeSecond() / (1e12));
