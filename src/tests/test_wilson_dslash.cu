@@ -6,7 +6,6 @@
 #include "qcu_macro.h"
 using namespace qcu;
 using namespace std;
-
 QcuGrid initGridSize(int Nx, int Ny, int Nz, int Nt) {
     QcuGrid grid;
     grid.grid_size[X_DIM] = Nx;
@@ -24,7 +23,7 @@ QcuParam initQcuParam(int Lx, int Ly, int Lz, int Lt) {
     return param;
 }
 
-void allocateFermion(vector<void*>& fermionArr, int mInput, int colorSpinor_vlen) {
+void allocateFermion(std::vector<void*>& fermionArr, int mInput, int colorSpinor_vlen) {
     // memory alloaction
     void* fermion;
     for (int i = 0; i < mInput; ++i) {
