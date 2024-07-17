@@ -273,7 +273,6 @@ __device__ __forceinline__ void load_complex_gauge_mat_from_global_to_smem (
             smem_U[IDX3D(0, smem_i, smem_j, smem_m, smem_k)] = temp.x;
             smem_U[IDX3D(1, smem_i, smem_j, smem_m, smem_k)] = -temp.y;
         }
-        
     }
     __syncwarp();
 }
@@ -494,8 +493,102 @@ __device__ __forceinline__ void warp_store_complex_from_smem_to_global(Float* __
             temp.x = warp_smem[IDX3D(0, local_i, local_j, smem_m, smem_n)];
             temp.y = warp_smem[IDX3D(1, local_i, local_j, smem_m, smem_n)];
             reinterpret_cast<Float2*>(global_mem)[IDX2D(global_i, global_j, global_total_n)] = temp;
+        }
+    }
+    __syncwarp();
+}
 
-            
+// separator
+template <typename Float>
+__device__ __forceinline__ void calc_L_from_R(
+    wmma::fragment<wmma::accumulator, WMMA_Param<Float>::WMMA_M, WMMA_Param<Float>::WMMA_N, WMMA_Param<Float>::WMMA_K,
+                   Float>* L_frag_ptr,
+    wmma::fragment<wmma::accumulator, WMMA_Param<Float>::WMMA_M, WMMA_Param<Float>::WMMA_N, WMMA_Param<Float>::WMMA_K,
+                   Float>* R_frag_ptr,
+    int gamma_idx, bool dagger_flag) {
+    using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
+    constexpr auto elem_nums = L_frag_ptr[0].num_elements;
+
+    for (int i = 0; i < elem_nums; i++) {
+        // update L1
+        L_frag_ptr[0].x[i] += R_frag_ptr[0].x[i];
+        L_frag_ptr[1].x[i] += R_frag_ptr[1].x[i];
+        // update R2
+        L_frag_ptr[2].x[i] += R_frag_ptr[2].x[i];
+        L_frag_ptr[3].x[i] += R_frag_ptr[3].x[i];
+
+        switch (gamma_idx) {
+            case 1: {                // L3 = L3 + iR2 * dagger_flag_sgn, L4 = L4 + dagger_flag_sgn * iR1
+                if (!dagger_flag) {  // L3 = L3 + iR2, L4 = L4 + iR1
+                    L_frag_ptr[4].x[i] -= R_frag_ptr[3].x[i];  // L3.real -= R2.imag
+                    L_frag_ptr[5].x[i] += R_frag_ptr[2].x[i];  // L3.imag += R2.real
+
+                    L_frag_ptr[6].x[i] -= R_frag_ptr[1].x[i];  // L4.real -= R1.imag
+                    L_frag_ptr[7].x[i] += R_frag_ptr[0].x[i];  // L4.imag += R1.real
+                } else {
+                    L_frag_ptr[4].x[i] += R_frag_ptr[3].x[i];
+                    L_frag_ptr[5].x[i] -= R_frag_ptr[2].x[i];
+
+                    L_frag_ptr[6].x[i] += R_frag_ptr[1].x[i];
+                    L_frag_ptr[7].x[i] -= R_frag_ptr[0].x[i];
+                }
+            } break;
+            case 2: {
+                if (!dagger_flag) {
+                    // L3 = L3 - R2 * dagger_flag_sgn, L4 = L4 + dagger_flag_sgn * R1
+                    L_frag_ptr[4].x[i] -= R_frag_ptr[2].x[i];
+                    L_frag_ptr[5].x[i] -= R_frag_ptr[3].x[i];
+
+                    L_frag_ptr[6].x[i] += R_frag_ptr[0].x[i];
+                    L_frag_ptr[7].x[i] += R_frag_ptr[1].x[i];
+                } else {
+                    L_frag_ptr[4].x[i] += R_frag_ptr[2].x[i];
+                    L_frag_ptr[5].x[i] += R_frag_ptr[3].x[i];
+
+                    L_frag_ptr[6].x[i] -= R_frag_ptr[0].x[i];
+                    L_frag_ptr[7].x[i] -= R_frag_ptr[1].x[i];
+                }
+            } break;
+            case 3: {
+                // L3 = L3 + iR1 * dagger_flag_sgn, L4 = L4 - iR2 * dagger_flag_sgn
+                if (!dagger_flag) {
+                    L_frag_ptr[4].x[i] -= R_frag_ptr[1].x[i];
+                    L_frag_ptr[5].x[i] += R_frag_ptr[0].x[i];
+
+                    L_frag_ptr[6].x[i] += R_frag_ptr[3].x[i];
+                    L_frag_ptr[7].x[i] -= R_frag_ptr[2].x[i];
+                } else {
+                    L_frag_ptr[4].x[i] += R_frag_ptr[1].x[i];
+                    L_frag_ptr[5].x[i] -= R_frag_ptr[0].x[i];
+
+                    L_frag_ptr[6].x[i] -= R_frag_ptr[3].x[i];
+                    L_frag_ptr[7].x[i] += R_frag_ptr[2].x[i];
+                }
+            } break;
+            case 4: {
+                // L3 = L3 - R1 * dagger_flag_sgn,  L4 = L4 - R2 * dagger_flag_sgn
+                if (!dagger_flag) {
+                    // L3 = L3 - R1, L4 = L4 - R2
+                    L_frag_ptr[4].x[i] -= R_frag_ptr[0].x[i];
+                    L_frag_ptr[5].x[i] -= R_frag_ptr[1].x[i];
+
+                    L_frag_ptr[6].x[i] -= R_frag_ptr[2].x[i];
+                    L_frag_ptr[7].x[i] -= R_frag_ptr[3].x[i];
+                } else {
+                    L_frag_ptr[4].x[i] += R_frag_ptr[0].x[i];
+                    L_frag_ptr[5].x[i] += R_frag_ptr[1].x[i];
+
+                    L_frag_ptr[6].x[i] += R_frag_ptr[2].x[i];
+                    L_frag_ptr[7].x[i] += R_frag_ptr[3].x[i];
+                }
+            } break;
+
+            default: {
+                if (threadIdx.x == 0 && blockIdx.x == 0) {
+                    printf("gamma idx = %d is not supported!\n", gamma_idx);
+                }
+                assert(0);
+            } break;
         }
     }
     __syncwarp();
