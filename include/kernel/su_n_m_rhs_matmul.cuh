@@ -37,7 +37,9 @@ using namespace nvcuda;
  *          T : real: smem_mat_T                           imag: smem_mat_T + WMMA_M * WMMA_N
  *          R : real: smem_mat_R                           imag: smem_mat_R + WMMA_M * WMMA_N
 */
+
 template <typename Float>
+[[deprecated("Use function dslash_mat_mul_new instead")]]
 __device__ void dslash_mat_mul(Float* __restrict__ smem_mat_L, Float* __restrict__ smem_mat_U,
                                Float* __restrict__ smem_mat_R, Float* __restrict__ smem_mat_T,
                                Float* __restrict__ global_gauge, Float* __restrict__ global_fermion_in,
@@ -111,6 +113,7 @@ __device__ void dslash_mat_mul(Float* __restrict__ smem_mat_L, Float* __restrict
     calc_L_from_R2(smem_mat_L, smem_R, WMMA_M, WMMA_N, gamma_idx, local_dagger_flag);
 }
 
+
 template <typename Float>
 __device__ void dslash_mat_mul_new(
     wmma::fragment<wmma::accumulator, WMMA_Param<Float>::WMMA_M, WMMA_Param<Float>::WMMA_N, WMMA_Param<Float>::WMMA_K,
@@ -130,6 +133,7 @@ __device__ void dslash_mat_mul_new(
     Float* smem_T = smem_mat_T;
 
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, Float> R_frag[4];
+    #pragma unroll
     for (int i = 0; i < 4; i++) {
         wmma::fill_fragment(R_frag[i], 0.0f);
     }
@@ -171,7 +175,7 @@ __device__ void dslash_mat_mul_new(
 
     }  // for i : K_TILES
 
-    // acc to smem_L    TODO
+    // acc to smem_L
     calc_L_from_R<Float>(L_frag_ptr, R_frag, gamma_idx, local_dagger_flag);
 }
 

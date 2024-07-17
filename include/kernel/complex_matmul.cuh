@@ -43,7 +43,6 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
                     temp1 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(0, global_i, global_j, n_color, m_rhs)]; // M1 elem
                     temp2 = reinterpret_cast<const Float2*>(global_mem)[IDX3D(3, global_i, global_j, n_color, m_rhs)]; // M4 elem
 
-
                     // combine and store to smem
                     if (dagger_flag == 0) {                                         // T1 = M1 - iM4
                         smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = temp1.x + temp2.y;  // M1.real + M4.imag
@@ -113,7 +112,6 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
         } else {  // 0 - padding
             smem_T[IDX3D(0, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T.real
             smem_T[IDX3D(1, smem_i, smem_j, smem_k, smem_n)] = Float(0.0);  // T.imag
-            // __syncwarp();
         }   // end if-else
         __syncwarp();
     } // end for
@@ -282,6 +280,7 @@ __device__ __forceinline__ void load_complex_gauge_mat_from_global_to_smem (
 // smem_n ---- WMMA_N
 // one warp add these WMMA_M * WMMA_N elements from R1 to L1, L3/L4
 template <typename Float>
+[[deprecated("Use function calc_L_from_R instead")]]
 __device__ __forceinline__ void calc_L_from_R1(Float* __restrict__ smem_L, const Float* __restrict__ smem_R, int smem_m,
                                                int smem_n, int gamma_idx, bool dagger_flag) {
     // smem_L 布局：
@@ -357,6 +356,7 @@ __device__ __forceinline__ void calc_L_from_R1(Float* __restrict__ smem_L, const
 }
 
 template <typename Float>
+[[deprecated("Use function calc_L_from_R instead")]]
 __device__ __forceinline__ void calc_L_from_R2(Float* __restrict__ smem_L, const Float* __restrict__ smem_R, int smem_m,
                                                int smem_n, int gamma_idx, bool dagger_flag) {
     // smem_L 布局：
@@ -441,7 +441,8 @@ __device__ __forceinline__ void tensor_core_complex_matmul(
     wmma::fragment<wmma::accumulator, WMMA_Param<Float>::WMMA_M, WMMA_Param<Float>::WMMA_N, WMMA_Param<Float>::WMMA_K,
                    Float>& C_real_frag,
     wmma::fragment<wmma::accumulator, WMMA_Param<Float>::WMMA_M, WMMA_Param<Float>::WMMA_N, WMMA_Param<Float>::WMMA_K,
-                   Float>& C_imag_frag) {
+                   Float>& C_imag_frag
+) {
     constexpr int WMMA_M = WMMA_Param<Float>::WMMA_M;
     constexpr int WMMA_N = WMMA_Param<Float>::WMMA_N;
     constexpr int WMMA_K = WMMA_Param<Float>::WMMA_K;
@@ -464,6 +465,7 @@ __device__ __forceinline__ void tensor_core_complex_matmul(
     // C real
     // Cr = Cr + (Ar * Br - Ai * Bi)
     // for every element in Ai, Ai = -Ai
+    #pragma unroll
     for (int i = 0; i < A_imag_frag.num_elements; i++) {
         A_imag_frag.x[i] = -A_imag_frag.x[i];
     }
@@ -505,10 +507,13 @@ __device__ __forceinline__ void calc_L_from_R(
                    Float>* L_frag_ptr,
     wmma::fragment<wmma::accumulator, WMMA_Param<Float>::WMMA_M, WMMA_Param<Float>::WMMA_N, WMMA_Param<Float>::WMMA_K,
                    Float>* R_frag_ptr,
-    int gamma_idx, bool dagger_flag) {
+    int gamma_idx, bool dagger_flag
+) {
+
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
     constexpr auto elem_nums = L_frag_ptr[0].num_elements;
 
+    #pragma unroll
     for (int i = 0; i < elem_nums; i++) {
         // update L1
         L_frag_ptr[0].x[i] += R_frag_ptr[0].x[i];
@@ -518,7 +523,8 @@ __device__ __forceinline__ void calc_L_from_R(
         L_frag_ptr[3].x[i] += R_frag_ptr[3].x[i];
 
         switch (gamma_idx) {
-            case 1: {                // L3 = L3 + iR2 * dagger_flag_sgn, L4 = L4 + dagger_flag_sgn * iR1
+            case 1: {                
+                // L3 = L3 + iR2 * dagger_flag_sgn, L4 = L4 + dagger_flag_sgn * iR1
                 if (!dagger_flag) {  // L3 = L3 + iR2, L4 = L4 + iR1
                     L_frag_ptr[4].x[i] -= R_frag_ptr[3].x[i];  // L3.real -= R2.imag
                     L_frag_ptr[5].x[i] += R_frag_ptr[2].x[i];  // L3.imag += R2.real
@@ -534,8 +540,8 @@ __device__ __forceinline__ void calc_L_from_R(
                 }
             } break;
             case 2: {
+                // L3 = L3 - R2 * dagger_flag_sgn, L4 = L4 + dagger_flag_sgn * R1
                 if (!dagger_flag) {
-                    // L3 = L3 - R2 * dagger_flag_sgn, L4 = L4 + dagger_flag_sgn * R1
                     L_frag_ptr[4].x[i] -= R_frag_ptr[2].x[i];
                     L_frag_ptr[5].x[i] -= R_frag_ptr[3].x[i];
 

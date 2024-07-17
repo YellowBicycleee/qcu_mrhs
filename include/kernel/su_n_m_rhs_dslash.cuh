@@ -1,7 +1,6 @@
 #pragma once
 #include <cuda_fp16.h>
 
-// #include "kernel/constants.cuh"
 #include "kernel/su_n_m_rhs_matmul.cuh"
 #include "point/qcu_point.cuh"
 #include "qcu_float_float2_wrapper.h"
@@ -64,13 +63,10 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
         int warp_begin_col = virtual_warp_id_j * WMMA_N;
 
         // clear L[1, 2, 3, 4] (real and imag part)
+        #pragma unroll
         for (int i = threadIdx.x; i < WMMA_M * WMMA_N; i += WARP_SIZE) {
             int local_i = i / WMMA_N;
-            // int local_j = i % WMMA_N;
             int local_j = i & (WMMA_N - 1);
-            // if (blockIdx.x ==0) {
-            //     printf("i = %d, j = %d\n", local_i, local_j);
-            // }
             smem_L[IDX3D(0, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L1 real
             smem_L[IDX3D(1, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L1 imag
             smem_L[IDX3D(2, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L2 real
@@ -83,107 +79,42 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
         __syncwarp();
 
         wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, Float> L_frag[8];
+        #pragma unroll
         for (int i = 0; i < 8; i++) {
             wmma::fill_fragment(L_frag[i], 0.0f);
         }
-
-        // x fwd
-        mv_point = point.move(FWD, X_DIM, half_Lx, Ly, Lz, Lt);
-        point_gauge_matrix = point.getGaugeAddr(gauge, X_DIM, half_Lx, Lt, Lz, Lt, n_color);
-        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        // dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-        // n_color,
-        //   m_rhs, warp_begin_row, warp_begin_col, X_DIM, FWD);
-        dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-                                  n_color, m_rhs, warp_begin_row, warp_begin_col, X_DIM, FWD);
-
-        // x bwd
-        mv_point = point.move(BWD, X_DIM, half_Lx, Ly, Lz, Lt);
-        point_gauge_matrix = mv_point.getGaugeAddr(gauge, X_DIM, half_Lx, Lt, Lz, Lt, n_color);
-        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        // dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-        // n_color,
-        //                       m_rhs, warp_begin_row, warp_begin_col, X_DIM, BWD);
-        dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-                                  n_color, m_rhs, warp_begin_row, warp_begin_col, X_DIM, BWD);
-
-        // y fwd
-        mv_point = point.move(FWD, Y_DIM, half_Lx, Ly, Lz, Lt);
-        point_gauge_matrix = point.getGaugeAddr(gauge, Y_DIM, half_Lx, Lt, Lz, Lt, n_color);
-        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        // dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-        // n_color,
-        //   m_rhs, warp_begin_row, warp_begin_col, Y_DIM, FWD);
-        dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-                                  n_color, m_rhs, warp_begin_row, warp_begin_col, Y_DIM, FWD);
-
-        // y bwd
-        mv_point = point.move(BWD, Y_DIM, half_Lx, Ly, Lz, Lt);
-        point_gauge_matrix = mv_point.getGaugeAddr(gauge, Y_DIM, half_Lx, Lt, Lz, Lt, n_color);
-        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        // dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-        // n_color,
-        //   m_rhs, warp_begin_row, warp_begin_col, Y_DIM, BWD);
-        dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-                                  n_color, m_rhs, warp_begin_row, warp_begin_col, Y_DIM, BWD);
-
-        // z fwd
-        mv_point = point.move(FWD, Z_DIM, half_Lx, Ly, Lz, Lt);
-        point_gauge_matrix = point.getGaugeAddr(gauge, Z_DIM, half_Lx, Lt, Lz, Lt, n_color);
-        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        // dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-        // n_color,
-        //   m_rhs, warp_begin_row, warp_begin_col, Z_DIM, FWD);
-        dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-                                  n_color, m_rhs, warp_begin_row, warp_begin_col, Z_DIM, FWD);
-
-        // z bwd
-        mv_point = point.move(BWD, Z_DIM, half_Lx, Ly, Lz, Lt);
-        point_gauge_matrix = mv_point.getGaugeAddr(gauge, Z_DIM, half_Lx, Lt, Lz, Lt, n_color);
-        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        // dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-        // n_color,
-        //   m_rhs, warp_begin_row, warp_begin_col, Z_DIM, BWD);
-        dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-                                  n_color, m_rhs, warp_begin_row, warp_begin_col, Z_DIM, BWD);
-
-        // t fwd
-        mv_point = point.move(FWD, T_DIM, half_Lx, Ly, Lz, Lt);
-        point_gauge_matrix = point.getGaugeAddr(gauge, T_DIM, half_Lx, Lt, Lz, Lt, n_color);
-        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        // dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-        // n_color,
-        //   m_rhs, warp_begin_row, warp_begin_col, T_DIM, FWD);
-        dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-                                  n_color, m_rhs, warp_begin_row, warp_begin_col, T_DIM, FWD);
-
-        // t bwd
-        mv_point = point.move(BWD, T_DIM, half_Lx, Ly, Lz, Lt);
-        point_gauge_matrix = mv_point.getGaugeAddr(gauge, T_DIM, half_Lx, Lt, Lz, Lt, n_color);
-        point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        // dslash_mat_mul<Float>(smem_L, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-        // n_color,
-        //   m_rhs, warp_begin_row, warp_begin_col, T_DIM, BWD);
-        dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
-                                  n_color, m_rhs, warp_begin_row, warp_begin_col, T_DIM, BWD);
+        
+        #pragma unroll
+        for (int dim = X_DIM; dim < Nd; dim++) {
+            // fwd
+            mv_point = point.move(FWD, dim, half_Lx, Ly, Lz, Lt);
+            point_gauge_matrix = point.getGaugeAddr(gauge, dim, half_Lx, Lt, Lz, Lt, n_color);
+            point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+            dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
+                                  n_color, m_rhs, warp_begin_row, warp_begin_col, dim, FWD);
+            // bwd
+            mv_point = point.move(BWD, dim, half_Lx, Ly, Lz, Lt);
+            point_gauge_matrix = mv_point.getGaugeAddr(gauge, dim, half_Lx, Lt, Lz, Lt, n_color);
+            point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+            dslash_mat_mul_new<Float>(L_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
+                                  n_color, m_rhs, warp_begin_row, warp_begin_col, dim, BWD);
+        }
 
         // store L to smem
+        #pragma unroll
         for (int i = 0; i < 8; i++) {
             wmma::store_matrix_sync(smem_L + i * WMMA_M * WMMA_N, L_frag[i], WMMA_N, wmma::mem_row_major);
         }
         // store L back to fermion out (global memory)
         point_out_matrix = point.getGatheredColorSpinorAddr(out, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
-        warp_store_complex_from_smem_to_global(point_out_matrix, warp_begin_row, warp_begin_col, n_color, m_rhs,
-                                               smem_L + 0 * WMMA_M * WMMA_N * 2, WMMA_M, WMMA_N);  // L1
-        warp_store_complex_from_smem_to_global(point_out_matrix + 1 * 2 * n_color * m_rhs, warp_begin_row,
-                                               warp_begin_col, n_color, m_rhs, smem_L + 1 * WMMA_M * WMMA_N * 2, WMMA_M,
-                                               WMMA_N);  // L2
-        warp_store_complex_from_smem_to_global(point_out_matrix + 2 * 2 * n_color * m_rhs, warp_begin_row,
-                                               warp_begin_col, n_color, m_rhs, smem_L + 2 * WMMA_M * WMMA_N * 2, WMMA_M,
-                                               WMMA_N);  // L3
-        warp_store_complex_from_smem_to_global(point_out_matrix + 3 * 2 * n_color * m_rhs, warp_begin_row,
-                                               warp_begin_col, n_color, m_rhs, smem_L + 3 * WMMA_M * WMMA_N * 2, WMMA_M,
-                                               WMMA_N);  // L4
+
+        // store L1 - L4 
+        #pragma unroll
+        for (int i = 0; i < Nd; i++) {
+             warp_store_complex_from_smem_to_global(point_out_matrix + i * 2 * n_color * m_rhs, 
+                                                warp_begin_row, warp_begin_col, n_color, m_rhs,
+                                                smem_L + i * WMMA_M * WMMA_N * 2, WMMA_M, WMMA_N);  // L1
+        }
         __syncwarp();
 
     }  // end for
@@ -199,14 +130,10 @@ __global__ void wilson_dslash_su_n_mrhs(Float* __restrict__ out, Float* __restri
     int vol = Lx * Ly * Lz * Lt / 2;
 
     // 这里假设每个warp存储一堆数据，一个warp内部的数据排列是
-    //    U  --------- WMMA_M * WMMA_K * 2    (WMMA_M * WMMA_K real + WMMA_M * WMMA_K imag)
-    //    T  --------- WMMA_K * WMMA_N * 2    (WMMA_K * WMMA_N real + WMMA_K * WMMA_N imag)
-    //    R1 --------- WMMA_M * WMMA_N * 2    (WMMA_M * WMMA_N real + WMMA_M * WMMA_N imag)
-    //    R2 --------- WMMA_M * WMMA_N * 2    (WMMA_M * WMMA_N real + WMMA_M * WMMA_N imag)
-    //    L1 --------- WMMA_M * WMMA_N * 2    (WMMA_M * WMMA_N real + WMMA_M * WMMA_N imag)
-    //    L2 --------- WMMA_M * WMMA_N * 2    (WMMA_M * WMMA_N real + WMMA_M * WMMA_N imag)
-    //    L3 --------- WMMA_M * WMMA_N * 2    (WMMA_M * WMMA_N real + WMMA_M * WMMA_N imag)
-    //    L4 --------- WMMA_M * WMMA_N * 2    (WMMA_M * WMMA_N real + WMMA_M * WMMA_N imag)
+    //    U   --------- WMMA_M * WMMA_K * 2    (WMMA_M * WMMA_K real + WMMA_M * WMMA_K imag)
+    //    T   --------- WMMA_K * WMMA_N * 2    (WMMA_K * WMMA_N real + WMMA_K * WMMA_N imag)
+    //    R_i --------- WMMA_M * WMMA_N * 2    (WMMA_M * WMMA_N real + WMMA_M * WMMA_N imag), i = 1,2
+    //    L_i --------- WMMA_M * WMMA_N * 2    (WMMA_M * WMMA_N real + WMMA_M * WMMA_N imag), i = 1,2,3,4
     // 每个warp需要的共享内存数量是
     // 2 * (WMMAM * WMMA_K + WMMA_K * WMMA_N) + 2 * 6 * WMMA_M * WMMA_N
 
