@@ -127,7 +127,7 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     // lookup table
     void* d_lookup_table_in;
     void* d_lookup_table_out;
-    CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * fermionIn_queue_.size()));
+    CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * fermionIn_queue_.size()));    // TODO : fermionIn_queue_.size()改为mInput
     CHECK_CUDA(cudaMalloc(&d_lookup_table_out, sizeof(void*) * fermionOut_queue_.size()));
 
     CHECK_CUDA(cudaMemcpy(d_lookup_table_in, fermionIn_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
@@ -135,10 +135,10 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
                           cudaMemcpyHostToDevice));
 
-    // colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz, Lt,
-    //                   nColors_, mInput_, NULL);
-    TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz, Lt,
-                      nColors_, mInput_, NULL), 0, "gather");
+    colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz, Lt,
+                      nColors_, mInput_, NULL);
+    // TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_, dslashFloatPrecision_, d_lookup_table_in, inputFloatPrecision_, Lx, Ly, Lz, Lt,
+    //                   nColors_, mInput_, NULL), 0, "gather");
     CHECK_CUDA(cudaDeviceSynchronize());
 
     // real op
@@ -148,17 +148,22 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
         Ns / 2 * nColors_ * (nColors_ * 6 + nColors_ * 2) +         // (a+bi) * (c+di) = (ac-bd) + (ad+bc)i
         Ns * nColors_ * mInput_ * 2                     // 4 * (L <--- T)
     );
+    double real_num_op = Lx * Ly * Lz * Lt / 2 * 8 * (
+        2 * 32 * 2 + 
+        + 2 * 8 * 8 * 4 * 6
+        + 4 * 2 * 64        
+    );
     TIMER_EVENT(dslash_->apply(), num_op, "wilson dslash");
-
+    TIMER_EVENT(dslash_->apply(), real_num_op, "wilson dslash real op");
     // dslash_->apply();
     // DEBUG
     // CHECK_CUDA(cudaMemcpy(fermionOut_MRHS_, fermionIn_MRHS_, 2 * sizeof(double) * Lx/2 * Ly * Lz * Lt * Nd * nColors_
     // * mInput_, cudaMemcpyDeviceToDevice)); CHECK_CUDA(cudaDeviceSynchronize());
 
-    TIMER_EVENT(colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly, Lz,
-                       Lt, nColors_, mInput_, NULL), 0, "scatter");
-    // colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly, Lz,
-    //                    Lt, nColors_, mInput_, NULL);
+    // TIMER_EVENT(colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly, Lz,
+    //                    Lt, nColors_, mInput_, NULL), 0, "scatter");
+    colorSpinorScatter(d_lookup_table_out, inputFloatPrecision_, fermionOut_MRHS_, dslashFloatPrecision_, Lx, Ly, Lz,
+                       Lt, nColors_, mInput_, NULL);
     CHECK_CUDA(cudaDeviceSynchronize());
 
     CHECK_CUDA(cudaFree(d_lookup_table_in));
