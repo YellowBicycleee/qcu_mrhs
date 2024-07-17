@@ -54,4 +54,5 @@ void finalizeQcu() {
     if (qcu_ptr != nullptr) {
         delete qcu_ptr;
     }
+    qcu_ptr = nullptr;
 }

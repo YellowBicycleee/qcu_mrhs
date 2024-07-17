@@ -49,9 +49,9 @@ void Qcu::freeMemory() {
     if (dslash_ != nullptr) {
         delete dslash_;
     }
-    if (gauge_ != nullptr) {
-        CHECK_CUDA(cudaFree(gauge_));
-    }
+    // if (gauge_ != nullptr) {
+    //     CHECK_CUDA(cudaFree(gauge_));
+    // }
     if (fp64Gauge_ != nullptr) {
         CHECK_CUDA(cudaFree(fp64Gauge_));
     }
@@ -143,11 +143,35 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
 
     // real op
     // char* dslash_str = "wilson dslash";
-    double num_op = Lx * Ly * Lz * Lt / 2 * 8 * (
-        Ns / 2 * nColors_ * 2 * mInput_ + // combine , T1 = M1 + M2
-        Ns / 2 * nColors_ * (nColors_ * 6 + nColors_ * 2) +         // (a+bi) * (c+di) = (ac-bd) + (ad+bc)i
-        Ns * nColors_ * mInput_ * 2                     // 4 * (L <--- T)
+    int mv_flops = (8 * nColors_ - 2) * nColors_; // (8 * in.Ncolor() - 2) * in.Ncolor();
+    int num_mv = Ns / 2;
+    double num_op = Lx * Ly * Lz * Lt / 2 * mInput_ * (
+        2 * Nd * Ns * nColors_ + 
+        2 * Nd * num_mv * mv_flops +
+        (2 * Nd - 1) * Ns * nColors_
     );
+
+    // int wmma_m;
+    // int wmma_n;
+    // int wmma_k;
+    // if (dslashFloatPrecision_ == QCU_HALF_PRECISION) {
+    //     wmma_m = 16;
+    //     wmma_n = 16;
+    //     wmma_k = 16;
+    // } else if (dslashFloatPrecision_ == QCU_DOUBLE_PRECISION) {
+    //     wmma_m = 8;
+    //     wmma_n = 8;
+    //     wmma_k = 4;        
+    // } else {
+    //     assert(0);
+    // }
+    // int virtual_Nc = ();
+    // double real_op = Lx * Ly * Lz * Lt / 2 * (
+    //     // projection   2 * Ns/2 * 
+
+    // );
+    
+
     double real_num_op = Lx * Ly * Lz * Lt / 2 * 8 * (
         2 * 32 * 2 + 
         + 2 * 8 * 8 * 4 * 6
