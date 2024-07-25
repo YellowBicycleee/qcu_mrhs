@@ -1,7 +1,9 @@
 #pragma once
 #include <cstdio>
 
-// constexpr int Ndim = 4;
+// #define PROFILE_DEBUG
+
+
 constexpr int MAX_DIM = 4;
 constexpr int WARP_SIZE = 32;
 constexpr int WARP_PER_BLOCK = 1;
@@ -25,14 +27,34 @@ constexpr int Ns = 4;
         }                                            \
     } while (0)
 
-#define CHECK_CUDA(cmd)                                                                                         \
-    do {                                                                                                        \
-        cudaError_t err = cmd;                                                                                  \
-        if (err != cudaSuccess) {                                                                               \
-            fprintf(stderr, "CUDA error: %s, file %s, line %d\n", cudaGetErrorString(err), __FILE__, __LINE__); \
-            exit(1);                                                                                            \
-        }                                                                                                       \
-    } while (0)
+
+
+#ifdef PROFILE_DEBUG
+
+#define CHECK_CUDA(ans) do { cudaAssert((ans), __FILE__, __LINE__); } while (0) 
+
+inline void cudaAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess) 
+   {
+      fprintf(stderr, "CUDA Error: %s at %s:%d\n", 
+        cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
+#else
+#define CHECK_CUDA(ans) ans
+#endif
+
+
+// #define CHECK_CUDA(cmd)                                                                                         \
+//     do {                                                                                                        \
+//         cudaError_t err = cmd;                                                                                  \
+//         if (err != cudaSuccess) {                                                                               \
+//             fprintf(stderr, "CUDA error: %s, file %s, line %d\n", cudaGetErrorString(err), __FILE__, __LINE__); \
+//             exit(1);                                                                                            \
+//         }                                                                                                       \
+//     } while (0)
 
 #define CHECK_NCCL(cmd)                                                   \
     do {                                                                  \
