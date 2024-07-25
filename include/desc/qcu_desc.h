@@ -26,11 +26,12 @@ struct QcuLattDesc {
         dims[Z_DIM] = param->lattice_size[Z_DIM];
         dims[T_DIM] = param->lattice_size[T_DIM];
     }
-    int latticeDimLength(int dim) { return dims[dim]; }
-    int X() { return dims[X_DIM]; }
-    int Y() { return dims[Y_DIM]; }
-    int Z() { return dims[Z_DIM]; }
-    int T() { return dims[T_DIM]; }
+    int latticeDimLength(int dim) const { return dims[dim]; }
+    int latticeVolumn() const { return dims[X_DIM] * dims[Y_DIM] * dims[Z_DIM] * dims[T_DIM]; }
+    int X() const { return dims[X_DIM]; }
+    int Y() const { return dims[Y_DIM]; }
+    int Z() const { return dims[Z_DIM]; }
+    int T() const { return dims[T_DIM]; }
 };
 
 struct QcuProcDesc {  // process description
@@ -49,10 +50,10 @@ struct QcuProcDesc {  // process description
         dims[T_DIM] = grid->grid_size[T_DIM];
     }
 
-    int dimProcess(int dim) { return dims[dim]; }
-    int X() { return dims[X_DIM]; }
-    int Y() { return dims[Y_DIM]; }
-    int Z() { return dims[Z_DIM]; }
-    int T() { return dims[T_DIM]; }
+    int dimProcess(int dim) const { return dims[dim]; }
+    int X() const { return dims[X_DIM]; }
+    int Y() const { return dims[Y_DIM]; }
+    int Z() const { return dims[Z_DIM]; }
+    int T() const { return dims[T_DIM]; }
 };
 }  // namespace qcu
