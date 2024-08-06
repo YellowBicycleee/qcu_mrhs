@@ -36,6 +36,6 @@ struct Float2WrapperFromPrecision<QCU_PRECISION::QCU_HALF_PRECISION> {
 };
 
 template <typename T>
-using Float2_t = Float2Wrapper<T>::Float2;
+using Float2_t = typename Float2Wrapper<T>::Float2;
 
 }  // namespace qcu
