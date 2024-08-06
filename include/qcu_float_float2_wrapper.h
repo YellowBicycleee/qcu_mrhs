@@ -1,5 +1,6 @@
 #pragma once
 #include <cuda_fp16.h>
+#include "qcu_enum.h"
 namespace qcu {
 
 template <typename Float = float>
@@ -33,5 +34,8 @@ struct Float2WrapperFromPrecision<QCU_PRECISION::QCU_HALF_PRECISION> {
     using Float = half;
     using Float2 = half2;
 };
+
+template <typename T>
+using Float2_t = Float2Wrapper<T>::Float2;
 
 }  // namespace qcu
