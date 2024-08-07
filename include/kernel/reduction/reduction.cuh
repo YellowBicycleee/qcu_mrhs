@@ -1,6 +1,6 @@
 #pragma once
 #include "kernel/shift_data_type.cuh"
-// #include "kernel/reduction/operation.cuh"
+#include "kernel/reduction/operation.cuh"
 #include "qcu_float_float2_wrapper.h"
 #include "qcu_macro.h"
 #include <complex/qcu_complex.cuh>
@@ -107,7 +107,7 @@ __global__ void strideInnerProd_1_kernel (OutputType* __restrict__ tmpBuffer, co
     }
 }
 
-template <template <typename> class ReductionOp, typename T, template <typename> class RestOp = UnaryOp>  // Float
+template <template <typename> class ReductionOp, typename T, template <typename> class RestOp = qcu::device::operation::UnaryOp>  // Float
 __global__ void reduceSumStep2_kernel (T** output, T* tmpBuffer, int pos_in_rhs, int tmp_vec_length) {
     int global_id = blockIdx.x * blockDim.x + threadIdx.x;
     int total_thread = gridDim.x * blockDim.x;
