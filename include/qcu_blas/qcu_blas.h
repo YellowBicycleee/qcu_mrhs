@@ -35,7 +35,7 @@ struct ReductionParam {
 
 
 template <typename OutputFloat, typename InputFloat>
-struct ReductionNorm2 {
+struct ReductionNorm {
   void operator () (ReductionParam);
 };
 

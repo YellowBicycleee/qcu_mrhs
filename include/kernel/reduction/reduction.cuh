@@ -107,7 +107,7 @@ __global__ void strideInnerProd_1_kernel (OutputType* __restrict__ tmpBuffer, co
     }
 }
 
-template <template <typename> class ReductionOp, typename T>  // Float
+template <template <typename> class ReductionOp, typename T, template <typename> class RestOp = UnaryOp>  // Float
 __global__ void reduceSumStep2_kernel (T** output, T* tmpBuffer, int pos_in_rhs, int tmp_vec_length) {
     int global_id = blockIdx.x * blockDim.x + threadIdx.x;
     int total_thread = gridDim.x * blockDim.x;
@@ -123,7 +123,8 @@ __global__ void reduceSumStep2_kernel (T** output, T* tmpBuffer, int pos_in_rhs,
     // reduce block
     blockReduce <ReductionOp, T> (thread_res, smem);
     if (0 == threadIdx.x) {
-        reinterpret_cast<T*>(output[pos_in_rhs]) [blockIdx.x] = smem[0];
+        // 追加操作默认为空，返回自己
+        reinterpret_cast<T*>(output[pos_in_rhs]) [blockIdx.x] = RestOp<T>()(smem[0]);
     }
 }
 
