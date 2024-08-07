@@ -51,9 +51,7 @@ void Qcu::freeMemory() {
     if (dslash_ != nullptr) {
         delete dslash_;
     }
-    // if (gauge_ != nullptr) {
-    //     CHECK_CUDA(cudaFree(gauge_));
-    // }
+
     if (fp64Gauge_ != nullptr) {
         CHECK_CUDA(cudaFree(fp64Gauge_));
     }
@@ -94,12 +92,16 @@ void Qcu::getDslash(DSLASH_TYPE dslashType, double mass) {
     mass_ = mass;
     kappa_ = (1.0 / (2.0 * (4.0 + mass)));
 
-    dslashParam_ = new DslashParam(dslashFloatPrecision_, nColors_, mInput_, kappa_, QCU_PARITY::EVEN_PARITY,
-                                   default_dagger_flag, fermionIn_MRHS_, fermionOut_MRHS_, gauge, lattDesc_, procDesc_);
+    dslashParam_ = new DslashParam 
+                    (
+                        default_dagger_flag, dslashFloatPrecision_, nColors_, mInput_,
+                        QCU_PARITY::EVEN_PARITY, kappa_, fermionIn_MRHS_, fermionOut_MRHS_,
+                        gauge, lattDesc_, procDesc_
+                    );
 
     switch (dslashType) {
         case DSLASH_TYPE::DSLASH_WILSON:
-            dslash_ = new WilsonDslash(*dslashParam_);
+            dslash_ = new WilsonDslash(dslashParam_);
             break;
 
         default:

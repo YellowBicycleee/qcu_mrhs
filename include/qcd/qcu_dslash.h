@@ -9,12 +9,12 @@ namespace qcu {
 
 // clang-format off
 struct DslashParam {
+    bool daggerFlag;
     QCU_PRECISION precision;
     int nColor;
     int mInput;
-    double kappa;
     int parity;
-    bool daggerFlag;
+    double kappa;
 
     void* fermionIn_MRHS;
     void* fermionOut_MRHS;
@@ -24,12 +24,12 @@ struct DslashParam {
     cudaStream_t stream1;
     cudaStream_t stream2;
 
-    DslashParam(QCU_PRECISION p_precision,
+    DslashParam(bool p_daggerFlag,
+                QCU_PRECISION p_precision,
                 int p_nColor, 
                 int p_mInput, 
-                double p_kappa, 
                 int p_parity,
-                bool p_daggerFlag, 
+                double p_kappa, 
                 void* p_fermionIn_MRHS,
                 void* p_fermionOut_MRHS,
                 void* p_gauge, 
@@ -37,12 +37,12 @@ struct DslashParam {
                 const QcuProcDesc& p_procDesc,
                 cudaStream_t p_stream1 = NULL,
                 cudaStream_t p_stream2 = NULL)
-        : precision(p_precision),
+        : daggerFlag(p_daggerFlag),
+          precision(p_precision),
           nColor(p_nColor),
           mInput(p_mInput),
-          kappa(p_kappa),
           parity(p_parity),
-          daggerFlag(p_daggerFlag),
+          kappa(p_kappa),
           fermionIn_MRHS(p_fermionIn_MRHS),
           fermionOut_MRHS(p_fermionOut_MRHS),
           gauge(p_gauge),
@@ -55,12 +55,14 @@ struct DslashParam {
 // clang-format on
 class Dslash {
    protected:
-    DslashParam& dslashParam_;
+    // DslashParam& dslashParam_;
+    DslashParam* dslashParam_;
     float dslashFlops_;
 
    public:
-    Dslash(DslashParam& dslashParam) : dslashParam_(dslashParam) {}
-    virtual ~Dslash() {}
+    // Dslash(DslashParam& dslashParam) : dslashParam_(dslashParam) {}
+    Dslash(DslashParam* dslashParam) : dslashParam_(dslashParam) {}
+    virtual ~Dslash() = default;
     virtual void apply() = 0;
     virtual void preApply() = 0;
     virtual void postApply() = 0;
@@ -69,8 +71,8 @@ class Dslash {
 
 class WilsonDslash : public Dslash {
    public:
-    WilsonDslash(DslashParam& dslashParam) : Dslash(dslashParam) {}
-    virtual ~WilsonDslash() {}
+    WilsonDslash(DslashParam* dslashParam) : Dslash(dslashParam) {}
+    virtual ~WilsonDslash() = default;
     virtual void apply();
     virtual void preApply();
     virtual void postApply();
