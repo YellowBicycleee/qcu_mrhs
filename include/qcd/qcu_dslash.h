@@ -19,8 +19,8 @@ struct DslashParam {
     void* fermionIn_MRHS;
     void* fermionOut_MRHS;
     void* gauge;
-    const QcuLattDesc& lattDesc;
-    const QcuProcDesc& procDesc;
+    const QcuLattDesc* lattDesc;
+    const QcuProcDesc* procDesc;
     cudaStream_t stream1;
     cudaStream_t stream2;
 
@@ -33,8 +33,8 @@ struct DslashParam {
                 void* p_fermionIn_MRHS,
                 void* p_fermionOut_MRHS,
                 void* p_gauge, 
-                const QcuLattDesc& p_lattDesc,
-                const QcuProcDesc& p_procDesc,
+                const QcuLattDesc* p_lattDesc,
+                const QcuProcDesc* p_procDesc,
                 cudaStream_t p_stream1 = NULL,
                 cudaStream_t p_stream2 = NULL)
         : daggerFlag(p_daggerFlag),

@@ -96,7 +96,7 @@ void Qcu::getDslash(DSLASH_TYPE dslashType, double mass) {
                     (
                         default_dagger_flag, dslashFloatPrecision_, nColors_, mInput_,
                         QCU_PARITY::EVEN_PARITY, kappa_, fermionIn_MRHS_, fermionOut_MRHS_,
-                        gauge, lattDesc_, procDesc_
+                        gauge, &lattDesc_, &procDesc_
                     );
 
     switch (dslashType) {
