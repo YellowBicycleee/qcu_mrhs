@@ -64,3 +64,11 @@ target_link_libraries(test_gather
     qcu
     cudart
 )
+
+add_executable(test_inner_product
+    ${PROJECT_SOURCE_DIR}/src/tests/test_inner_prod.cu
+)
+target_link_libraries(test_inner_product
+    cudart
+    cublas
+)

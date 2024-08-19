@@ -44,4 +44,32 @@ struct ReductionInnerprod {
   void operator () (ReductionParam);
 };
 
+
+template <typename _Tp>
+struct ElementWiseParam {
+  int m_rhs;
+  int single_vector_length;
+  void* res;
+  Complex <_Tp> a;
+  void* x;
+  Complex <_Tp> b;
+  void* y;
+  Complex <_Tp> c;
+  void* z;
+};
+
+template <typename _Tp>
+struct QcuCax {
+  void operator () (ElementWiseParam<_Tp>); 
+}
+
+struct QcuCaxpCby {   // Res = ax + by
+  void operator () (ElementWiseParam<_Tp>);
+};
+// fused operator
+struct QcuCaxpCbyCcz {  // Res = ax + by + cz
+  void operator () (ElementWiseParam<_Tp>);
+};
+
+
 }
