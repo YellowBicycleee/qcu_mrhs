@@ -66,7 +66,7 @@ target_link_libraries(test_gather
 )
 
 add_executable(test_inner_product
-    ${PROJECT_SOURCE_DIR}/src/tests/test_inner_prod.cu
+    ${PROJECT_SOURCE_DIR}/src/tests/test_inner_prod/test_inner_prod.cu
 )
 target_link_libraries(test_inner_product
     cudart

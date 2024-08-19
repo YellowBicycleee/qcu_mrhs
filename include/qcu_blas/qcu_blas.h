@@ -1,5 +1,5 @@
 #pragma once
-
+#include "complex/qcu_complex.cuh"
 namespace qcu::qcu_blas {
 
 struct ReductionParam {
@@ -61,11 +61,15 @@ struct ElementWiseParam {
 template <typename _Tp>
 struct QcuCax {
   void operator () (ElementWiseParam<_Tp>); 
-}
+};
 
+template <typename _Tp>
 struct QcuCaxpCby {   // Res = ax + by
   void operator () (ElementWiseParam<_Tp>);
 };
+
+template <typename _Tp>
+
 // fused operator
 struct QcuCaxpCbyCcz {  // Res = ax + by + cz
   void operator () (ElementWiseParam<_Tp>);
