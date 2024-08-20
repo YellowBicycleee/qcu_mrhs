@@ -23,7 +23,7 @@ void ComplexNorm<OutputFloat, InputFloat>::operator()(ComplexNormArgument param)
   constexpr int maxGridSize        = {2147483647};
 
   int threads_per_block            = std::min(512, maxThreadsPerBlock);
-  int blocks_per_grid              = std::min(div_ceil(param.single_vector_length, threads_per_block),
+  int blocks_per_grid              = std::min(div_ceil(param.single_vec_len, threads_per_block),
                                               maxGridSize);
 
   int thread_round1                = threads_per_block;
@@ -43,7 +43,7 @@ void ComplexNorm<OutputFloat, InputFloat>::operator()(ComplexNormArgument param)
                           <<<block_round1, thread_round1>>> 
                             ( reinterpret_cast<OutputFloat*> (param.tmpBuffer),
                               reinterpret_cast<InputFloat*>  (param.input), 
-                              i, param.stride, param.single_vector_length);
+                              i, param.stride, param.single_vec_len);
     CHECK_CUDA(cudaGetLastError());
     // second step
     device::reduction::reduceSumStep2_kernel <qcu::device::operation::AddOp, 

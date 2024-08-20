@@ -20,7 +20,7 @@ void ComplexDotc<OutputFloat, InputFloat>::operator()(DotcArgument arg) {
   constexpr int maxGridSize        = {2147483647};
 
   int threads_per_block            = std::min(512, maxThreadsPerBlock);
-  int blocks_per_grid              = std::min(div_ceil(arg.single_vector_length, threads_per_block),
+  int blocks_per_grid              = std::min(div_ceil(arg.single_vec_len, threads_per_block),
                                               maxGridSize);
 
   int thread_round1                = threads_per_block;
@@ -38,7 +38,7 @@ void ComplexDotc<OutputFloat, InputFloat>::operator()(DotcArgument arg) {
                               ( reinterpret_cast<OutputFloat*> (arg.tmpBuffer),
                                 reinterpret_cast<InputFloat*>  (arg.input1), 
                                 reinterpret_cast<InputFloat*>  (arg.input2), 
-                                i, arg.stride, arg.single_vector_length
+                                i, arg.stride, arg.single_vec_len
                               );
     CHECK_CUDA(cudaGetLastError());
     // second step
@@ -60,7 +60,7 @@ void ComplexDotc<double, double>::operator() (DotcArgument arg) {
   for (int i = 0; i < stride; ++i) {
     QCU_CHECK_CUBLAS (cublasZdotc(
                         cublas_handle, 
-                        arg.single_vector_length, 
+                        arg.single_vec_len, 
                         reinterpret_cast<const cuDoubleComplex*>(arg.input1) + i, stride, 
                         reinterpret_cast<const cuDoubleComplex*>(arg.input2) + i, stride, 
                         reinterpret_cast<cuDoubleComplex*>(arg.resArr) + i
