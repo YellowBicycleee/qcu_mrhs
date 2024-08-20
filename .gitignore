@@ -1,2 +1,4 @@
 build
 .vscode
+include/kernel/transpose_2dim_gpu.cuh
+src/tests/test_transpose

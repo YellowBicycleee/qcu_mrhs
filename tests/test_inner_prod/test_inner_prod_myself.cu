@@ -4,6 +4,12 @@
 #include "timer.h"
 #include <vector>
 #include <numeric>
+
+#include "qcu_blas/qcu_blas.h"
+#include "complex/qcu_complex.cuh"
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+
 using namespace std;
 
 #define CHECK_CUBLAS(cmd)   \
@@ -27,16 +33,17 @@ complex<double> cpu_inner_dot_c (complex<double>* a, complex<double>* b, int N, 
   return res;
 }
 
-void init_complex_1 (complex<double>* a, int N) {
-  for (int i = 0; i < N; ++i ) {
-    // a[i] = complex<double> (2 * i % 32, 2 * i % 32 + 1);
-    a[i] = complex<double> (rand()%16, rand()%16 + 1);
-  }
-}
-void init_complex_2 (complex<double>* a, int N) {
+// void init_complex_1 (complex<double>* a, int N) {
+//   for (int i = 0; i < N; ++i ) {
+//     // a[i] = complex<double> (2 * i % 32, 2 * i % 32 + 1);
+//     a[i] = complex<double> (rand()%16, rand()%16 + 1);
+//   }
+// }
+void init_complex (complex<double>* a, int N) {
   for (int i = 0; i < N; ++i ) {
     // a[i] = complex<double> (2 * i % 16, 2 * i % 16 + 1);
     a[i] = complex<double> (rand()%16, rand()%16 + 1);
+    // a[i] = complex<double> (1, 0);
   }
 }
 
@@ -57,6 +64,7 @@ bool check_correct (const vector<complex<double>>& a, const vector<complex<doubl
 }
 
 int main () {
+
   complex<double>* h_a;
   complex<double>* h_b;
   complex<double> h_res;
@@ -64,12 +72,16 @@ int main () {
 
   complex<double>* d_a;
   complex<double>* d_b;
-  complex<double>* dd_res;
+  complex<double>* dd_res_arr;
+  complex<double>* d_temp;
+
+
 
   // malloc 
   const int single_vec_length = 1024 * 1024;
   const int num_vecs = 12;
   const int vector_length = single_vec_length * num_vecs;
+  
 
   vector<complex<double>> d_res_vec (num_vecs);
   vector<complex<double>> h_res_vec (num_vecs);
@@ -80,11 +92,12 @@ int main () {
 
   cudaMalloc ((void**)&d_a, sizeof(complex<double>) * vector_length);
   cudaMalloc ((void**)&d_b, sizeof(complex<double>) * vector_length);
-  cudaMalloc ((void**)&dd_res, sizeof(complex<double>));
+  cudaMalloc ((void**)&d_temp, sizeof(complex<double>) * vector_length);
+  cudaMalloc ((void**)&dd_res_arr, sizeof(complex<double>) * num_vecs);
 
   // init arr
-  init_complex_1(h_a, vector_length);
-  init_complex_2(h_b, vector_length);
+  init_complex(h_a, vector_length);
+  init_complex(h_b, vector_length);
   // copy
   cudaMemcpy(d_a, h_a, sizeof(complex<double>) * vector_length, cudaMemcpyHostToDevice);
   cudaMemcpy(d_b, h_b, sizeof(complex<double>) * vector_length, cudaMemcpyHostToDevice);
@@ -102,24 +115,48 @@ int main () {
   CHECK_CUBLAS (cublasZdotc(cublas_handle, vector_length, 
                         reinterpret_cast<const cuDoubleComplex*>(d_a), 1, 
                         reinterpret_cast<const cuDoubleComplex*>(d_b), 1, 
-                        reinterpret_cast<cuDoubleComplex*>(dd_res)
+                        reinterpret_cast<cuDoubleComplex*>(dd_res_arr)
                   ));
 
 
   TIMER_EVENT (
-    CHECK_CUBLAS (cublasZdotc(cublas_handle, vector_length, 
-                        reinterpret_cast<const cuDoubleComplex*>(d_a), 1, 
-                        reinterpret_cast<const cuDoubleComplex*>(d_b), 1, 
-                        reinterpret_cast<cuDoubleComplex*>(dd_res)
-                  )
-    ), 
+    {
+      CHECK_CUBLAS (cublasZdotc(cublas_handle, vector_length, 
+                          reinterpret_cast<const cuDoubleComplex*>(d_a), 1, 
+                          reinterpret_cast<const cuDoubleComplex*>(d_b), 1, 
+                          reinterpret_cast<cuDoubleComplex*>(dd_res_arr)
+                    )
+      ); 
+      cudaDeviceSynchronize();
+    }, 
     "cublas                     : "
   );
-  // cublasDestroy(cublas_handle);
-  cudaMemcpy(&d_res, dd_res, sizeof(complex<double>), cudaMemcpyDeviceToHost);
+
+  using DotcArgument = qcu::qcu_blas::ComplexDotc<double, double>::DotcArgument;
+  DotcArgument arg {
+        vector_length,
+        1,
+        reinterpret_cast<Complex<double>*>(d_temp),
+        reinterpret_cast<Complex<double>*>(d_a),
+        reinterpret_cast<Complex<double>*>(d_b),
+        reinterpret_cast<Complex<double>*>(dd_res_arr),
+        nullptr,
+        cublas_handle
+  };
+
+  qcu::qcu_blas::ComplexDotc<double, double> dotc;
+
+  TIMER_EVENT(
+    {  
+      dotc(arg);
+      cudaDeviceSynchronize();
+      cudaMemcpy(&d_res, dd_res_arr, sizeof(complex<double>), cudaMemcpyDeviceToHost);
+    }
+    , "my dotc                    : "
+  );
   // cpu
   TIMER_EVENT (
-    h_res = cpu_inner_dot_c(h_a, h_b, vector_length, 1)
+    h_res = cpu_inner_dot_c(h_a, h_b, vector_length/1, 1)
     , 
     "cpu                        : "
   );
@@ -136,10 +173,10 @@ int main () {
       CHECK_CUBLAS (cublasZdotc(cublas_handle, single_vec_length, 
                       reinterpret_cast<const cuDoubleComplex*>(d_a + i), num_vecs, 
                       reinterpret_cast<const cuDoubleComplex*>(d_b + i), num_vecs, 
-                      reinterpret_cast<cuDoubleComplex*>(dd_res)
+                      reinterpret_cast<cuDoubleComplex*>(dd_res_arr)
                 )
       );
-      cudaMemcpy(&d_res, dd_res, sizeof(complex<double>), cudaMemcpyDeviceToHost);
+      cudaMemcpy(&d_res, dd_res_arr, sizeof(complex<double>), cudaMemcpyDeviceToHost);
       d_res_vec.push_back(d_res);
     }
     , 
@@ -169,11 +206,11 @@ int main () {
       CHECK_CUBLAS (cublasZdotc(cublas_handle, single_vec_length, 
                       reinterpret_cast<const cuDoubleComplex*>(d_a + i * single_vec_length), 1, 
                       reinterpret_cast<const cuDoubleComplex*>(d_b + i * single_vec_length), 1, 
-                      reinterpret_cast<cuDoubleComplex*>(dd_res)
+                      reinterpret_cast<cuDoubleComplex*>(dd_res_arr)
                 )
       );
       // cudaDeviceSynchronize();
-      cudaMemcpy(&d_res, dd_res, sizeof(complex<double>), cudaMemcpyDeviceToHost);
+      cudaMemcpy(&d_res, dd_res_arr, sizeof(complex<double>), cudaMemcpyDeviceToHost);
       d_res_vec.push_back(d_res);
     }
     , 
@@ -185,9 +222,7 @@ int main () {
   TIMER_EVENT (
     for (int i = 0; i < num_vecs; ++i) {
         h_res = cpu_inner_dot_c(h_a + i * single_vec_length, h_b + i * single_vec_length, single_vec_length, 1);
-        // h_res_vec.push_back(h_res);
         h_res_vec.push_back(h_res);
-        // cout << h_res_vec.size() << endl;
     }
     , 
     "cpu, stride innerproduct        : "
@@ -201,7 +236,8 @@ int main () {
   CHECK_CUBLAS (cublasDestroy(cublas_handle));
   cudaFree(d_a);
   cudaFree(d_b);
-  cudaFree(dd_res);
+  cudaFree(d_temp);
+  cudaFree(dd_res_arr);
   delete[] h_a;
   delete[] h_b;
 }

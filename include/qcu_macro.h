@@ -30,6 +30,7 @@ constexpr int Ns = 4;
 
 
 
+#define PROFILE_DEBUG
 #ifdef PROFILE_DEBUG
 
 #define CHECK_CUDA(ans) do { cudaAssert((ans), __FILE__, __LINE__); } while (0) 
