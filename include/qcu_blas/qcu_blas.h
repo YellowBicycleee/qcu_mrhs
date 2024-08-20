@@ -4,34 +4,34 @@
 
 namespace qcu::qcu_blas {
 
-struct ReductionParam {
-  int            single_vector_length;
-  int            stride    = 1;
-  void*          tmpBuffer;  // reduce结果一般都很短，tmpBuffer作为第一次的输出，第二次的输入+输出
-  void*          input1;
-  void*          input2;
-  void*          resArr;  // [device_res1, device_res2, ...]
-  cudaStream_t   stream;
-  cublasHandle_t handle;
+// struct ReductionParam {
+//   int            single_vector_length;
+//   int            stride    = 1;
+//   void*          tmpBuffer;  // reduce结果一般都很短，tmpBuffer作为第一次的输出，第二次的输入+输出
+//   void*          input1;
+//   void*          input2;
+//   void*          resArr;  // [device_res1, device_res2, ...]
+//   cudaStream_t   stream;
+//   cublasHandle_t handle;
 
-  ReductionParam(
-    int            single_vector_length,
-    int            stride = 1,
-    void*          tmpBuffer = nullptr,
-    void*          input1 = nullptr,
-    void*          input2 = nullptr,
-    void*          resArr = nullptr,
-    cudaStream_t   stream = nullptr,
-    cublasHandle_t handle = nullptr
-  ) : single_vector_length(single_vector_length),
-      stride(stride),
-      tmpBuffer(tmpBuffer),
-      input1(input1),
-      input2(input2),
-      resArr(resArr),
-      stream(stream),
-      handle(handle) {} 
-};
+//   ReductionParam(
+//     int            single_vector_length,
+//     int            stride = 1,
+//     void*          tmpBuffer = nullptr,
+//     void*          input1 = nullptr,
+//     void*          input2 = nullptr,
+//     void*          resArr = nullptr,
+//     cudaStream_t   stream = nullptr,
+//     cublasHandle_t handle = nullptr
+//   ) : single_vector_length(single_vector_length),
+//       stride(stride),
+//       tmpBuffer(tmpBuffer),
+//       input1(input1),
+//       input2(input2),
+//       resArr(resArr),
+//       stream(stream),
+//       handle(handle) {} 
+// };
 
 
 template <typename OutputFloat, typename InputFloat>
@@ -40,19 +40,19 @@ struct ComplexNorm {
   struct ComplexNormArgument {
     int                     single_vector_length;
     int                     stride;
-    Complex<OutputFloat>*   tmpBuffer;  // reduce结果一般都很短，tmpBuffer作为第一次的输出，第二次的输入+输出
+    OutputFloat         *   tmpBuffer;  // reduce结果一般都很短，tmpBuffer作为第一次的输出，第二次的输入+输出
                                         // when you use cublas, you can set it to nullptr
     Complex<InputFloat> *   input;
-    Complex<OutputFloat>*   resArr;  // [device_res1, device_res2, ...]
+    OutputFloat         *   resArr;  // [device_res1, device_res2, ...]
     cudaStream_t            stream;
     cublasHandle_t          handle;
 
     ComplexNormArgument(
       int                     single_vector_length,
       int                     stride    = 1,
-      Complex<OutputFloat>*   tmpBuffer = nullptr,
+      OutputFloat         *   tmpBuffer = nullptr,
       Complex<InputFloat> *   input     = nullptr,
-      Complex<OutputFloat>*   resArr    = nullptr,
+      OutputFloat         *   resArr    = nullptr,
       cudaStream_t            stream    = nullptr,
       cublasHandle_t          handle    = nullptr
     ) : single_vector_length(single_vector_length),

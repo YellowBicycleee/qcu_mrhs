@@ -1,5 +1,5 @@
 #include <cublas_v2.h>
-
+#define QCU_DEBUG
 #ifdef QCU_DEBUG
 #define QCU_CHECK_CUBLAS(cmd)             \
 do {                                      \

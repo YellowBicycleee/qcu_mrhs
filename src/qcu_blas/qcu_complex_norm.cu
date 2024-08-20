@@ -33,6 +33,9 @@ void ComplexNorm<OutputFloat, InputFloat>::operator()(ComplexNormArgument param)
                                                 maxThreadsPerBlock); 
   int block_round2                 = 1;
 
+  // printf("thread_round1 = %d, block_round1 = %d\n", thread_round1, block_round1);
+  // printf("thread_round2 = %d, block_round2 = %d\n", thread_round2, block_round2);
+
   for (int i = 0; i < param.stride; ++i) {
     // first step
     device::reduction::stride_ComplexNorm_step1_kernel
@@ -43,7 +46,9 @@ void ComplexNorm<OutputFloat, InputFloat>::operator()(ComplexNormArgument param)
                               i, param.stride, param.single_vector_length);
     CHECK_CUDA(cudaGetLastError());
     // second step
-    device::reduction::reduceSumStep2_kernel <qcu::device::operation::AddOp, OutputFloat> 
+    device::reduction::reduceSumStep2_kernel <qcu::device::operation::AddOp, 
+                                              OutputFloat,
+                                              qcu::device::operation::SqrtOp> 
                           <<<block_round2, thread_round2>>> 
                           ( reinterpret_cast<OutputFloat*>(param.resArr), 
                             reinterpret_cast<OutputFloat*>(param.tmpBuffer), 

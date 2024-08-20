@@ -51,7 +51,7 @@ __device__ __forceinline__ void blockReduce(T val, T* smem) {
     smem[tid] = val;
     __syncwarp();
     val = ComplexWarpReduce<ReductionOp, T>(smem + WARP_SIZE * warp_id, lane_id);
-
+        
     __syncthreads();
     if (lane_id == 0) {
         smem[warp_id] = val;
@@ -87,14 +87,14 @@ template <template <typename> class ReductionOp,
 // pos_in_rhs : 表示是mrhs的第几个右手
 // m_rhs，也就是m，总共有几个右手
 // single_vector_length: 单个右手向量多长 
-__global__ void stride_ComplexNorm_step1_kernel (   OutputFloat*       __restrict__ tmpBuffer, 
-                                                    const InputFloat * __restrict__ input, 
+__global__ void stride_ComplexNorm_step1_kernel (   OutputFloat*        tmpBuffer, 
+                                                    const InputFloat *  input, 
                                                     int pos_in_rhs, 
                                                     int m_rhs, 
                                                     int single_vector_length) 
 {
     
-    int global_id = blockIdx.x * blockDim.x + threadIdx.x;
+    int global_id     = blockIdx.x * blockDim.x + threadIdx.x;
     int total_threads = gridDim.x * blockDim.x;
 
     __shared__ OutputFloat stride_norm_smem [MAX_THREADS_PER_BLOCK];
@@ -111,10 +111,14 @@ __global__ void stride_ComplexNorm_step1_kernel (   OutputFloat*       __restric
         thread_res = op (thread_res, tmp.norm2());
     }
     __syncthreads();
-
-
+    
+    // store 
+    stride_norm_smem[threadIdx.x] = thread_res;
+    __syncwarp();
     // reduce block
     blockReduce <ReductionOp, OutputFloat> (thread_res, stride_norm_smem);
+    
+    __syncthreads();
     if (0 == threadIdx.x) {
         tmpBuffer [blockIdx.x] = stride_norm_smem[0];
     }
@@ -191,11 +195,22 @@ __global__ void reduceSumStep2_kernel (T* output,
     // reduce block
     smem[threadIdx.x] = thread_res;
     __syncthreads();
+    // if(0 == threadIdx.x) {
+    //    // tmpBuffer[blockIdx.x] = stride_norm_smem[0];
+    //    printf("blockIdx.x = %d, blockDim.x = %d, res = %lf\n", blockIdx.x, blockDim.x,smem[0]);
+    // }
     blockReduce <ReductionOp, T> (thread_res, smem);
     __syncthreads();
+
+    // if(0 == threadIdx.x) {
+    //    // tmpBuffer[blockIdx.x] = stride_norm_smem[0];
+    //    printf("blockIdx.x = %d, res = %lf\n", blockIdx.x, smem[0]);
+    // }
+
     if (0 == threadIdx.x) {
         // 追加操作默认为空，返回自己
         output[pos_in_rhs] = RestOp<T>()(smem[0]);
+        // printf("blockIdx.x = %d, res = %lf\n", blockIdx.x, output[pos_in_rhs]);
     }
 }
 
