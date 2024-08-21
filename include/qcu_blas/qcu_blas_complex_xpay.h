@@ -28,7 +28,7 @@ struct Complex_xpay<_Float, std::enable_if_t <std::is_same_v<_Float, float>  ||
       Complex<_Float>* y,
       int              single_vec_len,
       int              inc_idx,
-      cudaStream_t     stream
+      cudaStream_t     stream = nullptr
     ) : res(res),
         x(x),
         a(a),

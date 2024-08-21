@@ -34,7 +34,7 @@ struct Complex_axpbypcz<_Float, std::enable_if_t <std::is_same_v<_Float, float> 
       Complex<_Float>* z,
       int              single_vec_len,
       int              inc_idx,
-      cudaStream_t     stream
+      cudaStream_t     stream = nullptr
     ) : res(res),
         a(a),
         x(x),
