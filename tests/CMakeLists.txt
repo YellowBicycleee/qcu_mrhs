@@ -40,21 +40,26 @@ add_executable       (test_transpose ${PROJECT_SOURCE_DIR}/test_transpose/test_t
 target_link_libraries(test_transpose qcu cudart)
 
 # CAXPBY
-add_executable       (test_caxpby ${PROJECT_SOURCE_DIR}/test_caxpby/test_caxpby.cu)
+add_executable       (test_caxpby ${PROJECT_SOURCE_DIR}/test_blas/test_caxpby.cu)
 target_link_libraries(test_caxpby qcu cudart cublas)
 target_include_directories(test_caxpby PUBLIC ${PROJECT_SOURCE_DIR})
 
 # CAXPBYPCZ
-add_executable       (test_caxpbypcz ${PROJECT_SOURCE_DIR}/test_caxpby/test_caxpbypcz.cu)
+add_executable       (test_caxpbypcz ${PROJECT_SOURCE_DIR}/test_blas/test_caxpbypcz.cu)
 target_link_libraries(test_caxpbypcz qcu cudart cublas)
 target_include_directories(test_caxpbypcz PUBLIC ${PROJECT_SOURCE_DIR})
 
 # CXSAY
-add_executable       (test_cxsay ${PROJECT_SOURCE_DIR}/test_caxpby/test_cxsay.cu)
+add_executable       (test_cxsay ${PROJECT_SOURCE_DIR}/test_blas/test_cxsay.cu)
 target_link_libraries(test_cxsay qcu cudart cublas)
 target_include_directories(test_cxsay PUBLIC ${PROJECT_SOURCE_DIR})
 
 # CXPAY
-add_executable       (test_cxpay ${PROJECT_SOURCE_DIR}/test_caxpby/test_cxpay.cu)
+add_executable       (test_cxpay ${PROJECT_SOURCE_DIR}/test_blas/test_cxpay.cu)
 target_link_libraries(test_cxpay qcu cudart cublas)
 target_include_directories(test_cxpay PUBLIC ${PROJECT_SOURCE_DIR})
+
+# ELEMENWISE_DIV
+add_executable       (test_elementwise_div ${PROJECT_SOURCE_DIR}/test_blas/test_elementwise_div.cu)
+target_link_libraries(test_elementwise_div qcu cudart cublas)
+target_include_directories(test_elementwise_div PUBLIC ${PROJECT_SOURCE_DIR})
