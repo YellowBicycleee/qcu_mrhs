@@ -16,8 +16,7 @@ using DotcArgument = typename qcu::qcu_blas::ComplexDotc<OutputFloat, InputFloat
 // ReductionInnerprod
 template <typename OutputFloat, typename InputFloat>
 void ComplexDotc<OutputFloat, InputFloat>::operator()(DotcArgument arg) {
-  constexpr int maxThreadsPerBlock = MAX_THREADS_PER_BLOCK;
-  constexpr int maxGridSize        = {2147483647};
+
 
   int threads_per_block            = std::min(512, maxThreadsPerBlock);
   int blocks_per_grid              = std::min(div_ceil(arg.single_vec_len, threads_per_block),

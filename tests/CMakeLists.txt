@@ -38,3 +38,8 @@ target_include_directories(test_norm PUBLIC ${PROJECT_SOURCE_DIR}/../src/qcu_bla
 # ========================
 add_executable       (test_transpose ${PROJECT_SOURCE_DIR}/test_transpose/test_transpose.cu)
 target_link_libraries(test_transpose qcu cudart)
+
+# CAXPBY
+add_executable       (test_caxpby ${PROJECT_SOURCE_DIR}/test_caxpby/test_caxpby.cu)
+target_link_libraries(test_caxpby qcu cudart cublas)
+target_include_directories(test_caxpby PUBLIC ${PROJECT_SOURCE_DIR})

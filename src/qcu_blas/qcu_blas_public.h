@@ -1,4 +1,6 @@
 #include <cublas_v2.h>
+#include "qcu_macro.h"
+
 #define QCU_DEBUG
 #ifdef QCU_DEBUG
 #define QCU_CHECK_CUBLAS(cmd)             \
@@ -20,3 +22,5 @@ inline void check_cublas (cublasStatus_t stat, const char* file, int line) {
     abort();
   }
 }
+constexpr int maxThreadsPerBlock = MAX_THREADS_PER_BLOCK;
+constexpr int maxGridSize        = {2147483647};

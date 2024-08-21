@@ -19,9 +19,6 @@ using ComplexNormArgument = typename qcu::qcu_blas::ComplexNorm<OutputFloat, Inp
 template <typename OutputFloat, typename InputFloat>
 void ComplexNorm<OutputFloat, InputFloat>::operator()(ComplexNormArgument param) {
 
-  constexpr int maxThreadsPerBlock = MAX_THREADS_PER_BLOCK;
-  constexpr int maxGridSize        = {2147483647};
-
   int threads_per_block            = std::min(512, maxThreadsPerBlock);
   int blocks_per_grid              = std::min(div_ceil(param.single_vec_len, threads_per_block),
                                               maxGridSize);
