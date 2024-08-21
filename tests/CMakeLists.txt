@@ -43,3 +43,18 @@ target_link_libraries(test_transpose qcu cudart)
 add_executable       (test_caxpby ${PROJECT_SOURCE_DIR}/test_caxpby/test_caxpby.cu)
 target_link_libraries(test_caxpby qcu cudart cublas)
 target_include_directories(test_caxpby PUBLIC ${PROJECT_SOURCE_DIR})
+
+# CAXPBYPCZ
+add_executable       (test_caxpbypcz ${PROJECT_SOURCE_DIR}/test_caxpby/test_caxpbypcz.cu)
+target_link_libraries(test_caxpbypcz qcu cudart cublas)
+target_include_directories(test_caxpbypcz PUBLIC ${PROJECT_SOURCE_DIR})
+
+# CXSAY
+add_executable       (test_cxsay ${PROJECT_SOURCE_DIR}/test_caxpby/test_cxsay.cu)
+target_link_libraries(test_cxsay qcu cudart cublas)
+target_include_directories(test_cxsay PUBLIC ${PROJECT_SOURCE_DIR})
+
+# CXPAY
+add_executable       (test_cxpay ${PROJECT_SOURCE_DIR}/test_caxpby/test_cxpay.cu)
+target_link_libraries(test_cxpay qcu cudart cublas)
+target_include_directories(test_cxpay PUBLIC ${PROJECT_SOURCE_DIR})

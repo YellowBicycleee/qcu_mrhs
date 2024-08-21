@@ -17,8 +17,11 @@ add_library(qcu
     ${PROJECT_SOURCE_DIR}/src/qcd/qcu_wilson_dslash.cu
     ${PROJECT_SOURCE_DIR}/src/data_format/qcu_data_format_shift.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_axpby.cu
+    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_axpbypcz.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_dotc.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_norm.cu
+    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_xsay.cu
+    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_xpay.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_transpose_2d.cu
 )
 target_include_directories(qcu 

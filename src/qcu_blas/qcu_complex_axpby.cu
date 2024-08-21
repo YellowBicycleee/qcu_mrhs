@@ -1,7 +1,8 @@
 #include "kernel/element_wise/c_axpby.cuh"
-#include "qcu_blas/qcu_blas.h"
+// #include "qcu_blas/qcu_blas.h"
 #include "qcu_blas_public.h"
 #include "qcu_utils.h"
+#include "qcu_blas/qcu_blas_complex_axpby.h"
 
 namespace qcu::qcu_blas {
 
