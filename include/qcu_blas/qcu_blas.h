@@ -5,4 +5,6 @@
 #include "qcu_blas/qcu_blas_complex_axpbypcz.h"
 #include "qcu_blas/qcu_blas_complex_dotc.h"
 #include "qcu_blas/qcu_blas_complex_norm.h"
+#include "qcu_blas/qcu_blas_complex_xpay.h"
 #include "qcu_blas/qcu_blas_complex_xsay.h"
+#include "qcu_blas/qcu_blas_elementwise_div.h"

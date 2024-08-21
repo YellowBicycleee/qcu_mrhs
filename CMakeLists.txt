@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 
 set(CMAKE_CUDA_ARCHITECTURES 86)    # for 3090
 set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 #set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -G")
 #set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -g -G -O0") # -G 表示生成GPU调试信息，-O0 禁止优化以便于调试
 # set(CMAKE_BUILD_TYPE Debug) # 设定默认构建类型为Debug
@@ -22,6 +22,7 @@ add_library(qcu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_norm.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_xsay.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_xpay.cu
+    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_elementwise_div.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_transpose_2d.cu
 )
 target_include_directories(qcu 
