@@ -23,7 +23,11 @@ add_library(qcu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_xsay.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_xpay.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_elementwise_div.cu
+    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_elementwise_init.cu
+    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_elementwise_mul.cu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_transpose_2d.cu
+    ${PROJECT_SOURCE_DIR}/src/solver/bicgstab.cu
+    ${PROJECT_SOURCE_DIR}/src/solver/bicgstab_solve.cu
 )
 target_include_directories(qcu 
     PUBLIC

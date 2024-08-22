@@ -63,3 +63,12 @@ target_include_directories(test_cxpay PUBLIC ${PROJECT_SOURCE_DIR})
 add_executable       (test_elementwise_div ${PROJECT_SOURCE_DIR}/test_blas/test_elementwise_div.cu)
 target_link_libraries(test_elementwise_div qcu cudart cublas)
 target_include_directories(test_elementwise_div PUBLIC ${PROJECT_SOURCE_DIR})
+# ELEMENWISE_MUL
+add_executable       (test_elementwise_mul ${PROJECT_SOURCE_DIR}/test_blas/test_elementwise_mul.cu)
+target_link_libraries(test_elementwise_mul qcu cudart cublas)
+target_include_directories(test_elementwise_mul PUBLIC ${PROJECT_SOURCE_DIR})
+
+# ELEMENWISE_INIT
+add_executable       (test_elementwise_init ${PROJECT_SOURCE_DIR}/test_blas/test_elementwise_init.cu)
+target_link_libraries(test_elementwise_init qcu cudart cublas)
+target_include_directories(test_elementwise_init PUBLIC ${PROJECT_SOURCE_DIR})
