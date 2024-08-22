@@ -61,7 +61,9 @@ class Dslash {
 
    public:
     // Dslash(DslashParam& dslashParam) : dslashParam_(dslashParam) {}
+    Dslash() = delete;
     Dslash(DslashParam* dslashParam) : dslashParam_(dslashParam) {}
+    void setParam(DslashParam* dslashParam) { dslashParam_ = dslashParam; }
     virtual ~Dslash() = default;
     virtual void apply() = 0;
     virtual void preApply() = 0;
