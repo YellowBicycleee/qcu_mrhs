@@ -8,3 +8,5 @@
 #include "qcu_blas/qcu_blas_complex_xpay.h"
 #include "qcu_blas/qcu_blas_complex_xsay.h"
 #include "qcu_blas/qcu_blas_elementwise_div.h"
+#include "qcu_blas/qcu_blas_elementwise_init.h"
+#include "qcu_blas/qcu_blas_elementwise_mul.h"
