@@ -50,7 +50,7 @@ int main () {
 
   // malloc 
   const int single_vec_length = 1024 * 1024;
-  const int num_vecs = 20;
+  const int num_vecs = 12;
   const int vector_length = single_vec_length * num_vecs;
 
   vector<complex<double>> d_res_vec (num_vecs);

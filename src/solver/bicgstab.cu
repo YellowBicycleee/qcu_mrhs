@@ -72,7 +72,7 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::tempBufferAllo
   void* output_prec_kappa = output_scala_array_[0];
 
   // init mrhs kappa s
-  using InitArgument = typename InteriorOperator::OutputElementwiseInitArgument;
+  using InitArgument = typename InteriorOperator::ElementwiseInit<Complex<OutputFloat>>::ElementwiseInitArgument;
   InitArgument 
     output_elementwise_init_arg (
           reinterpret_cast<Complex<OutputFloat>*>(output_prec_kappa),
@@ -84,7 +84,7 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::tempBufferAllo
 
   // init mrhs 1 s
   output_elementwise_init_arg.res = reinterpret_cast<Complex<OutputFloat>*>(output_scala_array_[1]);
-  output_elementwise_init_arg.input = Complex<OutputFloat>{1, 0};
+  output_elementwise_init_arg.val = Complex<OutputFloat>{1, 0};
   interior_operator_.output_elementwise_init(output_elementwise_init_arg);
   // sync
   CHECK_CUDA(cudaStreamSynchronize(exterior_dslashParam_->stream1));
@@ -129,12 +129,6 @@ void BiCGStab<OutputPrecision, InputPrecision,IteratePrecision>::tempBufferFree(
   bufferAllocated_ = false;
 }
 
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION InputPrecision,
-          QCU_PRECISION IteratePrecision>
-bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
-  return true;
-}
 
 template <QCU_PRECISION OutputPrecision,
           QCU_PRECISION InputPrecision,
@@ -156,7 +150,7 @@ void* BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::reCalculate_b
                               vol * complex_vec_len, 
                               exterior_dslashParam_->stream1);
   void* origin_even_b = outputBuffer_[0];
-  void* origin_odd_b  = static_cast<OutputFloat2*>(outputBuffer_) + vol / 2 * complex_vec_len;
+  void* origin_odd_b  = static_cast<OutputFloat2*>(origin_even_b) + vol / 2 * complex_vec_len;
 
   void* new_even_b = new_b_output_prec_;
   void* new_odd_b  = static_cast<OutputFloat2*>(new_b_output_prec_) + vol / 2 * complex_vec_len;
@@ -173,8 +167,8 @@ void* BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::reCalculate_b
     /*param.gauge           = */   exterior_dslashParam_->gauge,
     /*param.lattDesc        = */   exterior_dslashParam_->lattDesc,
     /*param.procDesc        = */   exterior_dslashParam_->procDesc,
-    /*param.stream1         = */   param.stream1,
-    /*param.stream2         = */   param.stream2,
+    /*param.stream1         = */   exterior_dslashParam_->stream1,
+    /*param.stream2         = */   exterior_dslashParam_->stream2,
   };  
 
   dslash_operator_->setParam(&param);
@@ -194,7 +188,7 @@ void* BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::reCalculate_b
   // interior_operator_.output_elementwise_init(output_elementwise_init_arg);
 
   // batch new_b{e} = b_{o} + kappa D_{oe} b_{e}
-  using XpbyArgument = typename InteriorOperator::Output_xpayArgument;
+  using XpbyArgument = typename InteriorOperator::Complex_xpay<OutputFloat>::Complex_xpayArgument;
   XpbyArgument output_xpby_arg (
     reinterpret_cast<Complex<OutputFloat>*>(new_even_b),        // res = new_even_b = x + a y
     reinterpret_cast<Complex<OutputFloat>*>(origin_odd_b),      // x = origin_odd_b
@@ -206,4 +200,6 @@ void* BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::reCalculate_b
   );
   return new_b_output_prec_;
 }
+
+template class BiCGStab<QCU_DOUBLE_PRECISION, QCU_DOUBLE_PRECISION, QCU_DOUBLE_PRECISION>; 
 }

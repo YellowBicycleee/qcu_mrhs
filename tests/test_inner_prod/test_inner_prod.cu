@@ -68,7 +68,7 @@ int main () {
 
   // malloc 
   const int single_vec_length = 1024 * 1024;
-  const int num_vecs = 2;
+  const int num_vecs = 12;
   const int vector_length = single_vec_length * num_vecs;
 
   vector<complex<double>> d_res_vec (num_vecs);
@@ -160,7 +160,7 @@ int main () {
   cout << "stride = " << num_vecs << ", res = " << std::accumulate(h_res_vec.begin(), h_res_vec.end(), complex<double>(0, 0)) << endl;
 
   // stride = 1 res
-  cout << "=========stride inner pro, stride = num_vecs =============" << endl;
+  cout << "=========stride inner pro, stride = 1 =============" << endl;
   d_res_vec.clear();
   h_res_vec.clear();
   // gpu stride innerproduct

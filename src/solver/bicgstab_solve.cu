@@ -9,7 +9,8 @@ template <typename _Float, std::enable_if_t<std::is_same_v<_Float, float> ||
 inline bool isConverged ( const std::vector<_Float>& norm_r_array, 
                           const std::vector<_Float>& norm_b_array,
                           _Float target_diff
-) {
+) 
+{
   // calculate the relative error
   _Float total_error = 0.0;
 
@@ -23,7 +24,7 @@ inline bool isConverged ( const std::vector<_Float>& norm_r_array,
 template <QCU_PRECISION OutputPrecision,
           QCU_PRECISION InputPrecision,
           QCU_PRECISION IteratePrecision>
-bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
+bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve_odd() {
   std::vector<OutputFloat> norm_r_array  (exterior_dslashParam_->mInput, 1.0);  // 使用accumulate计算误差
   std::vector<OutputFloat> norm_b_array(exterior_dslashParam_->mInput, 1.0);  // 计算b的模长
   // diff_array = [r1, r2, r3, ...] / [b1, b2, b3, ...]
@@ -41,17 +42,41 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
   cudaStream_t stream1 = exterior_dslashParam_->stream1;
   cudaStream_t stream2 = exterior_dslashParam_->stream2;
   // prelogue
+  // solve x_o
+  // get new B
+  reCalculate_b_even ();
+
   // calculate norm of b and store them
   using OutputNormArgument = typename InteriorOperator::OutputNormArgument;
   using IterNormArgument   = typename InteriorOperator::IterNormArgument;
 
   void* new_b_even_output_prec_ = new_b_output_prec_;
+  void* output_new_b_even_norm = output_scala_array_[2];
+
+  void* x_e          = outputBuffer_[9];
+  void* Ap           = outputBuffer_[1];  // 每轮要留住 outputBuffer_[1]作为 Ap
+  void* As           = outputBuffer_[2];  // 每轮要留住 outputBuffer_[2]作为 As
+  void* s            = outputBuffer_[3];
+  void* r_new        = outputBuffer_[4];
+  void* reduceBuffer = outputBuffer_[5];
+  void* x_new        = outputBuffer_[6];
+  void* p_new        = outputBuffer_[7];
+  void* x            = outputBuffer_[8]; 
+  void* one_array    = output_scala_array_[1];
+  void* kappa_array  = output_scala_array_[0];
+    
+  void* r_r0_norm     = output_scala_array_[2]; // 要用到最后
+  void* Ap_p_norm     = output_scala_array_[3];
+  void* r_new_r0_norm = output_scala_array_[3];
+  void* As_s_norm     = output_scala_array_[3];
+  void* As_As_norm    = output_scala_array_[4];
+
   OutputNormArgument output_norm_arg {
-    vol * single_complex_vec_len / 2,                                  // int single_vec_len;
+    vol * single_complex_vec_len / 2,                           // int single_vec_len;
     mInput,                                                     // int stride;
     static_cast<OutputFloat*>(outputBuffer_[0]),                // OutputFloat*   tmpBuffer 
-    static_cast<Complex<OutputFloat>*>(new_b_even_output_prec_), // Complex<InputFloat> *   input;
-    static_cast<OutputFloat*>(output_scala_array_[0]),          // OutputFloat*  resArr;
+    static_cast<Complex<OutputFloat>*>(new_b_even_output_prec_),// Complex<InputFloat> *   input;
+    static_cast<OutputFloat*>(output_new_b_even_norm),          // OutputFloat*  resArr;
     stream1,
     cublasHandle_
   };
@@ -59,14 +84,14 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
   interior_operator_.output_norm(output_norm_arg); // 计算norm，一次性保存到host端
 
   CHECK_CUDA(cudaMemcpy(norm_b_array.data(), 
-                        output_scala_array_[0], 
+                        output_new_b_even_norm,
                         sizeof(OutputFloat) * mInput, 
                         cudaMemcpyDeviceToHost,
                         stream1));
   // store norm of b in norm_b_array (host)
   CHECK_CUDA(cudaStreamSynchronize(stream1));
 
-  // R = b - A * x = b - Dslash * x, x在这里是b_{even}
+  // R = b - A * x = b - Dslash * x, x在可以初始化为0
   // 存放 Ax 到 outputBuffer_[1]
   DslashParam dslashParam {
     false,                                      // DslashParam(bool p_daggerFlag,
@@ -84,10 +109,10 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
     stream2                                     // cudaStream_t p_stream2 = NULL)
   };
 
-  dslash_operator_->setParam(&dslashParam);
-  dslash_operator_->apply();  // outputBuffer_[1] = Dslash * new_b_even_output_prec_
+  // dslash_operator_->setParam(&dslashParam);
+  // dslash_operator_->apply();  // outputBuffer_[1] = Dslash * new_b_even_output_prec_
   // Ax存入outputBuffer_[1]，接下来计算r = b - Ax放入outputBuffer_[0]
-  // r0 = b - Ax
+  // r0 = b - Ax = b
   using Output_xsayArgument = typename InteriorOperator::Output_xsayAruArgument;
   Output_xsayArgument output_xsay_arg {
       // Complex_xsayArgument
@@ -99,7 +124,7 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
       mInput,                                                           // int inc_idx,
       stream1
   };
-  interior_operator_.output_xsay(output_xsay_arg); // r0 = b - Ax, 存入outputBuffer_[0], outputBuffer_[1]空闲
+  // interior_operator_.output_xsay(output_xsay_arg); // r0 = b - Ax, 存入outputBuffer_[0], outputBuffer_[1]空闲
 
   // begin iteration
   // InnerProduct Param
@@ -117,6 +142,14 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
   // ElementwiseDiv Param
   using OutputElementwiseDivArgument = typename InteriorOperator::OutputElementwiseDivArgument;
   OutputElementwiseDivArgument output_elementwise_div_arg {
+    nullptr, // _Tp* res,
+    nullptr,   // _Tp* x,
+    nullptr,   // _Tp* y,
+    mInput                                                // int  vec_len,
+  };
+  // ElementwiseMul Param
+  using OutputElementwiseMulArgument = typename InteriorOperator::OutputElementwiseMulArgument;
+  OutputElementwiseMulArgument output_elementwise_mul_arg {
     nullptr, // _Tp* res,
     nullptr,   // _Tp* x,
     nullptr,   // _Tp* y,
@@ -154,16 +187,7 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
   void* p  = outputBuffer_[0]; // p = r0，从此outputBuffer[1]不变，不能再使用
   // 开始迭代，达到最大迭代次数不收敛则返回false
   for (currentIteration_ = 0; currentIteration_ < maxIteration_; ++ currentIteration_) {
-    void* Ap           = outputBuffer_[1];  // 每轮要留住 outputBuffer_[1]作为 Ap
-    void* As           = outputBuffer_[2];  // 每轮要留住 outputBuffer_[2]作为 As
-    void* s            = outputBuffer_[3];
-    void* r_new        = outputBuffer_[4];
-    void* reduceBuffer = outputBuffer_[5];
-    void* x_new        = outputBuffer_[6];
-    void* p_new       = outputBuffer_[7];
-    void* one_array   = output_scala_array_[1];
-    void* kappa_array = output_scala_array_[0];
-    
+ 
 
     // Ap = Ap_{j} = Dslash * p_{j} ----> outputBuffer_[1];
     dslashParam.fermionIn_MRHS  = p;
@@ -172,10 +196,7 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
     dslash_operator_->apply();  // Ap = Dslash * p
 
 
-    void* r_r0_norm = output_scala_array_[2];
-    void* Ap_p_norm = output_scala_array_[3];
-    void* As_s_norm = output_scala_array_[2];
-    void* As_As_norm = output_scala_array_[3];
+
 
     // norm <r, r0>
     outputDotArg.input1    = reinterpret_cast<Complex<OutputFloat>*>(r);
@@ -250,12 +271,50 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
     output_xsay_arg.y   = reinterpret_cast<Complex<OutputFloat>*>(As);
     interior_operator_.output_xsay(output_xsay_arg); // s = r - alpha * Ap
 
-    // TODO: if converge ?
-      { // converge return true
-        // else continue
+    // if converge ?
+    { // converge return true
+      // calculate norm of r_new and store them
+      void* r_new_norm = output_scala_array_[3];
+      output_norm_arg.input = reinterpret_cast<Complex<OutputFloat>*>(r_new);
+      output_norm_arg.resArr = reinterpret_cast<OutputFloat*>(r_new_norm);
+      interior_operator_.output_norm(output_norm_arg); // 计算norm，一次性保存到host端
+      CHECK_CUDA(cudaMemcpy(norm_r_array.data(), 
+                            r_new_norm,
+                            sizeof(OutputFloat) * mInput, 
+                            cudaMemcpyDeviceToHost,
+                            stream1));
+      CHECK_CUDA(cudaStreamSynchronize(stream1));
+      bool is_converged = isConverged(norm_r_array, norm_b_array, maxPrec_);
+      if (is_converged) {
+        return true;
       }
+    }
     // beta =  (alpha / omega)(<r_new, r0> / <r, r0>)
+    // we now have <r, r0> in r_r0_norm
+    // now calculate <r_new, r0> and store it in r_new_r0_norm
+    outputDotArg.input1 = reinterpret_cast<Complex<OutputFloat>*>(r_new);
+    outputDotArg.input2 = reinterpret_cast<Complex<OutputFloat>*>(r0);
+    outputDotArg.resArr = reinterpret_cast<Complex<OutputFloat>*>(r_new_r0_norm);
+    outputDotArg.vec_len = vol * single_complex_vec_len / 2;
+    interior_operator_.output_dotc(outputDotArg); // <r_new, r0> ----> r_new_r0_norm
+    // beta_temp = alpha * r_r0_norm / omega / r_new_r0_norm
+    output_elementwise_mul_arg.res     = beta_array;
+    output_elementwise_mul_arg.x       = reinterpret_cast<Complex<OutputFloat>*>(alpha_array);
+    output_elementwise_mul_arg.y       = reinterpret_cast<Complex<OutputFloat>*>(r_r0_norm);
+    output_elementwise_mul_arg.vec_len = mInput;
+    interior_operator_.output_elementwise_mul(output_elementwise_mul_arg); // alpha * r_r0_norm ----> beta_array
 
+    output_elementwise_div_arg.res     = beta_array;
+    output_elementwise_div_arg.x       = reinterpret_cast<Complex<OutputFloat>*>(beta_array);
+    output_elementwise_div_arg.y       = reinterpret_cast<Complex<OutputFloat>*>(omega_array);
+    output_elementwise_div_arg.vec_len = mInput;
+    interior_operator_.output_elementwise_div(output_elementwise_div_arg); // beta / omega ----> beta_array
+
+    output_elementwise_div_arg.res     = beta_array;
+    output_elementwise_div_arg.x       = reinterpret_cast<Complex<OutputFloat>*>(beta_array);
+    output_elementwise_div_arg.y       = reinterpret_cast<Complex<OutputFloat>*>(r_new_r0_norm);
+    output_elementwise_div_arg.vec_len = mInput;
+    interior_operator_.output_elementwise_div(output_elementwise_div_arg); // beta / r_new_r0_norm ----> beta_array
     // p_new = r_new + beta * (p - omega * Ap)
     // first step: p_new = p - omega * Ap
     output_xsay_arg.res = reinterpret_cast<Complex<OutputFloat>*>(p_new);
@@ -272,9 +331,110 @@ bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
     output_xpay_arg.inc_idx = mInput;
     output_xpay_arg.stream = stream1;
     interior_operator_.output_xpay(output_xpay_arg); // p_new = r_new + beta * p_new
+
+    // r = r_new, p = p_new, x = x_new
+    r_new = r;
+    p_new = p;
+    x_new = x;
   }
 
   return currentIteration_ <= maxIteration_ && isConverged(norm_r_array, norm_b_array, maxPrec_);
 }
 
+template <QCU_PRECISION OutputPrecision,
+          QCU_PRECISION InputPrecision,
+          QCU_PRECISION IteratePrecision>
+bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve_even() {
+  const int Lx     = exterior_dslashParam_->lattDesc->X();
+  const int Ly     = exterior_dslashParam_->lattDesc->Y();
+  const int Lz     = exterior_dslashParam_->lattDesc->Z();
+  const int Lt     = exterior_dslashParam_->lattDesc->T();
+  const int mInput = exterior_dslashParam_->mInput;
+  const int vol = Lx * Ly * Lz * Lt;
+  const int single_complex_vec_len = exterior_dslashParam_->nColor * Ns;
+  const int complex_vec_len =   exterior_dslashParam_->mInput 
+                              * exterior_dslashParam_->nColor 
+                              * Ns; // on single point
+  // solve x_e
+  // x_e = b_e + kappa D_{eo} x_{o}
+
+  // now we get x_{o} and b_{e}
+  void* x_e = outputBuffer_[9];
+  void* x_o = outputBuffer_[10];
+  void* b_e = new_b_output_prec_;
+  void* kappa_array = output_scala_array_[0];
+  // D_{eo} x_{o} ----> x_e
+  DslashParam dslashParam {
+    false,                                      // bool p_daggerFlag,
+    OutputPrecision,                            // QCU_PRECISION p_precision,
+    exterior_dslashParam_->nColor,              // int p_nColor, 
+    exterior_dslashParam_->mInput,              // int p_mInput, 
+    ODD_PARITY,                                 // int p_parity,
+    OutputFloat(exterior_dslashParam_->kappa),  // double p_kappa, 
+    x_o,                                        // void* p_fermionIn_MRHS
+    x_e,                                        // void* p_fermionOut_MRHS,
+    exterior_dslashParam_->gauge,               // void* p_gauge, 
+    exterior_dslashParam_->lattDesc,            // const QcuLattDesc* p_lattDesc,
+    exterior_dslashParam_->procDesc,            // const QcuProcDesc* p_procDesc,
+    exterior_dslashParam_->stream1,             // cudaStream_t p_stream1 = NULL,
+    exterior_dslashParam_->stream2              // cudaStream_t p_stream2 = NULL)
+  }; 
+  dslash_operator_->setParam(&dslashParam);
+  dslash_operator_->apply();  // x_e = D_{eo} x_{o}
+
+  // x_e = b_e + kappa D_{eo} x_{o}
+  //     = b_e + kappa x_e
+  using Output_xpayArgument = typename InteriorOperator::Output_xpayAruArgument;
+  Output_xpayArgument output_xpay_arg {
+      static_cast<Complex<OutputFloat>*>(x_e),          // Complex<_Float>* res,
+      static_cast<Complex<OutputFloat>*>(b_e),          // Complex<_Float>* x,
+      static_cast<Complex<OutputFloat>*>(kappa_array),  // Complex<_Float>* a,
+      static_cast<Complex<OutputFloat>*>(x_e),          // Complex<_Float>* y,
+      vol * single_complex_vec_len / 2,                 // int single_vec_len,
+      mInput,                                           // int inc_idx,
+      exterior_dslashParam_->stream1
+  }; 
+  interior_operator_.output_xpay(output_xpay_arg); // x_e = b_e + kappa x_e
+
+  CHECK_CUDA(cudaStreamSynchronize(exterior_dslashParam_->stream1));
+  return true;
+}
+
+template <QCU_PRECISION OutputPrecision,
+          QCU_PRECISION InputPrecision,
+          QCU_PRECISION IteratePrecision>
+bool BiCGStab<OutputPrecision, InputPrecision, IteratePrecision>::solve() {
+  if (!bufferAllocated_) {
+    if (!tempBufferAllocate()) {
+      return false;
+    }
+  }
+
+  if (!solve_odd()) {
+    printf("solve odd failed, %d iterations\n", currentIteration_);
+    return false;
+  }
+  if (!solve_even()) {
+    printf("solve even failed, %d iterations\n", currentIteration_);
+    return false;
+  }
+
+  printf("solve success, %d iterations\n", currentIteration_);
+  const int Lx     = exterior_dslashParam_->lattDesc->X();
+  const int Ly     = exterior_dslashParam_->lattDesc->Y();
+  const int Lz     = exterior_dslashParam_->lattDesc->Z();
+  const int Lt     = exterior_dslashParam_->lattDesc->T();
+  const int mInput = exterior_dslashParam_->mInput;
+  const int vol = Lx * Ly * Lz * Lt;
+  const int complex_vec_len =   exterior_dslashParam_->mInput 
+                              * exterior_dslashParam_->nColor 
+                              * Ns; // on single point
+  // copy x to outputBuffer
+  // copy x_even to fermionOut_MRHS_even
+  // copy x_odd to fermionOut_MRHS_odd
+  void* fermionOut_MRHS_even = exterior_dslashParam_->fermionOut_MRHS;
+  void* fermionIn_MRHS_even  = static_cast<Complex<OutputFloat>*>(exterior_dslashParam_->fermionIn_MRHS)
+                                + vol * complex_vec_len / 2;
+  return true;
+}
 }
