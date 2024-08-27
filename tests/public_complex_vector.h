@@ -1,3 +1,4 @@
+#pragma once
 #include "complex/qcu_complex.cuh"
 #include <vector>
 #include <iostream>
@@ -9,7 +10,7 @@ using std::vector;
 using std::cout;
 using std::endl;
 
-bool check_correct (const vector<OutputFloat> & a, const vector<OutputFloat> & b) {
+inline bool check_correct (const vector<OutputFloat> & a, const vector<OutputFloat> & b) {
   int size = a.size();
   if (a.size() != b.size()) {
     return false;
