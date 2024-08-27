@@ -14,8 +14,8 @@ class Qcu {
     int mInput_;
     double mass_;
     double kappa_;
-    QCU_PRECISION inputFloatPrecision_;
-    QCU_PRECISION dslashFloatPrecision_;
+    QCU_PRECISION outputFloatPrecision_; // use it as input and output precision
+    QCU_PRECISION iterateFloatPrecision_;// use it as calculation precision such as dslash and solver
 
     QcuLattDesc lattDesc_;
     QcuProcDesc procDesc_;
@@ -25,21 +25,23 @@ class Qcu {
     std::vector<void *> fermionIn_queue_;
     std::vector<void *> fermionOut_queue_;
 
-    void *gauge_;      // gauge field
+    void *gauge_;      // gauge field, donnot allocate memory, external pointer
     void *fp64Gauge_;  // double gauge field
     void *fp32Gauge_;  // single gauge field
     void *fp16Gauge_;  // half gauge field
 
     // mrhs fermion field
-    void *fermionIn_MRHS_;
-    void *fermionOut_MRHS_;
+    void *fermionIn_MRHS_;  // also used as b in Ax=b, to solve x
+    void *fermionOut_MRHS_; // also used as x in Ax=b, to solve x
 
     void allocateMemory();
     void freeMemory();
 
    public:
-    Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt, QCU_PRECISION inputFloatPrecision,
-        QCU_PRECISION dslashFloatPrecision = QCU_DOUBLE_PRECISION, int nColors = 3, int mInputs = 1, double mass = 0.0,
+    Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt,
+        QCU_PRECISION outputFloatPrecision,
+        QCU_PRECISION iterateFloatPrecision = QCU_DOUBLE_PRECISION,
+        int nColors = 3, int mInputs = 1, double mass = 0.0,
         bool inverterEnabled = false)
         : inverterEnabled_(inverterEnabled),
           nColors_(nColors),
@@ -48,7 +50,7 @@ class Qcu {
           kappa_(1.0 / (2.0 * (4.0 + mass))),
           lattDesc_(Lx, Ly, Lz, Lt),
           procDesc_(Gx, Gy, Gz, Gt),
-          inputFloatPrecision_(inputFloatPrecision),
+          outputFloatPrecision_(outputFloatPrecision),
           dslashParam_(nullptr),
           dslash_(nullptr),
           gauge_(nullptr),
@@ -57,7 +59,8 @@ class Qcu {
           fp16Gauge_(nullptr),
           fermionIn_MRHS_(nullptr),
           fermionOut_MRHS_(nullptr),
-          dslashFloatPrecision_(dslashFloatPrecision) {
+          iterateFloatPrecision_(iterateFloatPrecision)
+    {
         allocateMemory();
     }
 
@@ -69,6 +72,8 @@ class Qcu {
 
     void pushBackFermions(void *fermionOut, void *fermionIn);
     void setInverterEnabled(bool enabled) { inverterEnabled_ = enabled; }
+    // solve Ax = b
+    void solveFermions(int max_iteration, double p_max_prec);
 };
 
 }  // namespace qcu

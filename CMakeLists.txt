@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 
-set(CMAKE_CUDA_ARCHITECTURES 86)    # for 3090
+set(CMAKE_CUDA_ARCHITECTURES 89)    # for 4060 laptop
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 20)
 #set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -G")
@@ -28,6 +28,7 @@ add_library(qcu
     ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_transpose_2d.cu
     ${PROJECT_SOURCE_DIR}/src/solver/bicgstab.cu
     ${PROJECT_SOURCE_DIR}/src/solver/bicgstab_solve.cu
+	${PROJECT_SOURCE_DIR}/src/solver/bicgstab_interface.cu
 )
 target_include_directories(qcu 
     PUBLIC

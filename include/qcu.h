@@ -14,14 +14,11 @@ typedef struct QcuGrid_t {
 void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int inputFloatPrecision,
                   int dslashFloatPrecision);
 void pushBackFermions(void *fermionOut, void *fermionIn);
-// void qcuDslash(int parity, int daggerFlag);
-// void qcuDslashXpay(int daggerFlag);
 void loadQcuGauge(void *gauge, int floatPrecision);  // double precision
-void getDslash(int dslashType, double mass);         // dslash precision
-// void qcuInvert(void *x_vector, void *b_vector, void *gauge, QcuParam *param, double p_max_prec, double p_kappa);
-void finalizeQcu();
+void getDslash(int dslashType, double mass);  // dslash precision
 void start_dslash(int parity, int daggerFlag);
-
+void qcuInvert(int max_iteration, double p_max_prec);
+void finalizeQcu();
 #ifdef __cplusplus
 }
 #endif
