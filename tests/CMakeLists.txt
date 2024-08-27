@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD 17)
 project(QCU_TESTS LANGUAGES C CXX CUDA) # project name = ${PROJECT_NAME}
 # set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 # message("${PROJECT_SOURCE_DIR}/src/qcu_blas")
+add_executable       (function_paramter_test ${PROJECT_SOURCE_DIR}/small_test/test_device_function_demo.cu)
+#target_link_libraries(function_paramter_test qcu cublas)
 
 add_executable       (test_shift_data ${PROJECT_SOURCE_DIR}/test_shift_datatype/test_shift_datatype.cu)
 target_link_libraries(test_shift_data qcu cublas)
