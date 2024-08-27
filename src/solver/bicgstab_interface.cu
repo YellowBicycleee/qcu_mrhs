@@ -33,17 +33,15 @@ static void InstantiateBicgStabIteratePrecision(BiCGStabParam& param, QCU_PRECIS
 }
 
 void ApplyBicgStab (BiCGStabParam& param,  QCU_PRECISION outputPrecision, QCU_PRECISION iteratePrecision,
-                    int max_iteration = 1000, double max_precision = 1e-6)
+                    int max_iteration, double max_precision)
 {
   if (outputPrecision == QCU_DOUBLE_PRECISION) {
     InstantiateBicgStabIteratePrecision<QCU_DOUBLE_PRECISION>(param, iteratePrecision, max_iteration, max_precision);
   } else if (outputPrecision == QCU_SINGLE_PRECISION) {
     InstantiateBicgStabIteratePrecision<QCU_SINGLE_PRECISION>(param, iteratePrecision, max_iteration, max_precision);
-  } else if (outputPrecision == QCU_HALF_PRECISION) {
-    InstantiateBicgStabIteratePrecision<QCU_HALF_PRECISION>(param, iteratePrecision, max_iteration, max_precision);
   }
   else {
-    std::printf("error happened: wrong outputPrecision\n");
+    std::printf("error happened: wrong outputPrecision, outputPrecision must be float or double\n");
     exit(1);
   }
 }
