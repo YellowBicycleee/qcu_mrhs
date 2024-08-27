@@ -1,3 +1,4 @@
+#pragma once
 #include <cublas_v2.h>
 #include "qcu_macro.h"
 

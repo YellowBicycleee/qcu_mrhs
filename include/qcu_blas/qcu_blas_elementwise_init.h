@@ -7,7 +7,7 @@ template <typename _Tp>
 struct ElementwiseInit {          //  [r1, r2 ... rN] = [x1 / y1, x2 / y2 ... xN / yN]    
   // Argument type
   struct ElementwiseInitArgument {
-    int           vec_len;
+    const int     vec_len;
     _Tp*          res;
     _Tp           val;
     cudaStream_t  stream;

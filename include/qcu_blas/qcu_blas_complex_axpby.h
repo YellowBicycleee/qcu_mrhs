@@ -15,8 +15,8 @@ struct Complex_axpby<_Float, std::enable_if_t <std::is_same_v<_Float, float>  ||
   // Argument type
   struct Complex_axpbyArgument {
     // start_idx 不在外部赋予，而是在内部赋予
-    int               single_vec_len;
-    int               inc_idx;
+    const int         single_vec_len;
+    const int         inc_idx;
     Complex<_Float>*  res;
     Complex<_Float>*  x;
     Complex<_Float>*  y;

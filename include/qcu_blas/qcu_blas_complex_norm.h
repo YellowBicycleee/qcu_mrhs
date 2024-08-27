@@ -8,8 +8,8 @@ template <typename OutputFloat, typename InputFloat>
 struct ComplexNorm {
   // Argument type
   struct ComplexNormArgument {
-    int                     single_vec_len;
-    int                     stride;
+    const int               single_vec_len;
+    const int               stride;
     OutputFloat         *   tmpBuffer;  // reduce结果一般都很短，tmpBuffer作为第一次的输出，第二次的输入+输出
                                         // when you use cublas, you can set it to nullptr
     Complex<InputFloat> *   input;
