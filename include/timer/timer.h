@@ -38,7 +38,7 @@ inline double Tflops(size_t num, double time_second) { return num / (time_second
 // }
 
 // clang-format off
-#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
 #define TIMER_EVENT(cmd, num_op, msg)                                                    \
     do {                                                                                 \
