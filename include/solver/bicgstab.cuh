@@ -34,7 +34,7 @@ public:
           :
             param_(param),
             maxIteration_(max_iteration),
-            maxPrec_(OutputFloat(max_precision)
+            maxPrec_(OutputFloat(double(max_precision) * 0.9)
             )
   {
     tempBufferAllocate();
@@ -116,7 +116,7 @@ private:
 
   // member variables
   static constexpr int MaxTmpFermion_             = 6;              // 临时buffer的个数
-  static constexpr int MaxOutputPrecisionFermion_ = 11;  // 输出精度的fermion个数
+  static constexpr int MaxOutputPrecisionFermion_ = 12;  // 输出精度的fermion个数
   int          maxIteration_     = 1000; // 最大迭代次数
   int          currentIteration_ = 0; // 当前迭代次数
   OutputFloat  maxPrec_          = 1e-6;
@@ -135,7 +135,7 @@ private:
   void* tmpFermionMrhs_[MaxTmpFermion_];           // 迭代精度buffer
 
   void* iter_scala_array_[3];
-  void* output_scala_array_[6]; // [0]存放Complex(kappa, 0)，[1]存放Complex(1, 0) [5]存放Complex(kappa * kappa, 0)
+  void* output_scala_array_[9]; // [0]存放Complex(kappa, 0)，[1]存放Complex(1, 0) [5]存放Complex(kappa * kappa, 0)
 
 
   void* alpha_array;
