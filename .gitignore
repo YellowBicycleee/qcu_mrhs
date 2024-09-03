@@ -3,4 +3,6 @@ build
 include/kernel/transpose_2dim_gpu.cuh
 src/tests/test_transpose
 cmake-build-debug-wsl
+cmake-build-debug
+build-debug
 .idea
