@@ -34,7 +34,7 @@ public:
           :
             param_(param),
             maxIteration_(max_iteration),
-            maxPrec_(OutputFloat(double(max_precision) * 0.9)
+            maxPrec_(OutputFloat(double(max_precision) * 0.5)
             )
   {
     tempBufferAllocate();
