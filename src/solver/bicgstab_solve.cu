@@ -6,7 +6,7 @@
 #include "data_format/qcu_data_format_shift.cuh"
 #include "solver/bicgstab.cuh"
 
-#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
 template <typename _Float>
 void checkNorm (void* global_mem, int round = 1) {
@@ -16,6 +16,9 @@ void checkNorm (void* global_mem, int round = 1) {
     std::printf("norm = %lf\n", x);
   }
 }
+#else
+template <typename _Float>
+void checkNorm (void* global_mem, int round = 1) {}
 #endif
 
 // out = in - a DoeDeo in
@@ -93,7 +96,9 @@ inline bool isConverged ( const std::vector<_Float>& norm_r_array,
   int size = norm_r_array.size();
   for (int i = 0; i < size; ++i) {
     total_error += (norm_r_array[i]) / norm_b_array[i];
+#ifdef DEBUG
     std::printf(" norm_r = %e, norm_b = %e\n", norm_r_array[i], norm_b_array[i]);
+#endif
   }
 
   return (total_error / size) < target_diff;
@@ -327,8 +332,9 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
                             sizeof(OutputFloat) * mInput,
                             cudaMemcpyDeviceToHost, stream1));
       CHECK_CUDA(cudaStreamSynchronize(stream1));
-
+#ifdef DEBUG
       std::printf("DEBUG, currentIteration = %d", currentIteration_);
+#endif
       if (bool is_converged = isConverged<OutputFloat>(norm_r_array, norm_b_array, maxPrec_)) {
         CHECK_CUDA(cudaMemcpyAsync(x_o, x_new, sizeof(OutputFloat) * vol / 2 * complex_vec_len * 2,
                               cudaMemcpyDeviceToDevice, stream1)); // res_x = x_new = x_{j + 1}
@@ -464,15 +470,15 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve() {
   }
 
   if (!solve_odd()) {
-    printf("solve odd failed, %d iterations\n", currentIteration_);
+    printf("QCU BICGStab solve odd failed, %d iterations\n", currentIteration_);
     return false;
   }
   if (!solve_even()) {
-    printf("solve even failed, %d iterations\n", currentIteration_);
+    printf("QCU BICGStab solve even failed, %d iterations\n", currentIteration_);
     return false;
   }
 
-  printf("solve success, %d iterations\n", currentIteration_);
+  printf("QCU BICGStab solve success, %d iterations\n", currentIteration_);
   const int Lx     = param_.lattDesc->X();
   const int Ly     = param_.lattDesc->Y();
   const int Lz     = param_.lattDesc->Z();
