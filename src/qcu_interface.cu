@@ -220,134 +220,7 @@ void Qcu::pushBackFermions(void* fermionOut, void* fermionIn) {
 }
 
 
-#ifdef DEBUG_FUNC
-void Qcu::solveFermions(int max_iteration, double max_precision) {
-  const int Lx = lattDesc_.dims[X_DIM];
-  const int Ly = lattDesc_.dims[Y_DIM];
-  const int Lz = lattDesc_.dims[Z_DIM];
-  const int Lt = lattDesc_.dims[T_DIM];
-  const int vol = Lx * Ly * Lz * Lt;
-  const int colorSpinor_len = Ns * nColors_;
 
-  if (mInput_ != fermionIn_queue_.size() || mInput_ != fermionOut_queue_.size()) {
-    errorQcu("number of fermion is different from mInput\n");
-  } else {
-    printf("numbers matched, now begin bicg\n");
-  }
-
-  void* d_lookup_table_in;
-  void* d_lookup_table_out;
-  CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * mInput_));
-  CHECK_CUDA(cudaMalloc(&d_lookup_table_out, sizeof(void*) * mInput_));
-
-  // vector<void*> fermionIn_queue_odd(fermionIn_queue_.size());
-  // vector<void*> fermionOut_queue_odd(fermionOut_queue_.size());
-  vector<void*> fermionIn_queue_odd;//(fermionIn_queue_.size());
-  vector<void*> fermionOut_queue_odd;
-  for (int i = 0; i < fermionIn_queue_.size(); i++) {
-    // fermionIn_queue_odd[i]  = static_cast<Complex<OutputFloat>*>(fermionIn_queue_[i])  + colorSpinor_len * mInput_ * vol / 2;
-    // fermionOut_queue_odd[i] = static_cast<Complex<OutputFloat>*>(fermionOut_queue_[i]) + colorSpinor_len * mInput_ * vol / 2;
-    fermionIn_queue_odd.push_back(static_cast<Complex<OutputFloat>*>(fermionIn_queue_[i])  + colorSpinor_len  * vol / 2);
-    fermionOut_queue_odd.push_back(static_cast<Complex<OutputFloat>*>(fermionOut_queue_[i]) + colorSpinor_len * vol / 2);
-  }
-  cout << "fermionOut ptrs================================="<< endl;
-  for (int i = 0; i < fermionOut_queue_.size(); i++) {
-    cout << "fermionOut[" << i << "] = " << fermionOut_queue_[i] << endl;
-  }
-
-  cout << "DEBUG ======================" << endl;
-  cout << "FermionOut even size: " << fermionOut_queue_.size() << endl;
-  cout << "FermionOut odd size: " << fermionIn_queue_odd.size() << endl;
-  for (int i = 0; i < fermionOut_queue_.size(); i++) {
-    cout << "Even ptr " << fermionOut_queue_[i] << ", odd ptr " << fermionIn_queue_odd[i] << endl;
-  }
-  cout << "DEBUG =======================" << endl;
-
-  void* fermionIn_MRHS_even = fermionIn_MRHS_;
-  void* fermionIn_MRHS_odd = static_cast<Complex<OutputFloat>*>(fermionIn_MRHS_)
-                                + colorSpinor_len * mInput_ * vol / 2;
-  // gather even
-  CHECK_CUDA(cudaMemcpy(d_lookup_table_in,  fermionIn_queue_.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
-  TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_even, iterateFloatPrecision_,
-                                d_lookup_table_in,   outputFloatPrecision_,
-                                Lx, Ly, Lz, Lt, nColors_, mInput_, NULL)
-      , 0, "gather");
-
-  // gather odd
-  CHECK_CUDA(cudaMemcpy(d_lookup_table_in, fermionIn_queue_odd.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
-  TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_odd, iterateFloatPrecision_,
-                                d_lookup_table_in, outputFloatPrecision_,
-                                Lx, Ly, Lz, Lt, nColors_, mInput_, NULL)
-      , 0, "gather");
-
-  // 原地复制
-  CHECK_CUDA(cudaMemcpy(fermionOut_MRHS_, fermionIn_MRHS_,
-             sizeof(Complex<OutputFloat>) * vol * colorSpinor_len * mInput_, cudaMemcpyDeviceToDevice));
-
-  // scatter
-  void* fermionOut_MRHS_even = fermionOut_MRHS_;
-  void* fermionOut_MRHS_odd = static_cast<Complex<OutputFloat>*>(fermionOut_MRHS_)
-                                  + colorSpinor_len * mInput_ * vol / 2;
-  // scatter even
-  CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
-  TIMER_EVENT(
-    colorSpinorScatter( d_lookup_table_out,   outputFloatPrecision_,
-                        fermionOut_MRHS_even, iterateFloatPrecision_,
-                        Lx, Ly, Lz, Lt, nColors_, mInput_, NULL),
-    0, "scatter");
-  // scatter odd
-  CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_odd.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
-  TIMER_EVENT(
-    colorSpinorScatter( d_lookup_table_out,  outputFloatPrecision_,
-                        fermionOut_MRHS_odd, iterateFloatPrecision_,
-                        Lx, Ly, Lz, Lt, nColors_, mInput_, NULL),
-    0, "scatter");
-  CHECK_CUDA(cudaStreamSynchronize(NULL));
-
-
-  // DEBUG
-  Complex<double> *fermionOut_HOST = new Complex<double>[Ns * nColors_];
-  cout << "fermionOut_MRHS_even: " << fermionOut_MRHS_even << endl;
-  cout << "fermionOut_MRHS_odd: " << fermionOut_MRHS_odd << endl;
-  cout << "COPY RES=================================== " << endl;
-
-  cout << "ODD[0] first 12" << endl;
-  CHECK_CUDA(cudaMemcpy(fermionOut_HOST, fermionIn_queue_odd[0], sizeof(Complex<double>) * Ns * nColors_, cudaMemcpyDeviceToHost));
-  cout << "######################################" << endl;
-  for (int i = 0; i < Ns * nColors_; i++) {
-    cout << "[" << i << "] = " << fermionOut_HOST[i].real() << ", " << fermionOut_HOST[i].imag() << endl;
-  }
-  cout << "######################################" << endl;
-  // cout << "EVEN first 12" << endl;
-  // CHECK_CUDA(cudaMemcpy(fermionOut_HOST, fermionOut_MRHS_even, sizeof(Complex<double>) * Ns * nColors_, cudaMemcpyDeviceToHost));
-  // cout << "######################################" << endl;
-  // for (int i = 0; i < Ns * nColors_; i++) {
-  //   cout << "[" << i << "] = " << fermionOut_HOST[i].real() << ", " << fermionOut_HOST[i].imag() << endl;
-  // }
-  // cout << "######################################" << endl;
-  // cout << "ODD first 12 " << endl;
-  // CHECK_CUDA(cudaMemcpy(fermionOut_HOST, fermionOut_MRHS_odd, sizeof(Complex<double>) * Ns * nColors_, cudaMemcpyDeviceToHost));
-  // cout << "######################################" << endl;
-  // for (int i = 0; i < Ns * nColors_; i++) {
-  //   cout << "[" << i << "] = " << fermionOut_HOST[i].real() << ", " << fermionOut_HOST[i].imag() << endl;
-  // }
-  // cout << "######################################" << endl;
-  // cout << "[1] ODD first 12 " << endl;
-  // CHECK_CUDA(cudaMemcpy(fermionOut_HOST, fermionOut_queue_odd[1], sizeof(Complex<double>) * Ns * nColors_, cudaMemcpyDeviceToHost));
-  // cout << "######################################" << endl;
-  // for (int i = 0; i < Ns * nColors_; i++) {
-  //   cout << "[" << i << "] = " << fermionOut_HOST[i].real() << ", " << fermionOut_HOST[i].imag() << endl;
-  // }
-  // cout << "######################################" << endl;
-  delete[] fermionOut_HOST;
-
-  // free lookup-table
-  CHECK_CUDA(cudaFree(d_lookup_table_in));
-  CHECK_CUDA(cudaFree(d_lookup_table_out));
-  fermionIn_queue_.clear();
-  fermionOut_queue_.clear();
-}
-#else
 void Qcu::solveFermions(int max_iteration, double max_precision) {
   const int Lx = lattDesc_.dims[X_DIM];
   const int Ly = lattDesc_.dims[Y_DIM];
@@ -374,13 +247,13 @@ void Qcu::solveFermions(int max_iteration, double max_precision) {
     fermionOut_queue_odd[i] = static_cast<Complex<OutputFloat>*>(fermionOut_queue_[i]) + colorSpinor_len * vol / 2;
   }
 
-  cout << "DEBUG ======================" << endl;
-  cout << "FermionOut even size: " << fermionOut_queue_.size() << endl;
-  cout << "FermionOut odd size: " << fermionIn_queue_odd.size() << endl;
-  for (int i = 0; i < fermionOut_queue_.size(); i++) {
-    cout << "Even ptr " << fermionOut_queue_[i] << ", odd ptr " << fermionIn_queue_odd[i] << endl;
-  }
-  cout << "DEBUG =======================" << endl;
+  // cout << "DEBUG ======================" << endl;
+  // cout << "FermionOut even size: " << fermionOut_queue_.size() << endl;
+  // cout << "FermionOut odd size: " << fermionIn_queue_odd.size() << endl;
+  // for (int i = 0; i < fermionOut_queue_.size(); i++) {
+  //   cout << "Even ptr " << fermionOut_queue_[i] << ", odd ptr " << fermionIn_queue_odd[i] << endl;
+  // }
+  // cout << "DEBUG =======================" << endl;
 
   void* fermionIn_MRHS_even = fermionIn_MRHS_;
   void* fermionIn_MRHS_odd = static_cast<Complex<OutputFloat>*>(fermionIn_MRHS_)
@@ -446,13 +319,11 @@ void Qcu::solveFermions(int max_iteration, double max_precision) {
                         Lx, Ly, Lz, Lt, nColors_, mInput_, NULL),
     0, "scatter");
   CHECK_CUDA(cudaStreamSynchronize(NULL));
-
   // free lookup-table
   CHECK_CUDA(cudaFree(d_lookup_table_in));
   CHECK_CUDA(cudaFree(d_lookup_table_out));
   fermionIn_queue_.clear();
   fermionOut_queue_.clear();
 }
-#endif
 
 }  // namespace qcu

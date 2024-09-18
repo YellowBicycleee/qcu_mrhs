@@ -45,6 +45,8 @@ public:
   bool solve();  // return true if converged
 private:
   bool solve_odd();
+  bool solve_odd_policy1(); // 单独计算norm和内积
+  bool solve_odd_policy2(); // 所有残差按一个计算
   bool solve_even();
   using OutputFloat  = typename qcu::Float2WrapperFromPrecision<OutputPrecision>::Float;
   using OutputFloat2 = typename qcu::Float2_t<OutputFloat>;
