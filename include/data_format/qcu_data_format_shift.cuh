@@ -1,7 +1,8 @@
 #pragma once
 
-#include "qcu_enum.h"
-#include "qcu_float_float2_wrapper.h"
+#include "qcu_public.h"
+// #include "qcu_float_float2_wrapper.h"
+#include "base/datatype/qcu_float2.cuh"
 namespace qcu {
 
 void copyComplexVector_interface(void* __restrict__ dst, QCU_PRECISION dstPrec, void* __restrict__ src,

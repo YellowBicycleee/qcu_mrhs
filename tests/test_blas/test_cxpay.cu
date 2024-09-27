@@ -2,10 +2,11 @@
 #include <vector>
 #include <cublas_v2.h>
 #include "public_complex_vector.h"
-#include "qcu_macro.h"
+#include "qcu_public.h"
 #include <memory>
 // #include "qcu_blas/qcu_blas.h"
 #include "qcu_blas/qcu_blas_complex_xpay.h"
+#include "check_error/check_cuda.cuh"
 
 using namespace std;
 

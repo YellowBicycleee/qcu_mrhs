@@ -1,8 +1,9 @@
 #include "kernel/transpose_2dim.cuh"
 #include "qcu_blas/qcu_transpose_2d.h"
 #include "qcu_utils.h"
-#include "qcu_macro.h"
+#include "qcu_public.h"
 
+#include "check_error/check_cuda.cuh"
 #include "complex/qcu_complex.cuh"
 #include <cuda_fp16.h>
 #include <iostream>

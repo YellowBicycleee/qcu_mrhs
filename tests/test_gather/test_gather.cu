@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <vector>
-#include "qcu_macro.h"
+#include "qcu_public.h"
 #include "data_format/qcu_data_format_shift.cuh"
-                    //   qcu_data_format_shift.cuh
+#include "check_error/check_cuda.cuh"
 using namespace std;
 using namespace qcu;
 

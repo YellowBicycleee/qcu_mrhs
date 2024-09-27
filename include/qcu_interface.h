@@ -5,8 +5,8 @@
 
 #include "desc/qcu_desc.h"
 #include "qcd/qcu_dslash.h"
-#include "qcu_enum.h"
-#include "qcu_macro.h"
+#include "qcu_public.h"
+
 namespace qcu {
 class Qcu {
     bool inverterEnabled_;

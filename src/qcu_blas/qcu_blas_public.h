@@ -1,6 +1,6 @@
 #pragma once
 #include <cublas_v2.h>
-#include "qcu_macro.h"
+#include "qcu_public.h"
 
 #define QCU_DEBUG
 #ifdef QCU_DEBUG

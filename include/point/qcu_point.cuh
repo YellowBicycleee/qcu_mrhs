@@ -3,8 +3,7 @@
 #include <assert.h>
 
 // #include "qcu_macro.cuh"
-#include "qcu_enum.h"
-#include "qcu_macro.h"
+#include "qcu_public.h"
 // clang-format off
 class Point {
    private:

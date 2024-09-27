@@ -2,7 +2,7 @@
 
 #include "desc/qcu_desc.h"
 #include "qcu.h"
-#include "qcu_enum.h"
+#include "qcu_public.h"
 #include <cuda.h>
 #include <cuda_runtime.h>
 namespace qcu {

@@ -7,7 +7,7 @@
 
 #include <cublas_v2.h>
 #include "qcu_blas_public.h"
-
+#include "check_error/check_cuda.cuh"
 
 namespace qcu::qcu_blas {
 

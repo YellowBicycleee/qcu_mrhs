@@ -3,7 +3,9 @@
 #include "data_format/qcu_data_format_shift.cuh"
 #include "kernel/copy_vector/copy_color_spinor.cuh"
 #include "kernel/copy_vector/copy_complex_vector.cuh"
-#include "qcu_enum.h"
+#include "qcu_public.h"
+#include "check_error/check_cuda.cuh"
+
 namespace qcu {
 
 template <typename DestFloat, typename SrcFloat>

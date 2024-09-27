@@ -1,8 +1,9 @@
 #pragma once
 #include "kernel/shift_data_type.cuh"
 #include "kernel/reduction/operation.cuh"
-#include "qcu_float_float2_wrapper.h"
-#include "qcu_macro.h"
+// #include "qcu_float_float2_wrapper.h"
+#include "base/datatype/qcu_float2.cuh"
+#include "qcu_public.h"
 #include <complex/qcu_complex.cuh>
 #include <type_traits>
 

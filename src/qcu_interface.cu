@@ -6,11 +6,13 @@
 #include "../tests/public_complex_vector.h"
 #include "data_format/qcu_data_format_shift.cuh"
 #include "qcu_interface.h"
-#include "qcu_macro.h"
+#include "qcu_public.h"
 #include "qcu_utils.h"          // div_ceil
 #include "qcu_wmma_constant.h"  // use this to debug
 #include "solver/bicgstab.cuh"
 #include "timer/timer.h"
+
+#include "check_error/check_cuda.cuh"
 namespace qcu {
 // #define DEBUG_FUNC
 void Qcu::allocateMemory() {

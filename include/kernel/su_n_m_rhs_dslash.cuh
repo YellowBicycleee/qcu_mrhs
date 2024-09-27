@@ -3,7 +3,8 @@
 
 #include "kernel/su_n_m_rhs_matmul.cuh"
 #include "point/qcu_point.cuh"
-#include "qcu_float_float2_wrapper.h"
+// #include "qcu_float_float2_wrapper.h"
+#include "base/datatype/qcu_float2.cuh"
 #include "qcu_utils.h"
 #include "qcu_wmma_constant.h"
 

@@ -5,8 +5,9 @@
 #include "desc/qcu_desc.h"
 #include "qcd/qcu_dslash.h"
 #include "qcu_blas/qcu_blas.h"
-#include "qcu_enum.h"
-#include "qcu_float_float2_wrapper.h"
+#include "qcu_public.h"
+// #include "qcu_float_float2_wrapper.h"
+#include "base/datatype/qcu_float2.cuh"
 namespace qcu::solver {
 
 struct BiCGStabParam {

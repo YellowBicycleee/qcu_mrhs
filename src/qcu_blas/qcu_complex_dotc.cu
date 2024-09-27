@@ -1,5 +1,7 @@
 #include <stdexcept>
 #include <cuda_fp16.h>
+
+#include "check_error/check_cuda.cuh"
 #include "qcu_utils.h"
 #include "qcu_blas/qcu_blas_complex_dotc.h"
 #include "kernel/reduction/operation.cuh"

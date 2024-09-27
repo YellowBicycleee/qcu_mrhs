@@ -2,8 +2,8 @@
 
 #include "qcd/qcu_dslash.h"
 #include "qcu.h"
-#include "qcu_enum.h"
-#include "qcu_macro.h"
+#include "qcu_public.h"
+#include "check_error/check_cuda.cuh"
 using namespace qcu;
 using namespace std;
 QcuGrid initGridSize(int Nx, int Ny, int Nz, int Nt) {

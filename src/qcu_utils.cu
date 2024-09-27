@@ -1,6 +1,6 @@
 #include <cassert>
 
-#include "qcu_macro.h"
+#include "qcu_public.h"
 #include "qcu_utils.h"
 
 namespace qcu {

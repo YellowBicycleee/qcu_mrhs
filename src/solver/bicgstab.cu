@@ -1,6 +1,7 @@
 #include <cuda_fp16.h>
 #include <thrust/system/cuda/detail/par.h>
 
+#include "check_error/check_cuda.cuh"
 #include "data_format/qcu_data_format_shift.cuh"
 #include "solver/bicgstab.cuh"
 namespace qcu::solver {

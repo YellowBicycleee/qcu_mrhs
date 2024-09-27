@@ -4,7 +4,7 @@
 
 #include "qcu.h"
 #include "qcu_interface.h"
-#include "qcu_macro.h"
+#include "qcu_public.h"
 
 static qcu::Qcu *qcu_ptr = nullptr;
 

@@ -6,3 +6,4 @@ cmake-build-debug-wsl
 cmake-build-debug
 build-debug
 .idea
+submodule/

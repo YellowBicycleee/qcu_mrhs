@@ -3,8 +3,7 @@
 #include <cassert>
 #include <cstdio>
 
-#include "qcu_enum.h"
-#include "qcu_macro.h"
+#include "qcu_public.h"
 #include "qcu.h"
 // clang-format off
 

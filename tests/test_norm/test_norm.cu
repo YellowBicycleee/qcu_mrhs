@@ -5,9 +5,10 @@
 #include "qcu_blas_public.h"
 #include "qcu_blas/qcu_blas.h"
 #include <type_traits>
-#include "qcu_macro.h"
+#include "qcu_public.h"
 #include "timer/timer.h"
 // #include <complex>
+#include "check_error/check_cuda.cuh"
 
 using namespace std;
 

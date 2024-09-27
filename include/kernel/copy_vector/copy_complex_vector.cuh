@@ -3,7 +3,7 @@
 
 #include <cassert>
 
-#include "qcu_macro.h"
+#include "qcu_public.h"
 namespace qcu {
 namespace device {
 

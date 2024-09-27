@@ -3,6 +3,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "check_error/check_cuda.cuh"
 #include "data_format/qcu_data_format_shift.cuh"
 #include "solver/bicgstab.cuh"
 

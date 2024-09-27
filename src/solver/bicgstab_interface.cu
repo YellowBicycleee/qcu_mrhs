@@ -4,7 +4,7 @@
 
 #include <cstdio>
 
-#include "qcu_macro.h"
+#include "check_error/check_cuda.cuh"
 #include "solver/bicgstab.cuh"
 
 namespace qcu::solver {

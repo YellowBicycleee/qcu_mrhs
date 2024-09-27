@@ -2,10 +2,9 @@
 #include <mma.h>
 
 #include <cassert>
-
-#include "qcu_enum.h"
-#include "qcu_float_float2_wrapper.h"
-#include "qcu_macro.h"
+#include <cstdio>
+#include "qcu_public.h"
+#include "base/datatype/qcu_float2.cuh"
 #include "qcu_wmma_constant.h"
 namespace qcu {
 namespace device {

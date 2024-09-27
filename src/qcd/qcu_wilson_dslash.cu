@@ -2,8 +2,9 @@
 
 #include "kernel/su_n_m_rhs_dslash.cuh"
 #include "qcd/qcu_dslash.h"
-#include "qcu_macro.h"
+#include "qcu_public.h"
 #include "qcu_wmma_constant.h"
+#include "check_error/check_cuda.cuh"
 namespace qcu {
 
 // clang-format off

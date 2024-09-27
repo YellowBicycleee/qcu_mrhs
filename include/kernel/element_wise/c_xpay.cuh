@@ -1,6 +1,7 @@
 #pragma once
 #include "complex/qcu_complex.cuh"
-#include "qcu_float_float2_wrapper.h"
+// #include "qcu_float_float2_wrapper.h"
+#include "base/datatype/qcu_float2.cuh"
 #include <type_traits>
 #include <cuda_fp16.h>
 

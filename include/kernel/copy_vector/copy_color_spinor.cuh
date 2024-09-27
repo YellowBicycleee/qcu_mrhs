@@ -3,7 +3,7 @@
 #include <cuda_fp16.h>
 
 #include "kernel/shift_data_type.cuh"
-#include "qcu_macro.h"
+#include "qcu_public.h"
 #include "qcu_utils.h"
 namespace qcu {
 namespace device {
