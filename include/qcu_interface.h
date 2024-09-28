@@ -6,12 +6,13 @@
 #include "desc/qcu_desc.h"
 #include "qcd/qcu_dslash.h"
 #include "qcu_public.h"
+#include <cstdint>
 
 namespace qcu {
 class Qcu {
     bool inverterEnabled_;
-    int nColors_;
-    int mInput_;
+    int32_t nColors_;
+    int32_t mInput_;
     double mass_;
     double kappa_;
     QCU_PRECISION outputFloatPrecision_; // use it as input and output precision
@@ -38,6 +39,7 @@ class Qcu {
     void freeMemory();
 
    public:
+   
     Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt,
         QCU_PRECISION outputFloatPrecision,
         QCU_PRECISION iterateFloatPrecision = QCU_DOUBLE_PRECISION,
@@ -65,6 +67,13 @@ class Qcu {
     }
 
     ~Qcu() { freeMemory(); }
+
+    QcuLattDesc lattDesc() const { return lattDesc_; }
+    QcuProcDesc procDesc() const { return procDesc_; }
+    
+    int32_t color() const { return nColors_; }
+    int32_t rhs_num () const { return mInput_; }
+    int32_t nSpin () const { return Ns; }
 
     void getDslash(DSLASH_TYPE dslashType, double mass);
     void startDslash(int parity, bool daggerFlag = false);
