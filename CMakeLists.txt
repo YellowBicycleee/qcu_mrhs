@@ -36,7 +36,10 @@ target_include_directories(qcu
     ${PROJECT_SOURCE_DIR}/external/qcu_io/include
     /usr/local/cuda/bin/../targets/x86_64-linux/include
 )
+
+target_link_directories(qcu PUBLIC ${PROJECT_SOURCE_DIR}/external/qcu_io/build)
 target_link_libraries(qcu
+    qcu_io
 	cudart
 	cudadevrt
     cublas
