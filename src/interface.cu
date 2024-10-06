@@ -60,8 +60,8 @@ void qcuInvert(int max_iteration, double max_precison) {
 }
 
 // 奇偶预处理接口
-void eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision) {
-  assert(qcu_ptr != nullptr);
+void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision) {
+  assert(qcu_ptr != nullptr && prec_gauge != non_prec_gauge);
 
   Latt_Desc total_latt_desc;
   Latt_Desc local_latt_desc;
@@ -96,8 +96,8 @@ void eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision) {
     errorQcu("UNDEFINED precision");
   }
 }
-void reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int precision) {
-  assert(qcu_ptr != nullptr);
+void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int precision) {
+  assert(qcu_ptr != nullptr && prec_gauge != non_prec_gauge);
 
   Latt_Desc total_latt_desc;
   Latt_Desc local_latt_desc;
