@@ -55,15 +55,6 @@ static inline void fused_x_sub_Doe_Deo_x (void* output, void* input, void* temp,
   dslash->apply();
   CHECK_CUDA(cudaStreamSynchronize(stream1));
   CHECK_CUDA(cudaStreamSynchronize(stream2));
-  //
-  // CHECK_CUDA(cudaDeviceSynchronize());
-  // std::printf("=====<in> = ");
-  // checkNorm<_Float>(input, 0);
-  // std::printf("Doe in = ");
-  // checkNorm<_Float>(temp, 0);
-  // std::printf("Deo Doe in = ");
-  // checkNorm<_Float>(output, 0);
-  // CHECK_CUDA(cudaDeviceSynchronize());
 
   typename qcu::qcu_blas::Complex_xsay<_Float>::template Complex_xsayArgument
               xsay_argument {
@@ -78,11 +69,6 @@ static inline void fused_x_sub_Doe_Deo_x (void* output, void* input, void* temp,
   qcu::qcu_blas::Complex_xsay<_Float> xsay_op;
   xsay_op(xsay_argument);
   CHECK_CUDA(cudaStreamSynchronize(stream1));
-  //
-  // CHECK_CUDA(cudaDeviceSynchronize());
-  // std::printf("in - kappa * kappa Deo Doe in = ");
-  // checkNorm<_Float>(output, 0);
-  // CHECK_CUDA(cudaDeviceSynchronize());
 }
 
 namespace qcu::solver {
@@ -90,20 +76,23 @@ template <typename _Float, std::enable_if_t<std::is_same_v<_Float, float> ||
                                             std::is_same_v<_Float, double>>* = nullptr>
 inline bool isConverged ( const std::vector<_Float>& norm_r_array, 
                           const std::vector<_Float>& norm_b_array,
-                          _Float target_diff)
+                          _Float target_diff, bool log = false)
 {
   // calculate the relative error
-  _Float total_error = _Float(0.0);
-  int size = norm_r_array.size();
+  const int size = norm_r_array.size();
   for (int i = 0; i < size; ++i) {
     if (norm_r_array[i] / norm_b_array[i] > target_diff) {
       return false;
     }
-#ifdef DEBUG
-    std::printf(" norm_r = %e, norm_b = %e\n", norm_r_array[i], norm_b_array[i]);
-#endif
   }
   return true;
+}
+
+template <typename _Float, std::enable_if_t<std::is_same_v<_Float, float> ||
+                                            std::is_same_v<_Float, double>>* = nullptr>
+inline bool isConverged_policy2 (const _Float norm_r, const _Float norm_b, _Float target_diff)
+{
+  return norm_r / norm_b <= target_diff;
 }
 
 // separator
@@ -336,16 +325,12 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
                             cudaMemcpyDeviceToHost, stream1));
       CHECK_CUDA(cudaStreamSynchronize(stream1));
 #ifdef DEBUG
-      std::printf("DEBUG, currentIteration = %d", currentIteration_);
+      std::printf("DEBUG, currentIteration = %d\n", currentIteration_);
 #endif
       if (bool is_converged = isConverged<OutputFloat>(norm_r_array, norm_b_array, maxPrec_)) {
         CHECK_CUDA(cudaMemcpyAsync(x_o, x_new, sizeof(OutputFloat) * vol / 2 * complex_vec_len * 2,
                               cudaMemcpyDeviceToDevice, stream1)); // res_x = x_new = x_{j + 1}
         CHECK_CUDA(cudaStreamSynchronize(stream1));
-
-        // CHECK_CUDA(cudaDeviceSynchronize());
-        // std::printf("=====iteration = %d, <res> = ", currentIteration_);
-        // checkNorm<OutputFloat>(x_new, 0);
         return true;
       }
     }
@@ -402,8 +387,9 @@ template <QCU_PRECISION OutputPrecision,
           QCU_PRECISION IteratePrecision>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
   std::cout << "POLICY2 BICGStab" << std::endl;
-  std::vector<OutputFloat> norm_r_array  (param_.mInput, 1.0);
-  std::vector<OutputFloat> norm_b_array  (param_.mInput, 1.0);  // 计算b的模长
+  OutputFloat norm_r = OutputFloat(1.0);
+  OutputFloat norm_b = OutputFloat(1.0);
+
   // diff_array = [r1, r2, r3, ...] / [b1, b2, b3, ...]
   const int Lx     = param_.lattDesc->X();
   const int Ly     = param_.lattDesc->Y();
@@ -467,10 +453,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
 
   interior_operator_.output_norm(output_norm_arg);
   // 计算norm，一次性保存到host端
-  CHECK_CUDA(cudaMemcpyAsync( norm_b_array.data(), output_new_b_even_norm,
-                              sizeof(OutputFloat) * 1,
-                              cudaMemcpyDeviceToHost, stream1));
-  // store norm of b in norm_b_array (host)
+  CHECK_CUDA(cudaMemcpyAsync(&norm_b, output_new_b_even_norm, sizeof(OutputFloat), cudaMemcpyDeviceToHost, stream1));
   CHECK_CUDA(cudaStreamSynchronize(stream1));
 
   // R = b - A * x = b - Dslash * x, x可以初始化为0
@@ -626,14 +609,12 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
       output_norm_arg.input  = static_cast<Complex<OutputFloat>*>(r_new);
       output_norm_arg.resArr = static_cast<OutputFloat*>(r_new_norm);
       interior_operator_.output_norm(output_norm_arg); // 计算norm，一次性保存到host端
-      CHECK_CUDA(cudaMemcpyAsync(norm_r_array.data(), r_new_norm,
-                            sizeof(OutputFloat) * mInput,
-                            cudaMemcpyDeviceToHost, stream1));
+      CHECK_CUDA(cudaMemcpyAsync(&norm_r, r_new_norm, sizeof(OutputFloat), cudaMemcpyDeviceToHost, stream1));
       CHECK_CUDA(cudaStreamSynchronize(stream1));
-#ifdef DEBUG
-      std::printf("DEBUG, currentIteration = %d", currentIteration_);
-#endif
-      if (bool is_converged = isConverged<OutputFloat>(norm_r_array, norm_b_array, maxPrec_)) {
+// #ifdef DEBUG
+//       std::printf("DEBUG, currentIteration = %d\n", currentIteration_);
+// #endif
+      if (bool is_converged = isConverged_policy2<OutputFloat>(norm_r, norm_b, maxPrec_ /*/ std::sqrt(OutputFloat(mInput))*/)) {
         CHECK_CUDA(cudaMemcpyAsync(x_o, x_new, sizeof(OutputFloat) * vol / 2 * complex_vec_len * 2,
                               cudaMemcpyDeviceToDevice, stream1)); // res_x = x_new = x_{j + 1}
         CHECK_CUDA(cudaStreamSynchronize(stream1));
@@ -687,7 +668,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
     std::swap(pj, p_new);  // pj = p_new
   }
 
-  return currentIteration_ < maxIteration_ && isConverged(norm_r_array, norm_b_array, maxPrec_);
+  return currentIteration_ < maxIteration_ && isConverged_policy2(norm_r, norm_b, maxPrec_);
 }
 
 template <QCU_PRECISION OutputPrecision,
@@ -734,12 +715,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
   dslash_operator_->apply();  // x_e = D_{eo} x_{o}
 
   CHECK_CUDA(cudaDeviceSynchronize());
-  std::printf("x_o = ");
-  checkNorm<OutputFloat>(x_o, 0);
-  std::printf("Deo x_o = ");
-  checkNorm<OutputFloat>(x_e, 0);
 
-  CHECK_CUDA(cudaDeviceSynchronize());
   // x_e = b_e + kappa D_{eo} x_{o}
   //     = b_e + kappa x_e
   // using Output_xpayArgument = typename InteriorOperator::Output_xpayAruArgument;
