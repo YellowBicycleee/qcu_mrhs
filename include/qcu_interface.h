@@ -34,6 +34,9 @@ class Qcu {
     // mrhs fermion field
     void *fermionIn_MRHS_;  // also used as b in Ax=b, to solve x
     void *fermionOut_MRHS_; // also used as x in Ax=b, to solve x
+    // lookup table
+    void* d_lookup_table_in_;
+    void* d_lookup_table_out_;
 
     void allocateMemory();
     void freeMemory();

@@ -46,6 +46,9 @@ void Qcu::allocateMemory() {
     CHECK_CUDA(cudaMalloc(&fp64Gauge_, 2 * gauge_size * sizeof(double)));
     CHECK_CUDA(cudaMalloc(&fp32Gauge_, 2 * gauge_size * sizeof(float)));
     CHECK_CUDA(cudaMalloc(&fp16Gauge_, 2 * gauge_size * sizeof(half)));
+
+    CHECK_CUDA(cudaMalloc(&d_lookup_table_in_, sizeof(void*) * mInput_));
+    CHECK_CUDA(cudaMalloc(&d_lookup_table_out_, sizeof(void*) * mInput_));
 }
 
 void Qcu::freeMemory() {
@@ -70,6 +73,14 @@ void Qcu::freeMemory() {
     }
     if (fermionOut_MRHS_ != nullptr) {
         CHECK_CUDA(cudaFree(fermionOut_MRHS_));
+    }
+
+    if (d_lookup_table_in_ != nullptr) {
+        CHECK_CUDA(cudaFree(d_lookup_table_in_));
+    }
+
+    if (d_lookup_table_out_ != nullptr) {
+        CHECK_CUDA(cudaFree(d_lookup_table_out_));
     }
 }
 
@@ -134,17 +145,17 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     dslashParam_->fermionOut_MRHS = fermionOut_MRHS_;
 
     // lookup table
-    void* d_lookup_table_in;
-    void* d_lookup_table_out;
-    CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * fermionIn_queue_.size()));    // TODO : fermionIn_queue_.size()改为mInput
-    CHECK_CUDA(cudaMalloc(&d_lookup_table_out, sizeof(void*) * fermionOut_queue_.size()));
+    // void* d_lookup_table_in;
+    // void* d_lookup_table_out;
+    // CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * fermionIn_queue_.size()));    // TODO : fermionIn_queue_.size()改为mInput
+    // CHECK_CUDA(cudaMalloc(&d_lookup_table_out, sizeof(void*) * fermionOut_queue_.size()));
 
-    CHECK_CUDA(cudaMemcpy(d_lookup_table_in, fermionIn_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
-                          cudaMemcpyHostToDevice));
-    CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
-                          cudaMemcpyHostToDevice));
+    // CHECK_CUDA(cudaMemcpy(d_lookup_table_in, fermionIn_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
+                        //   cudaMemcpyHostToDevice));
+    // CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
+                        //   cudaMemcpyHostToDevice));
 
-    TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_, iterateFloatPrecision_, d_lookup_table_in,
+    TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_, iterateFloatPrecision_, d_lookup_table_in_,
                                 outputFloatPrecision_, Lx, Ly, Lz, Lt,
                       nColors_, mInput_, NULL), 0, "gather");
     CHECK_CUDA(cudaDeviceSynchronize());
@@ -182,13 +193,13 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     TIMER_EVENT(dslash_->apply(), num_op, "wilson dslash");
     // TIMER_EVENT(dslash_->apply(), real_num_op, "wilson dslash real op");
 
-    TIMER_EVENT(colorSpinorScatter(d_lookup_table_out, outputFloatPrecision_, fermionOut_MRHS_,
+    TIMER_EVENT(colorSpinorScatter(d_lookup_table_out_, outputFloatPrecision_, fermionOut_MRHS_,
                               iterateFloatPrecision_, Lx, Ly, Lz,
                               Lt, nColors_, mInput_, NULL), 0, "scatter");
     CHECK_CUDA(cudaDeviceSynchronize());
 
-    CHECK_CUDA(cudaFree(d_lookup_table_in));
-    CHECK_CUDA(cudaFree(d_lookup_table_out));
+    // CHECK_CUDA(cudaFree(d_lookup_table_in));
+    // CHECK_CUDA(cudaFree(d_lookup_table_out));
     fermionIn_queue_.clear();
     fermionOut_queue_.clear();
 }
