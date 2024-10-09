@@ -132,3 +132,7 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
     errorQcu("UNDEFINED precision");
   }
 }
+
+void read_gauge_from_file (void* gauge, const char* file_path_prefix) {
+  std::printf("file_path: %s\n", file_path_prefix);
+}
