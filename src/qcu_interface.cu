@@ -13,6 +13,9 @@
 #include "timer/timer.h"
 
 #include "check_error/check_cuda.cuh"
+
+#include "lqcd_read_write.h"
+#include "precondition/even_odd_precondition.h"
 namespace qcu {
 
 void Qcu::allocateMemory() {
@@ -309,6 +312,51 @@ void Qcu::solveFermions(int max_iteration, double max_precision) {
   CHECK_CUDA(cudaFree(d_lookup_table_out));
   fermionIn_queue_.clear();
   fermionOut_queue_.clear();
+}
+
+void Qcu::readGaugeFromFile (const char* file_path, void* data_ptr) {
+    std::string file = file_path;
+    QcuHeader qcuHeader;
+    MPI_Desc mpi_desc;
+    Latt_Desc latt_desc;
+
+#pragma unroll 
+    for (int i = 0; i < Nd; ++i) {
+        mpi_desc.data[i] = 1;   // 
+        latt_desc.data[i] = lattDesc_.dims[i];
+    }
+    // MPI_Coordinate: todo 
+    MPI_Coordinate coord;
+#pragma unroll
+    for (int i = 0; i < Nd; ++i) {
+        coord.data[i] = 0;
+    }
+
+    GaugeReader gaugeReader(file, qcuHeader, mpi_desc, coord);
+    qcuHeader.m_lattice_desc.detail();
+#pragma unroll
+    for (int i = 0; i < Nd; ++i) {
+        assert(lattDesc_.dims[i] == qcuHeader.m_lattice_desc.data[i]);
+    }
+//     qcuHeader.m_lattice_desc.detail();
+
+    auto gauge_length = qcuHeader.GaugeLength();
+    std::cout << gauge_length << std::endl;
+    Complex<double>* host_ptr = new Complex<double>[gauge_length];
+    gaugeReader.read_gauge(reinterpret_cast<std::complex<double>*>(host_ptr), 0);
+    Complex<double>* unpreconditioned;
+    CHECK_CUDA (cudaMalloc(&unpreconditioned, sizeof(Complex<double>) * gauge_length));
+    CHECK_CUDA(cudaMemcpy(unpreconditioned, host_ptr, sizeof(Complex<double>) * gauge_length, cudaMemcpyHostToDevice));
+    qcu::GaugeEOPreconditioner<double> preconditioner;
+    preconditioner.reverse(static_cast<Complex<double>*>(data_ptr), 
+                            unpreconditioned, 
+                            latt_desc, 
+                            qcuHeader.GaugeSiteLength(),
+                            4,  
+                            nullptr);
+
+    CHECK_CUDA(cudaFree(unpreconditioned));
+    delete[] host_ptr;
 }
 
 }  // namespace qcu

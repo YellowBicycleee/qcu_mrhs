@@ -90,6 +90,8 @@ class Qcu {
     void setInverterEnabled(bool enabled) { inverterEnabled_ = enabled; }
     // solve Ax = b
     void solveFermions(int max_iteration, double p_max_prec);
+    // IO
+    void readGaugeFromFile(const char* file_path, void* data_ptr);
 };
 
 }  // namespace qcu
