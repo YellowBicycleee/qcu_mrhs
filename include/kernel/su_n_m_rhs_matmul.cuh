@@ -116,8 +116,14 @@ __device__ void dslash_mat_mul(Float* __restrict__ smem_mat_L, Float* __restrict
 
 template <typename Float>
 __device__ void dslash_mat_mul_new(
-    wmma::fragment<wmma::accumulator, WMMA_Param<Float>::WMMA_M, WMMA_Param<Float>::WMMA_N, WMMA_Param<Float>::WMMA_K,
-                   Float>* L_frag_ptr,
+    wmma::fragment<wmma::accumulator, WMMA_Param<Float>::WMMA_M, 
+                                      WMMA_Param<Float>::WMMA_N, 
+                                      WMMA_Param<Float>::WMMA_K,
+                                    Float>* L_frag_ptr,
+    wmma::fragment<wmma::accumulator, WMMA_Param<Float>::WMMA_M, 
+                                      WMMA_Param<Float>::WMMA_N, 
+                                      WMMA_Param<Float>::WMMA_K,
+                                    Float>* R_frag_ptr,
     Float* __restrict__ smem_mat_U, Float* __restrict__ smem_mat_R, Float* __restrict__ smem_mat_T,
     Float* __restrict__ global_gauge, Float* __restrict__ global_fermion_in, bool dagger_flag, int n_color, int m_rhs,
     int warp_begin_row, int warp_begin_col, int dim, int dir) {
@@ -132,10 +138,10 @@ __device__ void dslash_mat_mul_new(
     Float* smem_U = smem_mat_U;
     Float* smem_T = smem_mat_T;
 
-    wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, Float> R_frag[4];
+    // wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, Float> R_frag[4];
     #pragma unroll
     for (int i = 0; i < 4; i++) {
-        wmma::fill_fragment(R_frag[i], 0.0f);
+        wmma::fill_fragment(R_frag_ptr[i], 0.0f);
     }
 
     bool if_dagger_u;
@@ -164,19 +170,19 @@ __device__ void dslash_mat_mul_new(
                                                         warp_begin_col, gamma_idx, local_dagger_flag, n_color, m_rhs);
 
         // matmul  R1 = U T1
-        tensor_core_complex_matmul(smem_U, smem_T, R_frag[0], R_frag[1]);  // R1_real, R1_imag
+        tensor_core_complex_matmul(smem_U, smem_T, R_frag_ptr[0], R_frag_ptr[1]);  // R1_real, R1_imag
 
         // load T2
         // global_iter_start_k = i * WMMA_K,      global_iter_start_n = warp_begin_col
         load_complex_fermion_mat_T2_from_global_to_smem(smem_T, WMMA_K, WMMA_N, global_fermion_in, i * WMMA_K,
                                                         warp_begin_col, gamma_idx, local_dagger_flag, n_color, m_rhs);
         // matmul  R2 = U T2
-        tensor_core_complex_matmul(smem_U, smem_T, R_frag[2], R_frag[3]);  // R2_real, R2_imag
+        tensor_core_complex_matmul(smem_U, smem_T, R_frag_ptr[2], R_frag_ptr[3]);  // R2_real, R2_imag
 
     }  // for i : K_TILES
 
     // acc to smem_L
-    calc_L_from_R<Float>(L_frag_ptr, R_frag, gamma_idx, local_dagger_flag);
+    calc_L_from_R<Float>(L_frag_ptr, R_frag_ptr, gamma_idx, local_dagger_flag);
 }
 
 }  // namespace device
