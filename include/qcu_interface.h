@@ -38,6 +38,10 @@ class Qcu {
     void* d_lookup_table_in_;
     void* d_lookup_table_out_;
 
+    // TODO: add allocator, reserved for future use
+    void* cpu_allocator_ = nullptr;
+    void* gpu_allocator_ = nullptr;
+
     void allocateMemory();
     void freeMemory();
 
