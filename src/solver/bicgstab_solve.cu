@@ -324,9 +324,9 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
                             sizeof(OutputFloat) * mInput,
                             cudaMemcpyDeviceToHost, stream1));
       CHECK_CUDA(cudaStreamSynchronize(stream1));
-#ifdef DEBUG
-      std::printf("DEBUG, currentIteration = %d\n", currentIteration_);
-#endif
+// #ifdef DEBUG
+//       std::printf("DEBUG, currentIteration = %d\n", currentIteration_);
+// #endif
       if (bool is_converged = isConverged<OutputFloat>(norm_r_array, norm_b_array, maxPrec_)) {
         CHECK_CUDA(cudaMemcpyAsync(x_o, x_new, sizeof(OutputFloat) * vol / 2 * complex_vec_len * 2,
                               cudaMemcpyDeviceToDevice, stream1)); // res_x = x_new = x_{j + 1}
@@ -674,7 +674,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
 template <QCU_PRECISION OutputPrecision,
           QCU_PRECISION IteratePrecision>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
-  return solve_odd_policy2();
+  return solve_odd_policy1();
 }
 template <QCU_PRECISION OutputPrecision,
           QCU_PRECISION IteratePrecision>
