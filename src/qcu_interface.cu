@@ -147,6 +147,11 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     dslashParam_->fermionIn_MRHS = fermionIn_MRHS_;
     dslashParam_->fermionOut_MRHS = fermionOut_MRHS_;
 
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermionIn_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
+                          cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermionOut_queue_.data(), sizeof(void*) * fermionIn_queue_.size(),
+                          cudaMemcpyHostToDevice));
+
     TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_, iterateFloatPrecision_, d_lookup_table_in_,
                                 outputFloatPrecision_, Lx, Ly, Lz, Lt,
                       nColors_, mInput_, NULL), 0, "gather");
@@ -231,10 +236,10 @@ void Qcu::solveFermions(int max_iteration, double max_precision) {
     printf("numbers matched, now begin bicg\n");
   }
 
-  void* d_lookup_table_in;
-  void* d_lookup_table_out;
-  CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * mInput_));
-  CHECK_CUDA(cudaMalloc(&d_lookup_table_out, sizeof(void*) * mInput_));
+//   void* d_lookup_table_in;
+//   void* d_lookup_table_out;
+//   CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * mInput_));
+//   CHECK_CUDA(cudaMalloc(&d_lookup_table_out, sizeof(void*) * mInput_));
 
   vector<void*> fermionIn_queue_odd(fermionIn_queue_.size());
   vector<void*> fermionOut_queue_odd(fermionOut_queue_.size());
@@ -247,16 +252,16 @@ void Qcu::solveFermions(int max_iteration, double max_precision) {
   void* fermionIn_MRHS_odd = static_cast<Complex<OutputFloat>*>(fermionIn_MRHS_)
                                 + colorSpinor_len * mInput_ * vol / 2;
   // gather even
-  CHECK_CUDA(cudaMemcpy(d_lookup_table_in,  fermionIn_queue_.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaMemcpy(d_lookup_table_in_,  fermionIn_queue_.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
   TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_even, iterateFloatPrecision_,
-                                d_lookup_table_in,   outputFloatPrecision_,
+                                d_lookup_table_in_,   outputFloatPrecision_,
                                 Lx, Ly, Lz, Lt, nColors_, mInput_, NULL)
       , 0, "gather");
 
   // gather odd
-  CHECK_CUDA(cudaMemcpy(d_lookup_table_in, fermionIn_queue_odd.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermionIn_queue_odd.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
   TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_odd, iterateFloatPrecision_,
-                                d_lookup_table_in, outputFloatPrecision_,
+                                d_lookup_table_in_, outputFloatPrecision_,
                                 Lx, Ly, Lz, Lt, nColors_, mInput_, NULL)
       , 0, "gather");
 
@@ -293,23 +298,23 @@ void Qcu::solveFermions(int max_iteration, double max_precision) {
   void* fermionOut_MRHS_odd = static_cast<Complex<OutputFloat>*>(fermionOut_MRHS_)
                                   + colorSpinor_len * mInput_ * vol / 2;
   // scatter even
-  CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermionOut_queue_.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
   TIMER_EVENT(
-    colorSpinorScatter( d_lookup_table_out,   outputFloatPrecision_,
+    colorSpinorScatter( d_lookup_table_out_,   outputFloatPrecision_,
                         fermionOut_MRHS_even, iterateFloatPrecision_,
                         Lx, Ly, Lz, Lt, nColors_, mInput_, NULL),
     0, "scatter");
   // scatter odd
-  CHECK_CUDA(cudaMemcpy(d_lookup_table_out, fermionOut_queue_odd.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermionOut_queue_odd.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice));
   TIMER_EVENT(
-    colorSpinorScatter( d_lookup_table_out,  outputFloatPrecision_,
+    colorSpinorScatter( d_lookup_table_out_,  outputFloatPrecision_,
                         fermionOut_MRHS_odd, iterateFloatPrecision_,
                         Lx, Ly, Lz, Lt, nColors_, mInput_, NULL),
     0, "scatter");
   CHECK_CUDA(cudaStreamSynchronize(NULL));
   // free lookup-table
-  CHECK_CUDA(cudaFree(d_lookup_table_in));
-  CHECK_CUDA(cudaFree(d_lookup_table_out));
+//   CHECK_CUDA(cudaFree(d_lookup_table_in));
+//   CHECK_CUDA(cudaFree(d_lookup_table_out));
   fermionIn_queue_.clear();
   fermionOut_queue_.clear();
 }
