@@ -90,14 +90,14 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
         for (int dim = X_DIM; dim < Nd; dim++) {
             // fwd
             mv_point = point.move(FWD, dim, half_Lx, Ly, Lz, Lt);
-            point_gauge_matrix = point.getGaugeAddr(gauge, dim, half_Lx, Lt, Lz, Lt, n_color);
-            point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+            point_gauge_matrix = point.getGaugeAddr(gauge, dim, half_Lx, Ly, Lz, Lt, n_color);
+            point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Ly, Lz, Lt, n_color, m_rhs);
             dslash_mat_mul_new<Float>(L_frag, R_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
                                   n_color, m_rhs, warp_begin_row, warp_begin_col, dim, FWD);
             // bwd
             mv_point = point.move(BWD, dim, half_Lx, Ly, Lz, Lt);
-            point_gauge_matrix = mv_point.getGaugeAddr(gauge, dim, half_Lx, Lt, Lz, Lt, n_color);
-            point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+            point_gauge_matrix = mv_point.getGaugeAddr(gauge, dim, half_Lx, Ly, Lz, Lt, n_color);
+            point_in_matrix = mv_point.getGatheredColorSpinorAddr(in, half_Lx, Ly, Lz, Lt, n_color, m_rhs);
             dslash_mat_mul_new<Float>(L_frag, R_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
                                   n_color, m_rhs, warp_begin_row, warp_begin_col, dim, BWD);
         }
@@ -117,7 +117,7 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
             wmma::store_matrix_sync(smem_L + i * WMMA_M * WMMA_N, L_frag[i], WMMA_N, wmma::mem_row_major);
         }
         // store L back to fermion out (global memory)
-        point_out_matrix = point.getGatheredColorSpinorAddr(out, half_Lx, Lt, Lz, Lt, n_color, m_rhs);
+        point_out_matrix = point.getGatheredColorSpinorAddr(out, half_Lx, Ly, Lz, Lt, n_color, m_rhs);
 
         // store L1 - L4 
         #pragma unroll
