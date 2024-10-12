@@ -40,6 +40,11 @@ void Qcu::allocateMemory() {
         case QCU_DOUBLE_PRECISION: {
             CHECK_CUDA(cudaMalloc(&fermionIn_MRHS_, 2 * colorSpinorMrhs_size * sizeof(double)));
             CHECK_CUDA(cudaMalloc(&fermionOut_MRHS_, 2 * colorSpinorMrhs_size * sizeof(double)));
+            // printf("vol = %d, Ns * nColors_ * mInput_ = %d\n", vol, Ns * nColors_ * mInput_);
+            // printf("fermionIn_MRHS_even = %p\n", fermionIn_MRHS_);
+            // printf("fermionIn_MRHS_odd = %p\n", static_cast<Complex<double>*>(fermionIn_MRHS_) + colorSpinorMrhs_size / 2);
+            // printf("fermionOut_MRHS_even = %p\n", fermionOut_MRHS_);
+            // printf("fermionOut_MRHS_odd = %p\n", static_cast<Complex<double>*>(fermionOut_MRHS_) + colorSpinorMrhs_size / 2);
         } break;
 
         default:
@@ -137,6 +142,20 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     if (fermionIn_queue_.size() != mInput_ || fermionOut_queue_.size() != mInput_) {
         errorQcu("Fermion queue is not full\n");
     }
+// #define DEBUG_INTERFACE
+#ifdef DEBUG_INTERFACE
+    std::cout << "DEBUG_INFO: fermionInQueue:";
+    std::cout << "fermion.size() = " << fermionIn_queue_.size() << std::endl;
+    for (int i = 0; i < fermionIn_queue_.size(); ++i) {
+        std::cout << fermionIn_queue_[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "DEBUG_INFO: fermionOutQueue:";
+    for (int i = 0; i < fermionOut_queue_.size(); ++i) {
+        std::cout << fermionOut_queue_[i] << " ";
+    }
+    std::cout << std::endl;
+#endif
     const int Lx = lattDesc_.dims[X_DIM];
     const int Ly = lattDesc_.dims[Y_DIM];
     const int Lz = lattDesc_.dims[Z_DIM];
@@ -337,16 +356,11 @@ void Qcu::readGaugeFromFile (const char* file_path, void* data_ptr) {
         coord.data[i] = 0;
     }
 
-    GaugeReader gaugeReader(file, qcuHeader, mpi_desc, coord);
-    qcuHeader.m_lattice_desc.detail();
-#pragma unroll
-    for (int i = 0; i < Nd; ++i) {
-        assert(lattDesc_.dims[i] == qcuHeader.m_lattice_desc.data[i]);
-    }
-//     qcuHeader.m_lattice_desc.detail();
+    GaugeReader gaugeReader(file, qcuHeader, mpi_desc, coord, latt_desc);
+    // qcuHeader.m_lattice_desc.detail();
 
     auto gauge_length = qcuHeader.GaugeLength();
-    std::cout << gauge_length << std::endl;
+    // std::cout << gauge_length << std::endl; 
     Complex<double>* host_ptr = new Complex<double>[gauge_length];
     gaugeReader.read_gauge(reinterpret_cast<std::complex<double>*>(host_ptr), 0);
     Complex<double>* unpreconditioned;
