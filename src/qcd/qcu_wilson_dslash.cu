@@ -51,6 +51,8 @@ void WilsonDslash::apply() {
             assert(0);
             break;
         case QCU_DOUBLE_PRECISION:
+            // printf("Double precision, FILE %s LINE %d FERMION_OUT_MRHS = %p, FERMION_IN_MRHS = %p\n",
+                                            //  __FILE__, __LINE__, dslashParam_->fermionOut_MRHS, dslashParam_->fermionIn_MRHS);
             ApplyWilsonDslash_Mrhs<double>(static_cast<double*>(dslashParam_->fermionOut_MRHS), 
                                            static_cast<double*>(dslashParam_->fermionIn_MRHS), 
                                            static_cast<double*>(dslashParam_->gauge), 

@@ -29,7 +29,7 @@ static void copyVector_Complex_Async(void* __restrict__ dst, void* __restrict__ 
     int block_size = 256;
     int grid_size = complex_vector_length / block_size;
     device::copyComplexVector<DestFloat2, SrcFloat2>
-        <<<grid_size, block_size>>>(static_cast<DestFloat2*>(dst), static_cast<SrcFloat2*>(src), complex_vector_length);
+        <<<grid_size, block_size, 0, stream>>>(static_cast<DestFloat2*>(dst), static_cast<SrcFloat2*>(src), complex_vector_length);
     CHECK_CUDA(cudaGetLastError());
 }
 
@@ -41,7 +41,7 @@ void colorSpinorScatter(void* __restrict__ global_dst_array, void* __restrict__ 
     int block_size = 256;
     int grid_size = (Lx / 2 * Ly * Lz * Lt + block_size - 1) / block_size;
     device::color_spinor_scatter_kernel<DstFloat2, SrcFloat2>
-        <<<grid_size, block_size>>>(static_cast<DstFloat2**>(global_dst_array), static_cast<SrcFloat2*>(global_src_ptr),
+        <<<grid_size, block_size, 0, stream>>>(static_cast<DstFloat2**>(global_dst_array), static_cast<SrcFloat2*>(global_src_ptr),
                                     Lx, Ly, Lz, Lt, n_color, m_input);
     CHECK_CUDA(cudaGetLastError());
     CHECK_CUDA(cudaStreamSynchronize(stream));
@@ -58,7 +58,6 @@ void colorSpinorGather(void* __restrict__ global_dst_ptr, void* __restrict__ glo
     device::color_spinor_gather_kernel<DstFloat2, SrcFloat2>
         <<<grid_size, block_size>>>(static_cast<DstFloat2*>(global_dst_ptr), static_cast<SrcFloat2**>(global_src_array),
                                     Lx, Ly, Lz, Lt, n_color, m_input);
-
     CHECK_CUDA(cudaGetLastError());
     CHECK_CUDA(cudaStreamSynchronize(stream));
 }

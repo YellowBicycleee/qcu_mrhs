@@ -59,7 +59,7 @@ __device__ __forceinline__ void scatter_color_spinor (Float2_dst**  __restrict__
         dst_point_element_ptr = global_dst_array[i] + dst_offset;
         for (int j = 0; j < Ns; j++) {
             for (int k = 0; k < n_color; k++) {
-                src_temp = src_point_element_ptr[IDX3D(j, k, i, n_color, m_input)];  // Nc, Ns, m_input
+                src_temp = src_point_element_ptr[IDX3D(j, k, i, n_color, m_input)];  // Ns, Nc, m_input
                 dst_temp = shiftDataType<Float2_dst, Float2_src>(src_temp);
                 dst_point_element_ptr[IDX2D(j, k, n_color)] = dst_temp;  // Ns, Nc
             }

@@ -40,11 +40,6 @@ void Qcu::allocateMemory() {
         case QCU_DOUBLE_PRECISION: {
             CHECK_CUDA(cudaMalloc(&fermionIn_MRHS_, 2 * colorSpinorMrhs_size * sizeof(double)));
             CHECK_CUDA(cudaMalloc(&fermionOut_MRHS_, 2 * colorSpinorMrhs_size * sizeof(double)));
-            // printf("vol = %d, Ns * nColors_ * mInput_ = %d\n", vol, Ns * nColors_ * mInput_);
-            // printf("fermionIn_MRHS_even = %p\n", fermionIn_MRHS_);
-            // printf("fermionIn_MRHS_odd = %p\n", static_cast<Complex<double>*>(fermionIn_MRHS_) + colorSpinorMrhs_size / 2);
-            // printf("fermionOut_MRHS_even = %p\n", fermionOut_MRHS_);
-            // printf("fermionOut_MRHS_odd = %p\n", static_cast<Complex<double>*>(fermionOut_MRHS_) + colorSpinorMrhs_size / 2);
         } break;
 
         default:
@@ -357,7 +352,6 @@ void Qcu::readGaugeFromFile (const char* file_path, void* data_ptr) {
     }
 
     GaugeReader gaugeReader(file, qcuHeader, mpi_desc, coord, latt_desc);
-    // qcuHeader.m_lattice_desc.detail();
 
     auto gauge_length = qcuHeader.GaugeLength();
     // std::cout << gauge_length << std::endl; 
