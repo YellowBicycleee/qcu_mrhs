@@ -24,6 +24,9 @@ target_link_libraries(test_gather qcu cudart cublas)
 add_executable       (test_inner_product ${PROJECT_SOURCE_DIR}/test_inner_prod/test_inner_prod.cu)
 target_link_libraries(test_inner_product cudart cublas)
 
+add_executable       (test_single_inner_product ${PROJECT_SOURCE_DIR}/test_inner_prod/test_inner_prod_single.cu)
+target_link_libraries(test_single_inner_product cudart cublas)
+
 add_executable       (test_inner_product2 ${PROJECT_SOURCE_DIR}/test_inner_prod/test_inner_prod2.cu)
 target_link_libraries(test_inner_product2 cudart cublas qcu)
 

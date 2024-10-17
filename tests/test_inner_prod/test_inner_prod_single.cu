@@ -19,28 +19,26 @@ inline void check_cublas (cublasStatus_t stat, const char* file, int line) {
   }
 }
 
-complex<double> cpu_inner_dot_c (complex<double>* a, complex<double>* b, int N, int stride) {
-  complex<double> res = 0;
+complex<float> cpu_inner_dot_c (complex<float>* a, complex<float>* b, int N, int stride) {
+  complex<float> res = 0;
   for (int i = 0; i < N; ++i) {
     res += (conj(a[i * stride]) * b[i * stride]);
   }
   return res;
 }
 
-void init_complex_1 (complex<double>* a, int N) {
+void init_complex_1 (complex<float>* a, int N) {
   for (int i = 0; i < N; ++i ) {
-    // a[i] = complex<double> (2 * i % 32, 2 * i % 32 + 1);
-    a[i] = complex<double> (rand()%16, rand()%16 + 1);
+    a[i] = complex<float> (rand()%16, rand()%16 + 1);
   }
 }
-void init_complex_2 (complex<double>* a, int N) {
+void init_complex_2 (complex<float>* a, int N) {
   for (int i = 0; i < N; ++i ) {
-    // a[i] = complex<double> (2 * i % 16, 2 * i % 16 + 1);
-    a[i] = complex<double> (rand()%16, rand()%16 + 1);
+    a[i] = complex<float> (rand()%16, rand()%16 + 1);
   }
 }
 
-bool check_correct (const vector<complex<double>>& a, const vector<complex<double>>& b) {
+bool check_correct (const vector<complex<float>>& a, const vector<complex<float>>& b) {
   int size = a.size();
   if (a.size() != b.size()) {
     return false;
@@ -57,38 +55,38 @@ bool check_correct (const vector<complex<double>>& a, const vector<complex<doubl
 }
 
 int main () {
-  complex<double>* h_a;
-  complex<double>* h_b;
-  complex<double> h_res;
-  complex<double> d_res;
+  complex<float>* h_a;
+  complex<float>* h_b;
+  complex<float> h_res;
+  complex<float> d_res;
 
-  complex<double>* d_a;
-  complex<double>* d_b;
-  complex<double>* dd_res;
+  complex<float>* d_a;
+  complex<float>* d_b;
+  complex<float>* dd_res;
 
   // malloc 
   const int single_vec_length = 16 * 16 * 16 * 32 * 12;
   const int num_vecs = 8;
   const int vector_length = single_vec_length * num_vecs;
-  cout << "vec size = " << single_vec_length * sizeof(complex<double>) / 1024 / 1024 << "MB" << endl;
 
-  vector<complex<double>> d_res_vec (num_vecs);
-  vector<complex<double>> h_res_vec (num_vecs);
+  cout << "vec size = " << single_vec_length * sizeof(complex<float>) / 1024 / 1024 << "MB" << endl;
+  vector<complex<float>> d_res_vec (num_vecs);
+  vector<complex<float>> h_res_vec (num_vecs);
 
 
-  h_a = new complex<double>[vector_length];
-  h_b = new complex<double>[vector_length];
+  h_a = new complex<float>[vector_length];
+  h_b = new complex<float>[vector_length];
 
-  cudaMalloc ((void**)&d_a, sizeof(complex<double>) * vector_length);
-  cudaMalloc ((void**)&d_b, sizeof(complex<double>) * vector_length);
-  cudaMalloc ((void**)&dd_res, sizeof(complex<double>));
+  cudaMalloc ((void**)&d_a, sizeof(complex<float>) * vector_length);
+  cudaMalloc ((void**)&d_b, sizeof(complex<float>) * vector_length);
+  cudaMalloc ((void**)&dd_res, sizeof(complex<float>));
 
   // init arr
   init_complex_1(h_a, vector_length);
   init_complex_2(h_b, vector_length);
   // copy
-  cudaMemcpy(d_a, h_a, sizeof(complex<double>) * vector_length, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_b, h_b, sizeof(complex<double>) * vector_length, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_a, h_a, sizeof(complex<float>) * vector_length, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_b, h_b, sizeof(complex<float>) * vector_length, cudaMemcpyHostToDevice);
 
 
 
@@ -100,24 +98,24 @@ int main () {
   CHECK_CUBLAS (cublasCreate(&cublas_handle));
 
     // warm up
-  CHECK_CUBLAS (cublasZdotc(cublas_handle, vector_length, 
-                        reinterpret_cast<const cuDoubleComplex*>(d_a), 1, 
-                        reinterpret_cast<const cuDoubleComplex*>(d_b), 1, 
-                        reinterpret_cast<cuDoubleComplex*>(dd_res)
+  CHECK_CUBLAS (cublasCdotc(cublas_handle, vector_length, 
+                        reinterpret_cast<const cuFloatComplex*>(d_a), 1, 
+                        reinterpret_cast<const cuFloatComplex*>(d_b), 1, 
+                        reinterpret_cast<cuFloatComplex*>(dd_res)
                   ));
 
 
   TIMER_EVENT (
-    CHECK_CUBLAS (cublasZdotc(cublas_handle, vector_length, 
-                        reinterpret_cast<const cuDoubleComplex*>(d_a), 1, 
-                        reinterpret_cast<const cuDoubleComplex*>(d_b), 1, 
-                        reinterpret_cast<cuDoubleComplex*>(dd_res)
+    CHECK_CUBLAS (cublasCdotc(cublas_handle, vector_length, 
+                        reinterpret_cast<const cuFloatComplex*>(d_a), 1, 
+                        reinterpret_cast<const cuFloatComplex*>(d_b), 1, 
+                        reinterpret_cast<cuFloatComplex*>(dd_res)
                   )
     ), 
     "cublas                     : "
   );
   // cublasDestroy(cublas_handle);
-  cudaMemcpy(&d_res, dd_res, sizeof(complex<double>), cudaMemcpyDeviceToHost);
+  cudaMemcpy(&d_res, dd_res, sizeof(complex<float>), cudaMemcpyDeviceToHost);
   // cpu
   TIMER_EVENT (
     h_res = cpu_inner_dot_c(h_a, h_b, vector_length, 1)
@@ -134,13 +132,13 @@ int main () {
   // gpu stride innerproduct
   TIMER_EVENT (
     for (int i = 0; i < num_vecs; ++i) {
-      CHECK_CUBLAS (cublasZdotc(cublas_handle, single_vec_length, 
-                      reinterpret_cast<const cuDoubleComplex*>(d_a + i), num_vecs, 
-                      reinterpret_cast<const cuDoubleComplex*>(d_b + i), num_vecs, 
-                      reinterpret_cast<cuDoubleComplex*>(dd_res)
+      CHECK_CUBLAS (cublasCdotc(cublas_handle, single_vec_length, 
+                      reinterpret_cast<const cuFloatComplex*>(d_a + i), num_vecs, 
+                      reinterpret_cast<const cuFloatComplex*>(d_b + i), num_vecs, 
+                      reinterpret_cast<cuFloatComplex*>(dd_res)
                 )
       );
-      cudaMemcpy(&d_res, dd_res, sizeof(complex<double>), cudaMemcpyDeviceToHost);
+      cudaMemcpy(&d_res, dd_res, sizeof(complex<float>), cudaMemcpyDeviceToHost);
       d_res_vec.push_back(d_res);
     }
     , 
@@ -157,8 +155,8 @@ int main () {
     "cpu, stride innerproduct        : "
   );
   cout << "if_res_correct? : " << check_correct(d_res_vec, h_res_vec) << endl;
-  cout << "stride = " << num_vecs << ", res = " << std::accumulate(d_res_vec.begin(), d_res_vec.end(), complex<double>(0, 0)) << endl;
-  cout << "stride = " << num_vecs << ", res = " << std::accumulate(h_res_vec.begin(), h_res_vec.end(), complex<double>(0, 0)) << endl;
+  cout << "stride = " << num_vecs << ", res = " << std::accumulate(d_res_vec.begin(), d_res_vec.end(), complex<float>(0, 0)) << endl;
+  cout << "stride = " << num_vecs << ", res = " << std::accumulate(h_res_vec.begin(), h_res_vec.end(), complex<float>(0, 0)) << endl;
 
   // stride = 1 res
   cout << "=========stride inner pro, stride = 1 =============" << endl;
@@ -167,14 +165,14 @@ int main () {
   // gpu stride innerproduct
   TIMER_EVENT (
     for (int i = 0; i < num_vecs; ++i) {
-      CHECK_CUBLAS (cublasZdotc(cublas_handle, single_vec_length, 
-                      reinterpret_cast<const cuDoubleComplex*>(d_a + i * single_vec_length), 1, 
-                      reinterpret_cast<const cuDoubleComplex*>(d_b + i * single_vec_length), 1, 
-                      reinterpret_cast<cuDoubleComplex*>(dd_res)
+      CHECK_CUBLAS (cublasCdotc(cublas_handle, single_vec_length, 
+                      reinterpret_cast<const cuFloatComplex*>(d_a + i * single_vec_length), 1, 
+                      reinterpret_cast<const cuFloatComplex*>(d_b + i * single_vec_length), 1, 
+                      reinterpret_cast<cuFloatComplex*>(dd_res)
                 )
       );
       // cudaDeviceSynchronize();
-      cudaMemcpy(&d_res, dd_res, sizeof(complex<double>), cudaMemcpyDeviceToHost);
+      cudaMemcpy(&d_res, dd_res, sizeof(complex<float>), cudaMemcpyDeviceToHost);
       d_res_vec.push_back(d_res);
     }
     , 
@@ -195,10 +193,10 @@ int main () {
   );
 
   cout << "if_res_correct? : " << check_correct(d_res_vec, h_res_vec) << endl;
-  cout << "stride = 1, res = " << std::accumulate(d_res_vec.begin(), d_res_vec.end(), complex<double>(0, 0)) << endl;
-  cout << "stride = 1, res = " << std::accumulate(h_res_vec.begin(), h_res_vec.end(), complex<double>(0, 0)) << endl;
+  cout << "stride = 1, res = " << std::accumulate(d_res_vec.begin(), d_res_vec.end(), complex<float>(0, 0)) << endl;
+  cout << "stride = 1, res = " << std::accumulate(h_res_vec.begin(), h_res_vec.end(), complex<float>(0, 0)) << endl;
 
-  cout << check_correct(d_res_vec, vector<complex<double>>{});
+  cout << check_correct(d_res_vec, vector<complex<float>>{});
   CHECK_CUBLAS (cublasDestroy(cublas_handle));
   cudaFree(d_a);
   cudaFree(d_b);
