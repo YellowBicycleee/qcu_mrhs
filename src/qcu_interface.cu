@@ -16,6 +16,9 @@
 
 #include "lqcd_read_write.h"
 #include "precondition/even_odd_precondition.h"
+
+#include "qcu_blas/qcu_blas.h"
+
 namespace qcu {
 
 void Qcu::allocateMemory() {
@@ -211,6 +214,97 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     fermionOut_queue_.clear();
 }
 
+void Qcu::MatQcu (bool daggerFlag) {
+    if (nullptr == dslash_) {
+        errorQcu("Dslash is not initialized\n");
+    }
+    if (fermionIn_queue_.size() != mInput_ || fermionOut_queue_.size() != mInput_) {
+        errorQcu("Fermion queue is not full\n");
+    }
+
+    const int Lx = lattDesc_.dims[X_DIM];
+    const int Ly = lattDesc_.dims[Y_DIM];
+    const int Lz = lattDesc_.dims[Z_DIM];
+    const int Lt = lattDesc_.dims[T_DIM];
+    // dslashParam_->parity = parity;
+    dslashParam_->daggerFlag = daggerFlag;
+    dslashParam_->fermionIn_MRHS = fermionIn_MRHS_;
+    dslashParam_->fermionOut_MRHS = fermionOut_MRHS_;
+
+    Complex host_kappa = Complex<OutputFloat>(kappa_, 0);
+    CHECK_CUDA(cudaMalloc(&device_kappa_, sizeof(Complex<OutputFloat>) ));
+    CHECK_CUDA(cudaMemcpy(device_kappa_, &host_kappa, sizeof(Complex<OutputFloat>), cudaMemcpyHostToDevice));
+
+    vector<void*> fermion_in_half (fermionIn_queue_.size());
+    vector<void*> fermion_out_half (fermionOut_queue_.size());
+    const int vol = Lx * Ly * Lz * Lt;
+    const int fermion_half_len = (vol / 2) * Ns * nColors_ * mInput_;
+    // mat_qcu = fermionIn - kappa fermionOut   
+    qcu::qcu_blas::Complex_xsay<OutputFloat> xsay_op;
+
+    for (int parity =0; parity < 2; ++parity) {
+        dslashParam_->parity = parity;
+        for (int i = 0; i < mInput_; ++i) {
+            fermion_out_half[i] = static_cast<Complex<OutputFloat>*>(fermionOut_queue_[i]) + parity * fermion_half_len;
+            fermion_in_half[i] = static_cast<Complex<OutputFloat>*>(fermionIn_queue_[i]) + (1 - parity) * fermion_half_len;
+        }
+        CHECK_CUDA(
+            cudaMemcpy(d_lookup_table_in_, fermion_in_half.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice)
+        );
+        CHECK_CUDA(
+            cudaMemcpy(d_lookup_table_out_, fermion_out_half.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice)
+        );
+        colorSpinorGather(fermionIn_MRHS_, iterateFloatPrecision_, d_lookup_table_in_, outputFloatPrecision_, 
+            Lx, Ly, Lz, Lt, nColors_, mInput_, NULL);
+        CHECK_CUDA(cudaDeviceSynchronize());
+
+        dslash_->apply();
+        
+        CHECK_CUDA(cudaDeviceSynchronize());
+
+        // qcu::qcu_blas::Complex_xsay<OutputFloat>::Complex_xsayArgument arg (
+        //     static_cast<Complex<OutputFloat>*>(fermionOut_MRHS_),   // Complex<_Float>* res,
+        //     static_cast<Complex<OutputFloat>*>(fermionIn_MRHS_),    // Complex<_Float>* x,
+        //     static_cast<Complex<OutputFloat>*>(device_kappa_),      // Complex<_Float>* a,
+        //     static_cast<Complex<OutputFloat>*>(fermionOut_MRHS_),   // Complex<_Float>* y,
+        //     fermion_half_len,                                       // int single_vec_len,
+        //     1,                                                      // int inc_idx,
+        //     nullptr                                                 // cudaStream_t stream = nullptr
+        // );
+        // xsay_op(arg);
+
+        colorSpinorScatter(d_lookup_table_out_, outputFloatPrecision_, fermionOut_MRHS_, iterateFloatPrecision_, 
+            Lx, Ly, Lz, Lt, nColors_, mInput_, NULL);
+        CHECK_CUDA(cudaDeviceSynchronize());
+    }
+
+    CHECK_CUDA(
+        cudaMemcpy(d_lookup_table_in_, fermionIn_queue_.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice)
+    );
+    CHECK_CUDA(
+        cudaMemcpy(d_lookup_table_out_, fermionOut_queue_.data(), sizeof(void*) * mInput_, cudaMemcpyHostToDevice)
+    );
+    colorSpinorGather(fermionIn_MRHS_, iterateFloatPrecision_, d_lookup_table_in_, outputFloatPrecision_, 
+            Lx * 2, Ly, Lz, Lt, nColors_, mInput_, NULL);
+    colorSpinorGather(fermionOut_MRHS_, iterateFloatPrecision_, d_lookup_table_out_, outputFloatPrecision_, 
+            Lx * 2, Ly, Lz, Lt, nColors_, mInput_, NULL);
+    qcu::qcu_blas::Complex_xsay<OutputFloat>::Complex_xsayArgument arg (
+        static_cast<Complex<OutputFloat>*>(fermionOut_MRHS_),   // Complex<_Float>* res,
+        static_cast<Complex<OutputFloat>*>(fermionIn_MRHS_),    // Complex<_Float>* x,
+        static_cast<Complex<OutputFloat>*>(device_kappa_),      // Complex<_Float>* a,
+        static_cast<Complex<OutputFloat>*>(fermionOut_MRHS_),   // Complex<_Float>* y,
+        fermion_half_len * 2,                                       // int single_vec_len,
+        1,                                                      // int inc_idx,
+        nullptr                                                 // cudaStream_t stream = nullptr
+    );
+    xsay_op(arg);
+    colorSpinorScatter(d_lookup_table_out_, outputFloatPrecision_, fermionOut_MRHS_, iterateFloatPrecision_, 
+            Lx * 2, Ly, Lz, Lt, nColors_, mInput_, NULL);
+    
+    CHECK_CUDA(cudaFree(device_kappa_));
+    fermionIn_queue_.clear();
+    fermionOut_queue_.clear();
+}
 void Qcu::loadGauge(void* gauge, QCU_PRECISION floatPrecision) {
     gauge_ = gauge;
     int Lx = lattDesc_.dims[X_DIM];

@@ -10,6 +10,12 @@
 
 static qcu::Qcu *qcu_ptr = nullptr;
 
+static void check_qcu_ptr() {
+  if (qcu_ptr == nullptr) {
+    errorQcu("Qcu is not initialized\n");
+  }
+}
+
 void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int inputFloatPrecision,
                   int dslashFloatPrecision) {
   int Lx = param->lattice_size[X_DIM];
@@ -25,43 +31,44 @@ void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int in
 }
 
 void pushBackFermions(void *fermionOut, void *fermionIn) {
-  if (qcu_ptr) {
-    qcu_ptr->pushBackFermions(fermionOut, fermionIn);
-  } else {
-    errorQcu("Qcu is not initialized\n");
-  }
+  check_qcu_ptr();
+  qcu_ptr->pushBackFermions(fermionOut, fermionIn);
 }
 
-void loadQcuGauge(void *gauge, int floatPrecision) { qcu_ptr->loadGauge(gauge, (QCU_PRECISION)floatPrecision); }
+void loadQcuGauge(void *gauge, int floatPrecision) { 
+  check_qcu_ptr();
+  qcu_ptr->loadGauge(gauge, (QCU_PRECISION)floatPrecision); 
+}
 
-void getDslash(int dslashType, double mass) { qcu_ptr->getDslash((DSLASH_TYPE)dslashType, mass); }
+void getDslash(int dslashType, double mass) { 
+  check_qcu_ptr();
+  qcu_ptr->getDslash((DSLASH_TYPE)dslashType, mass); 
+}
 
 void start_dslash(int parity, int daggerFlag) {
-  if (qcu_ptr) {
-    qcu_ptr->startDslash(parity, (bool)daggerFlag);
-  } else {
-    errorQcu("Qcu is not initialized\n");
-  }
+  check_qcu_ptr();
+  qcu_ptr->startDslash(parity, (bool)daggerFlag);
+}
+void mat_Qcu(int daggerFlag) {
+  check_qcu_ptr();
+  qcu_ptr->MatQcu((bool)daggerFlag);
 }
 
 void finalizeQcu() {
-  if (qcu_ptr != nullptr) {
-    delete qcu_ptr;
-  }
+  // check_qcu_ptr();
+  delete qcu_ptr;
   qcu_ptr = nullptr;
 }
 
 void qcuInvert(int max_iteration, double max_precison) {
-  if (qcu_ptr) {
-    qcu_ptr->solveFermions(max_iteration, max_precison);
-  } else {
-    errorQcu("Qcu is not initialized\n");
-  }
+  check_qcu_ptr();
+  qcu_ptr->solveFermions(max_iteration, max_precison);
 }
 
 // 奇偶预处理接口
 void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision) {
-  assert(qcu_ptr != nullptr && prec_gauge != non_prec_gauge);
+  check_qcu_ptr();
+  assert(prec_gauge != non_prec_gauge);
 
   Latt_Desc total_latt_desc;
   Latt_Desc local_latt_desc;
@@ -97,7 +104,8 @@ void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision
   }
 }
 void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int precision) {
-  assert(qcu_ptr != nullptr && prec_gauge != non_prec_gauge);
+  check_qcu_ptr();
+  assert(prec_gauge != non_prec_gauge);
 
   Latt_Desc total_latt_desc;
   Latt_Desc local_latt_desc;
@@ -134,6 +142,6 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
 }
 
 void read_gauge_from_file (void* gauge, const char* file_path_prefix) {
-  assert(qcu_ptr != nullptr);
+  check_qcu_ptr();
   qcu_ptr->readGaugeFromFile(file_path_prefix, gauge);
 }

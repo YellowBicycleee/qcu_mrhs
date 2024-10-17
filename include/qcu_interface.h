@@ -38,6 +38,7 @@ class Qcu {
     void* d_lookup_table_in_;
     void* d_lookup_table_out_;
 
+    void* device_kappa_ = nullptr;
     // TODO: add allocator, reserved for future use
     void* cpu_allocator_ = nullptr;
     void* gpu_allocator_ = nullptr;
@@ -82,16 +83,17 @@ class Qcu {
     int32_t rhs_num () const { return mInput_; }
     int32_t nSpin () const { return Ns; }
 
-    void getDslash(DSLASH_TYPE dslashType, double mass);
-    void startDslash(int parity, bool daggerFlag = false);
-    void loadGauge(void *gauge, QCU_PRECISION floatPrecision);
+    void getDslash (DSLASH_TYPE dslashType, double mass);
+    void startDslash (int parity, bool daggerFlag = false);
+    void MatQcu (bool daggerFlag = false);
+    void loadGauge (void *gauge, QCU_PRECISION floatPrecision);
 
-    void pushBackFermions(void *fermionOut, void *fermionIn);
-    void setInverterEnabled(bool enabled) { inverterEnabled_ = enabled; }
+    void pushBackFermions (void *fermionOut, void *fermionIn);
+    void setInverterEnabled (bool enabled) { inverterEnabled_ = enabled; }
     // solve Ax = b
-    void solveFermions(int max_iteration, double p_max_prec);
+    void solveFermions (int max_iteration, double p_max_prec);
     // IO
-    void readGaugeFromFile(const char* file_path, void* data_ptr);
+    void readGaugeFromFile (const char* file_path, void* data_ptr);
 };
 
 }  // namespace qcu
