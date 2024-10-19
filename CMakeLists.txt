@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
 set(CMAKE_CUDA_ARCHITECTURES 89)    # for 4060 laptop
 set(CMAKE_BUILD_TYPE Release)
+# set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 20)
 #set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -G")
 #set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -g -G -O0") # -G 表示生成GPU调试信息，-O0 禁止优化以便于调试
