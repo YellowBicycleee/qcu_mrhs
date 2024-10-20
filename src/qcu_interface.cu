@@ -22,10 +22,10 @@
 namespace qcu {
 
 void Qcu::allocateMemory() {
-    int Lx = lattDesc_.dims[X_DIM];
-    int Ly = lattDesc_.dims[Y_DIM];
-    int Lz = lattDesc_.dims[Z_DIM];
-    int Lt = lattDesc_.dims[T_DIM];
+    int Lx = lattDesc_.data[X_DIM];
+    int Ly = lattDesc_.data[Y_DIM];
+    int Lz = lattDesc_.data[Z_DIM];
+    int Lt = lattDesc_.data[T_DIM];
 
     int vol = Lx * Ly * Lz * Lt;
     int colorSpinorMrhs_size = vol * Ns * nColors_ * mInput_;  // even and odd
@@ -154,10 +154,10 @@ void Qcu::startDslash(int parity, bool daggerFlag) {
     }
     std::cout << std::endl;
 #endif
-    const int Lx = lattDesc_.dims[X_DIM];
-    const int Ly = lattDesc_.dims[Y_DIM];
-    const int Lz = lattDesc_.dims[Z_DIM];
-    const int Lt = lattDesc_.dims[T_DIM];
+    const int Lx = lattDesc_.data[X_DIM];
+    const int Ly = lattDesc_.data[Y_DIM];
+    const int Lz = lattDesc_.data[Z_DIM];
+    const int Lt = lattDesc_.data[T_DIM];
     dslashParam_->parity = parity;
     dslashParam_->daggerFlag = daggerFlag;
 
@@ -222,10 +222,10 @@ void Qcu::MatQcu (bool daggerFlag) {
         errorQcu("Fermion queue is not full\n");
     }
 
-    const int Lx = lattDesc_.dims[X_DIM];
-    const int Ly = lattDesc_.dims[Y_DIM];
-    const int Lz = lattDesc_.dims[Z_DIM];
-    const int Lt = lattDesc_.dims[T_DIM];
+    const int Lx = lattDesc_.data[X_DIM];
+    const int Ly = lattDesc_.data[Y_DIM];
+    const int Lz = lattDesc_.data[Z_DIM];
+    const int Lt = lattDesc_.data[T_DIM];
     // dslashParam_->parity = parity;
     dslashParam_->daggerFlag = daggerFlag;
     dslashParam_->fermionIn_MRHS = fermionIn_MRHS_;
@@ -307,10 +307,10 @@ void Qcu::MatQcu (bool daggerFlag) {
 }
 void Qcu::loadGauge(void* gauge, QCU_PRECISION floatPrecision) {
     gauge_ = gauge;
-    int Lx = lattDesc_.dims[X_DIM];
-    int Ly = lattDesc_.dims[Y_DIM];
-    int Lz = lattDesc_.dims[Z_DIM];
-    int Lt = lattDesc_.dims[T_DIM];
+    int Lx = lattDesc_.data[X_DIM];
+    int Ly = lattDesc_.data[Y_DIM];
+    int Lz = lattDesc_.data[Z_DIM];
+    int Lt = lattDesc_.data[T_DIM];
     int complex_vector_length = Nd * Lx * Ly * Lz * Lt * nColors_ * nColors_;
     
     assert(floatPrecision == QCU_DOUBLE_PRECISION || floatPrecision == QCU_SINGLE_PRECISION ||
@@ -331,10 +331,10 @@ void Qcu::pushBackFermions(void* fermionOut, void* fermionIn) {
 
 
 void Qcu::solveFermions(int max_iteration, double max_precision) {
-  const int Lx = lattDesc_.dims[X_DIM];
-  const int Ly = lattDesc_.dims[Y_DIM];
-  const int Lz = lattDesc_.dims[Z_DIM];
-  const int Lt = lattDesc_.dims[T_DIM];
+  const int Lx = lattDesc_.data[X_DIM];
+  const int Ly = lattDesc_.data[Y_DIM];
+  const int Lz = lattDesc_.data[Z_DIM];
+  const int Lt = lattDesc_.data[T_DIM];
   const int vol = Lx * Ly * Lz * Lt;
   const int colorSpinor_len = Ns * nColors_;
 
@@ -436,7 +436,7 @@ void Qcu::readGaugeFromFile (const char* file_path, void* data_ptr) {
 #pragma unroll 
     for (int i = 0; i < Nd; ++i) {
         mpi_desc.data[i] = 1;   // 
-        latt_desc.data[i] = lattDesc_.dims[i];
+        latt_desc.data[i] = lattDesc_.data[i];
     }
     // MPI_Coordinate: todo 
     MPI_Coordinate coord;

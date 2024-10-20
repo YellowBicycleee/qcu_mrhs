@@ -24,15 +24,15 @@ inline void ApplyWilsonDslash_Mrhs( Float* __restrict__ out, Float* __restrict__
 }
 
 void WilsonDslash::apply() {
-    int Lx = dslashParam_->lattDesc->dims[X_DIM];
-    int Ly = dslashParam_->lattDesc->dims[Y_DIM];
-    int Lz = dslashParam_->lattDesc->dims[Z_DIM];
-    int Lt = dslashParam_->lattDesc->dims[T_DIM];
+    int Lx = dslashParam_->lattDesc->data[X_DIM];
+    int Ly = dslashParam_->lattDesc->data[Y_DIM];
+    int Lz = dslashParam_->lattDesc->data[Z_DIM];
+    int Lt = dslashParam_->lattDesc->data[T_DIM];
 
-    int g_x = dslashParam_->procDesc->dims[X_DIM];
-    int g_y = dslashParam_->procDesc->dims[Y_DIM];
-    int g_z = dslashParam_->procDesc->dims[Z_DIM];
-    int g_t = dslashParam_->procDesc->dims[T_DIM];
+    int g_x = dslashParam_->procDesc->data[X_DIM];
+    int g_y = dslashParam_->procDesc->data[Y_DIM];
+    int g_z = dslashParam_->procDesc->data[Z_DIM];
+    int g_t = dslashParam_->procDesc->data[T_DIM];
 
     // clang-format off
     switch (dslashParam_->precision) {

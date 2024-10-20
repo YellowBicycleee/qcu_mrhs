@@ -79,8 +79,8 @@ void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision
 
 #pragma unroll
   for (int i = X_DIM; i < Nd; ++i) {
-    total_latt_desc.data[i] = qcuLattDesc.dims[i];
-    mpi_desc.data[i] = qcuProcDesc.dims[i];
+    total_latt_desc.data[i] = qcuLattDesc.data[i];
+    mpi_desc.data[i] = qcuProcDesc.data[i];
 
     local_latt_desc.data[i] = total_latt_desc.data[i] / mpi_desc.data[i];
   }
@@ -116,8 +116,8 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
 
 #pragma unroll
   for (int i = X_DIM; i < Nd; ++i) {
-    total_latt_desc.data[i] = qcuLattDesc.dims[i];
-    mpi_desc.data[i] = qcuProcDesc.dims[i];
+    total_latt_desc.data[i] = qcuLattDesc.data[i];
+    mpi_desc.data[i] = qcuProcDesc.data[i];
 
     local_latt_desc.data[i] = total_latt_desc.data[i] / mpi_desc.data[i];
   }
