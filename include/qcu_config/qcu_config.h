@@ -3,6 +3,7 @@
 //
 
 #include <cstdint>
+#include "desc/qcu_desc.h"
 namespace qcu {
 namespace config {
 

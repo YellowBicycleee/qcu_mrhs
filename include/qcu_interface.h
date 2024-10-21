@@ -7,18 +7,30 @@
 #include "qcd/qcu_dslash.h"
 #include "qcu_public.h"
 
-
 namespace qcu {
 class Qcu {
 public:
     struct Argument {
         int32_t n_color;    // number of colors
         int32_t m_rhs;      // number of right hand side
-        double mass; // kappa = 1 / (2 * (4 + mass))
+        double mass;        // kappa = 1 / (2 * (4 + mass))
+        double kappa;
         QCU_PRECISION out_float_precision;
         QCU_PRECISION compute_float_precision;
+        qcu::QcuLattDesc lattice_desc_ptr;
+        qcu::QcuProcDesc process_desc_ptr;
+
+        Argument (int32_t n_color_, int m_rhs_, double mass_, double kappa_,
+            QCU_PRECISION out_float_precision_, QCU_PRECISION compute_float_precision_,
+            qcu::QcuLattDesc lattice_desc_ptr_, qcu::QcuProcDesc process_desc_ptr_)
+        : n_color(n_color_), m_rhs(m_rhs_), mass(mass_), kappa(kappa_),
+          out_float_precision(out_float_precision_), compute_float_precision(compute_float_precision_),
+          lattice_desc_ptr(lattice_desc_ptr_), process_desc_ptr(process_desc_ptr_)
+        {}
     };
 private:
+    Argument underlying_args_;
+
     int32_t n_colors_;
     int32_t m_input_;
     double mass_;
@@ -26,8 +38,6 @@ private:
     QCU_PRECISION out_float_precision_; // use it as input and output precision
     QCU_PRECISION compute_floatprecision_;// use it as calculation precision such as dslash and solver
 
-    QcuLattDesc lattice_desc_;
-    QcuProcDesc process_desc_;
     DslashParam *dslash_param_;
     Dslash *dslash_;
 
@@ -61,31 +71,33 @@ public:
         QCU_PRECISION iterateFloatPrecision = QCU_DOUBLE_PRECISION,
         int nColors = 3, int mInputs = 1, double mass = 0.0,
         bool inverterEnabled = false)
-        : n_colors_(nColors),
-          m_input_(mInputs),
-          mass_(mass),
-          kappa_(1.0 / (2.0 * (4.0 + mass))),
-          lattice_desc_(Lx, Ly, Lz, Lt),
-          process_desc_(Gx, Gy, Gz, Gt),
-          out_float_precision_(outputFloatPrecision),
-          dslash_param_(nullptr),
-          dslash_(nullptr),
-          gauge_external_(nullptr),
-          fp64_gauge_(nullptr),
-          fp32_gauge_(nullptr),
-          fp16_gauge_(nullptr),
-          fermion_in_mrhs_(nullptr),
-          fermion_out_mrhs_(nullptr),
-          compute_floatprecision_(iterateFloatPrecision)
+        : n_colors_(nColors)
+        , m_input_(mInputs)
+        , mass_(mass)
+        , kappa_(1.0 / (2.0 * (4.0 + mass)))
+        , underlying_args_(nColors, mInputs, mass,
+                                1.0 / (2.0 * (4.0 + mass)),
+                                outputFloatPrecision,
+                                iterateFloatPrecision,
+                                qcu::QcuLattDesc{Lx, Ly, Lz, Lt},
+                                qcu::QcuProcDesc{Gx, Gy, Gz, Gt}
+            )
+        , out_float_precision_(outputFloatPrecision)
+        , dslash_param_(nullptr)
+        , dslash_(nullptr)
+        , gauge_external_(nullptr)
+        , fp64_gauge_(nullptr)
+        , fp32_gauge_(nullptr)
+        , fp16_gauge_(nullptr)
+        , fermion_in_mrhs_(nullptr)
+        , fermion_out_mrhs_(nullptr)
+        , compute_floatprecision_(iterateFloatPrecision)
     {
         allocateMemory();
     }
 
     ~Qcu() { freeMemory(); }
 
-    QcuLattDesc lattice_desc() const { return lattice_desc_; }
-    QcuProcDesc process_desc() const { return process_desc_; }
-    
     int32_t color() const { return n_colors_; }
     int32_t rhs_num () const { return m_input_; }
     int32_t n_spin () const { return Ns; }

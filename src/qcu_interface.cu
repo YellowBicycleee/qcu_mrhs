@@ -1,10 +1,15 @@
 #include <cuda_fp16.h>
+#include <qcu_config/qcu_config.h>
 
 #include <cassert>
 #include <cstdlib>
 
 #include "../tests/public_complex_vector.h"
+#include "check_error/check_cuda.cuh"
 #include "data_format/qcu_data_format_shift.cuh"
+#include "lqcd_read_write.h"
+#include "precondition/even_odd_precondition.h"
+#include "qcu_blas/qcu_blas.h"
 #include "qcu_interface.h"
 #include "qcu_public.h"
 #include "qcu_utils.h"          // div_ceil
@@ -12,22 +17,10 @@
 #include "solver/bicgstab.cuh"
 #include "timer/timer.h"
 
-#include "check_error/check_cuda.cuh"
-
-#include "lqcd_read_write.h"
-#include "precondition/even_odd_precondition.h"
-
-#include "qcu_blas/qcu_blas.h"
-
 namespace qcu {
 
 void Qcu::allocateMemory() {
-    int Lx = lattice_desc_.data[X_DIM];
-    int Ly = lattice_desc_.data[Y_DIM];
-    int Lz = lattice_desc_.data[Z_DIM];
-    int Lt = lattice_desc_.data[T_DIM];
-
-    int vol = Lx * Ly * Lz * Lt;
+    int vol = qcu::config::lattice_volume();
     int colorSpinorMrhs_size = vol * Ns * n_colors_ * m_input_;  // even and odd
     int gauge_size = Nd * vol * n_colors_ * n_colors_;   // even and odd
 
@@ -117,7 +110,7 @@ void Qcu::get_dslash(DSLASH_TYPE dslashType, double mass) {
                     (
                         default_dagger_flag, compute_floatprecision_, n_colors_, m_input_,
                         QCU_PARITY::EVEN_PARITY, kappa_, fermion_in_mrhs_, fermion_out_mrhs_,
-                        gauge, &lattice_desc_, &process_desc_
+                        gauge, &(underlying_args_.lattice_desc_ptr), &(underlying_args_.process_desc_ptr)
                     );
 
     switch (dslashType) {
@@ -140,24 +133,11 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
     if (fermion_in_queue_.size() != m_input_ || fermion_out_vec_.size() != m_input_) {
         errorQcu("Fermion queue is not full\n");
     }
-// #define DEBUG_INTERFACE
-#ifdef DEBUG_INTERFACE
-    std::cout << "DEBUG_INFO: fermionInQueue:";
-    std::cout << "fermion.size() = " << fermion_in_queue_.size() << std::endl;
-    for (int i = 0; i < fermion_in_queue_.size(); ++i) {
-        std::cout << fermion_in_queue_[i] << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "DEBUG_INFO: fermionOutQueue:";
-    for (int i = 0; i < fermion_out_vec_.size(); ++i) {
-        std::cout << fermion_out_vec_[i] << " ";
-    }
-    std::cout << std::endl;
-#endif
-    const int Lx = lattice_desc_.data[X_DIM];
-    const int Ly = lattice_desc_.data[Y_DIM];
-    const int Lz = lattice_desc_.data[Z_DIM];
-    const int Lt = lattice_desc_.data[T_DIM];
+
+    const int Lx = underlying_args_.lattice_desc_ptr.data[X_DIM];
+    const int Ly = underlying_args_.lattice_desc_ptr.data[Y_DIM];
+    const int Lz = underlying_args_.lattice_desc_ptr.data[Z_DIM];
+    const int Lt = underlying_args_.lattice_desc_ptr.data[T_DIM];
     dslash_param_->parity = parity;
     dslash_param_->daggerFlag = daggerFlag;
 
@@ -222,10 +202,10 @@ void Qcu::mat_qcu (bool daggerFlag) {
         errorQcu("Fermion queue is not full\n");
     }
 
-    const int Lx = lattice_desc_.data[X_DIM];
-    const int Ly = lattice_desc_.data[Y_DIM];
-    const int Lz = lattice_desc_.data[Z_DIM];
-    const int Lt = lattice_desc_.data[T_DIM];
+    const int Lx = underlying_args_.lattice_desc_ptr.data[X_DIM];
+    const int Ly = underlying_args_.lattice_desc_ptr.data[Y_DIM];
+    const int Lz = underlying_args_.lattice_desc_ptr.data[Z_DIM];
+    const int Lt = underlying_args_.lattice_desc_ptr.data[T_DIM];
     // dslash_param_->parity = parity;
     dslash_param_->daggerFlag = daggerFlag;
     dslash_param_->fermionIn_MRHS = fermion_in_mrhs_;
@@ -259,19 +239,7 @@ void Qcu::mat_qcu (bool daggerFlag) {
         CHECK_CUDA(cudaDeviceSynchronize());
 
         dslash_->apply();
-        
         CHECK_CUDA(cudaDeviceSynchronize());
-
-        // qcu::qcu_blas::Complex_xsay<OutputFloat>::Complex_xsayArgument arg (
-        //     static_cast<Complex<OutputFloat>*>(fermion_out_mrhs_),   // Complex<_Float>* res,
-        //     static_cast<Complex<OutputFloat>*>(fermion_in_mrhs_),    // Complex<_Float>* x,
-        //     static_cast<Complex<OutputFloat>*>(device_kappa_),      // Complex<_Float>* a,
-        //     static_cast<Complex<OutputFloat>*>(fermion_out_mrhs_),   // Complex<_Float>* y,
-        //     fermion_half_len,                                       // int single_vec_len,
-        //     1,                                                      // int inc_idx,
-        //     nullptr                                                 // cudaStream_t stream = nullptr
-        // );
-        // xsay_op(arg);
 
         colorSpinorScatter(d_lookup_table_out_, out_float_precision_, fermion_out_mrhs_, compute_floatprecision_,
             Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL);
@@ -307,11 +275,9 @@ void Qcu::mat_qcu (bool daggerFlag) {
 }
 void Qcu::load_gauge(void* gauge, QCU_PRECISION floatPrecision) {
     gauge_external_ = gauge;
-    int Lx = lattice_desc_.data[X_DIM];
-    int Ly = lattice_desc_.data[Y_DIM];
-    int Lz = lattice_desc_.data[Z_DIM];
-    int Lt = lattice_desc_.data[T_DIM];
-    int complex_vector_length = Nd * Lx * Ly * Lz * Lt * n_colors_ * n_colors_;
+
+    int volume = qcu::config::lattice_volume();
+    int complex_vector_length = Nd * volume * n_colors_ * n_colors_;
     
     assert(floatPrecision == QCU_DOUBLE_PRECISION || floatPrecision == QCU_SINGLE_PRECISION ||
            floatPrecision == QCU_HALF_PRECISION);
@@ -331,10 +297,10 @@ void Qcu::push_back_fermion(void* fermionOut, void* fermionIn) {
 
 
 void Qcu::solve_fermions(int max_iteration, double max_precision) {
-  const int Lx = lattice_desc_.data[X_DIM];
-  const int Ly = lattice_desc_.data[Y_DIM];
-  const int Lz = lattice_desc_.data[Z_DIM];
-  const int Lt = lattice_desc_.data[T_DIM];
+  const int Lx = underlying_args_.lattice_desc_ptr.data[X_DIM];
+  const int Ly = underlying_args_.lattice_desc_ptr.data[Y_DIM];
+  const int Lz = underlying_args_.lattice_desc_ptr.data[Z_DIM];
+  const int Lt = underlying_args_.lattice_desc_ptr.data[T_DIM];
   const int vol = Lx * Ly * Lz * Lt;
   const int colorSpinor_len = Ns * n_colors_;
 
@@ -343,11 +309,6 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
   } else {
     printf("numbers matched, now begin bicg\n");
   }
-
-//   void* d_lookup_table_in;
-//   void* d_lookup_table_out;
-//   CHECK_CUDA(cudaMalloc(&d_lookup_table_in, sizeof(void*) * m_input_));
-//   CHECK_CUDA(cudaMalloc(&d_lookup_table_out, sizeof(void*) * m_input_));
 
   vector<void*> fermionIn_queue_odd(fermion_in_queue_.size());
   vector<void*> fermionOut_queue_odd(fermion_out_vec_.size());
@@ -393,8 +354,8 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
     .output_x_mrhs  = fermion_out_mrhs_,
     .input_b_mrhs   = fermion_in_mrhs_,
     .gauge          = gauge,
-    .lattDesc       = &lattice_desc_,
-    .procDesc       = &process_desc_,
+    .lattDesc       = &(underlying_args_.lattice_desc_ptr),
+    .procDesc       = &(underlying_args_.process_desc_ptr),
     .stream1        = nullptr,
     .stream2        = nullptr
   };
@@ -420,9 +381,6 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
                         Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL),
     0, "scatter");
   CHECK_CUDA(cudaStreamSynchronize(NULL));
-  // free lookup-table
-//   CHECK_CUDA(cudaFree(d_lookup_table_in));
-//   CHECK_CUDA(cudaFree(d_lookup_table_out));
   fermion_in_queue_.clear();
   fermion_out_vec_.clear();
 }
@@ -436,7 +394,7 @@ void Qcu::read_gauge_from_file (const char* file_path, void* data_ptr) {
 #pragma unroll 
     for (int i = 0; i < Nd; ++i) {
         mpi_desc.data[i] = 1;   // 
-        latt_desc.data[i] = lattice_desc_.data[i];
+        latt_desc.data[i] = underlying_args_.lattice_desc_ptr.data[i];
     }
     // MPI_Coordinate: todo 
     MPI_Coordinate coord;
