@@ -32,26 +32,26 @@ void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int in
 
 void pushBackFermions(void *fermionOut, void *fermionIn) {
   check_qcu_ptr();
-  qcu_ptr->pushBackFermions(fermionOut, fermionIn);
+  qcu_ptr->push_back_fermion(fermionOut, fermionIn);
 }
 
 void loadQcuGauge(void *gauge, int floatPrecision) { 
   check_qcu_ptr();
-  qcu_ptr->loadGauge(gauge, (QCU_PRECISION)floatPrecision); 
+  qcu_ptr->load_gauge(gauge, (QCU_PRECISION)floatPrecision); 
 }
 
 void getDslash(int dslashType, double mass) { 
   check_qcu_ptr();
-  qcu_ptr->getDslash((DSLASH_TYPE)dslashType, mass); 
+  qcu_ptr->get_dslash((DSLASH_TYPE)dslashType, mass); 
 }
 
 void start_dslash(int parity, int daggerFlag) {
   check_qcu_ptr();
-  qcu_ptr->startDslash(parity, (bool)daggerFlag);
+  qcu_ptr->start_dslash(parity, (bool)daggerFlag);
 }
 void mat_Qcu(int daggerFlag) {
   check_qcu_ptr();
-  qcu_ptr->MatQcu((bool)daggerFlag);
+  qcu_ptr->mat_qcu((bool)daggerFlag);
 }
 
 void finalizeQcu() {
@@ -62,7 +62,7 @@ void finalizeQcu() {
 
 void qcuInvert(int max_iteration, double max_precison) {
   check_qcu_ptr();
-  qcu_ptr->solveFermions(max_iteration, max_precison);
+  qcu_ptr->solve_fermions(max_iteration, max_precison);
 }
 
 // 奇偶预处理接口
@@ -74,8 +74,8 @@ void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision
   Latt_Desc local_latt_desc;
   MPI_Desc mpi_desc;
 
-  qcu::QcuLattDesc qcuLattDesc = qcu_ptr->lattDesc();
-  qcu::QcuProcDesc qcuProcDesc = qcu_ptr->procDesc();
+  qcu::QcuLattDesc qcuLattDesc = qcu_ptr->lattice_desc();
+  qcu::QcuProcDesc qcuProcDesc = qcu_ptr->process_desc();
 
 #pragma unroll
   for (int i = X_DIM; i < Nd; ++i) {
@@ -111,8 +111,8 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
   Latt_Desc local_latt_desc;
   MPI_Desc mpi_desc;
 
-  qcu::QcuLattDesc qcuLattDesc = qcu_ptr->lattDesc();
-  qcu::QcuProcDesc qcuProcDesc = qcu_ptr->procDesc();
+  qcu::QcuLattDesc qcuLattDesc = qcu_ptr->lattice_desc();
+  qcu::QcuProcDesc qcuProcDesc = qcu_ptr->process_desc();
 
 #pragma unroll
   for (int i = X_DIM; i < Nd; ++i) {
@@ -143,5 +143,5 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
 
 void read_gauge_from_file (void* gauge, const char* file_path_prefix) {
   check_qcu_ptr();
-  qcu_ptr->readGaugeFromFile(file_path_prefix, gauge);
+  qcu_ptr->read_gauge_from_file(file_path_prefix, gauge);
 }
