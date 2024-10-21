@@ -7,6 +7,7 @@
 #include "qcu.h"
 #include "qcu_interface.h"
 #include "qcu_public.h"
+#include "qcu_config/qcu_config.h"
 
 static qcu::Qcu *qcu_ptr = nullptr;
 
@@ -18,15 +19,18 @@ static void check_qcu_ptr() {
 
 void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int inputFloatPrecision,
                   int dslashFloatPrecision) {
-  int Lx = param->lattice_size[X_DIM];
-  int Ly = param->lattice_size[Y_DIM];
-  int Lz = param->lattice_size[Z_DIM];
-  int Lt = param->lattice_size[T_DIM];
-  int Gx = grid->grid_size[X_DIM];
-  int Gy = grid->grid_size[Y_DIM];
-  int Gz = grid->grid_size[Z_DIM];
-  int Gt = grid->grid_size[T_DIM];
-  qcu_ptr = new qcu::Qcu(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt, (QCU_PRECISION)inputFloatPrecision,
+
+    int Lx = param->lattice_size[X_DIM];
+    int Ly = param->lattice_size[Y_DIM];
+    int Lz = param->lattice_size[Z_DIM];
+    int Lt = param->lattice_size[T_DIM];
+    int Gx = grid->grid_size[X_DIM];
+    int Gy = grid->grid_size[Y_DIM];
+    int Gz = grid->grid_size[Z_DIM];
+    int Gt = grid->grid_size[T_DIM];
+
+    qcu::config::set_config(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt);
+    qcu_ptr = new qcu::Qcu(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt, (QCU_PRECISION)inputFloatPrecision,
                          (QCU_PRECISION)dslashFloatPrecision, n_color, m_rhs);
 }
 
