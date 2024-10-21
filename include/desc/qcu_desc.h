@@ -12,7 +12,11 @@ namespace qcu {
 // in every process, lattice size desc
 struct QcuLattDesc {
     int data[MAX_DIM];
-    const int volume;
+    int volume;
+
+    QCU_HOST_DEVICE
+    QcuLattDesc() : data {0, 0, 0, 0}, volume(0) {}
+
     QCU_HOST_DEVICE
     QcuLattDesc(int x, int y = 1, int z = 1, int t = 1)
         : data {x, y, z, t}, volume (x * y * z * t) {}
@@ -25,11 +29,6 @@ struct QcuLattDesc {
                 * param->lattice_size[Z_DIM] * param->lattice_size[T_DIM]
         )  
     {}
-    QCU_HOST_DEVICE
-    int latticeDimLength(int dim) const { return data[dim]; }
-
-    QCU_HOST_DEVICE
-    int latticeVolumn() const { return volume; }
     
     QCU_HOST_DEVICE
     int X() const { return data[X_DIM]; }
@@ -42,21 +41,37 @@ struct QcuLattDesc {
 
     QCU_HOST_DEVICE
     int T() const { return data[T_DIM]; }
+
+    QCU_HOST_DEVICE
+    int lattice_volume() const { return volume; }
 };
 
-struct QcuProcDesc {  // process description
+struct QcuProcDesc {  // process description, how many process in each dimension
     int data[MAX_DIM];
-    QcuProcDesc(int x = 1, int y = 1, int z = 1, int t = 1) : data {x, y, z, t} {}
+    int volume;
+    QcuProcDesc(int x = 1, int y = 1, int z = 1, int t = 1)
+        : data {x, y, z, t}, volume(x * y * z * t)
+    {}
 
     QcuProcDesc(QcuGrid *grid)
         : data {grid->grid_size[X_DIM], grid->grid_size[Y_DIM]
             , grid->grid_size[Z_DIM], grid->grid_size[T_DIM] }
+        , volume(grid->grid_size[X_DIM] * grid->grid_size[Y_DIM]
+            * grid->grid_size[Z_DIM] * grid->grid_size[T_DIM])
     {}
 
-    int dimProcess(int dim) const { return data[dim]; }
     int X() const { return data[X_DIM]; }
     int Y() const { return data[Y_DIM]; }
     int Z() const { return data[Z_DIM]; }
     int T() const { return data[T_DIM]; }
+
+    // x, y, z, t direction is separated
+    bool X_separated() const { return data[X_DIM] > 1; }
+    bool Y_separated() const { return data[Y_DIM] > 1; }
+    bool Z_separated() const { return data[Z_DIM] > 1; }
+    bool T_separated() const { return data[T_DIM] > 1; }
+
+    // volume
+    int process_volume() const { return volume; }
 };
 }  // namespace qcu
