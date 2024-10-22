@@ -36,7 +36,7 @@ void WilsonDslash::apply() {
 
     // clang-format off
     switch (dslashParam_->precision) {
-        case QCU_HALF_PRECISION:
+        case QcuPrecision::kPrecisionHalf:
             ApplyWilsonDslash_Mrhs<half>(static_cast<half*>(dslashParam_->fermionOut_MRHS), 
                                          static_cast<half*>(dslashParam_->fermionIn_MRHS), 
                                          static_cast<half*>(dslashParam_->gauge), 
@@ -44,13 +44,12 @@ void WilsonDslash::apply() {
                                          dslashParam_->parity, dslashParam_->daggerFlag, 
                                          dslashParam_->nColor, dslashParam_->mInput, 
                                          dslashParam_->stream1);
-            /* code */
             break;
-        case QCU_SINGLE_PRECISION:
+        case QcuPrecision::kPrecisionSingle:
             errorQcu("Not implemented yet\n");  // TODO
             assert(0);
             break;
-        case QCU_DOUBLE_PRECISION:
+        case QcuPrecision::kPrecisionDouble:
             // printf("Double precision, FILE %s LINE %d FERMION_OUT_MRHS = %p, FERMION_IN_MRHS = %p\n",
                                             //  __FILE__, __LINE__, dslashParam_->fermionOut_MRHS, dslashParam_->fermionIn_MRHS);
             ApplyWilsonDslash_Mrhs<double>(static_cast<double*>(dslashParam_->fermionOut_MRHS), 
