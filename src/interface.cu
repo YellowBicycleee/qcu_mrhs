@@ -30,8 +30,8 @@ void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int in
     int Gt = grid->grid_size[T_DIM];
 
     qcu::config::set_config(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt);
-    qcu_ptr = new qcu::Qcu(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt, (QCU_PRECISION)inputFloatPrecision,
-                         (QCU_PRECISION)dslashFloatPrecision, n_color, m_rhs);
+    qcu_ptr = new qcu::Qcu(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt, (QcuPrecision)inputFloatPrecision,
+                         (QcuPrecision)dslashFloatPrecision, n_color, m_rhs);
 }
 
 void pushBackFermions(void *fermionOut, void *fermionIn) {
@@ -41,12 +41,12 @@ void pushBackFermions(void *fermionOut, void *fermionIn) {
 
 void loadQcuGauge(void *gauge, int floatPrecision) { 
   check_qcu_ptr();
-  qcu_ptr->load_gauge(gauge, (QCU_PRECISION)floatPrecision); 
+  qcu_ptr->load_gauge(gauge, (QcuPrecision)floatPrecision);
 }
 
 void getDslash(int dslashType, double mass) { 
   check_qcu_ptr();
-  qcu_ptr->get_dslash((DSLASH_TYPE)dslashType, mass); 
+  qcu_ptr->get_dslash((DslashType)dslashType, mass);
 }
 
 void start_dslash(int parity, int daggerFlag) {
@@ -91,15 +91,15 @@ void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision
 
     int site_vec_len = qcu_ptr->color() * qcu_ptr->color();
 
-    if (precision == QCU_PRECISION::QCU_DOUBLE_PRECISION) {
+    if (precision == QcuPrecision::kPrecisionDouble) {
         qcu::GaugeEOPreconditioner<double> preconditioner;
         preconditioner.apply(static_cast<Complex<double> *>(prec_gauge), static_cast<Complex<double> *>(non_prec_gauge),
             local_latt_desc, site_vec_len);
-    } else if (precision == QCU_PRECISION::QCU_SINGLE_PRECISION) {
+    } else if (precision == QcuPrecision::kPrecisionSingle) {
         qcu::GaugeEOPreconditioner<float> preconditioner;
         preconditioner.apply(static_cast<Complex<float> *>(prec_gauge), static_cast<Complex<float> *>(non_prec_gauge),
             local_latt_desc, site_vec_len);
-    } else if (precision == QCU_PRECISION::QCU_HALF_PRECISION) {
+    } else if (precision == QcuPrecision::kPrecisionHalf) {
         qcu::GaugeEOPreconditioner<half> preconditioner;
         preconditioner.apply(static_cast<Complex<half> *>(prec_gauge), static_cast<Complex<half> *>(non_prec_gauge),
             local_latt_desc, site_vec_len);
@@ -126,17 +126,17 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
         local_latt_desc.data[i] = total_latt_desc.data[i] / mpi_desc.data[i];
     }
 
-  int site_vec_len = qcu_ptr->color() * qcu_ptr->color();
+    int site_vec_len = qcu_ptr->color() * qcu_ptr->color();
 
-  if (precision == QCU_PRECISION::QCU_DOUBLE_PRECISION) {
-    qcu::GaugeEOPreconditioner<double> preconditioner;
-    preconditioner.reverse(static_cast<Complex<double> *>(non_prec_gauge), static_cast<Complex<double> *>(prec_gauge),
+    if (precision == QcuPrecision::kPrecisionDouble) {
+        qcu::GaugeEOPreconditioner<double> preconditioner;
+        preconditioner.reverse(static_cast<Complex<double> *>(non_prec_gauge), static_cast<Complex<double> *>(prec_gauge),
                            local_latt_desc, site_vec_len);
-  } else if (precision == QCU_PRECISION::QCU_SINGLE_PRECISION) {
+    } else if (precision == QcuPrecision::kPrecisionSingle) {
     qcu::GaugeEOPreconditioner<float> preconditioner;
     preconditioner.reverse(static_cast<Complex<float> *>(non_prec_gauge), static_cast<Complex<float> *>(prec_gauge),
                            local_latt_desc, site_vec_len);
-  } else if (precision == QCU_PRECISION::QCU_HALF_PRECISION) {
+  } else if (precision == QcuPrecision::kPrecisionHalf) {
     qcu::GaugeEOPreconditioner<half> preconditioner;
     preconditioner.reverse(static_cast<Complex<half> *>(non_prec_gauge), static_cast<Complex<half> *>(prec_gauge),
                            local_latt_desc, site_vec_len);

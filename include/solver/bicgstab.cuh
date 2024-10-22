@@ -25,8 +25,8 @@ struct BiCGStabParam {
 
 // OutputPrecision     既表示输入又表示输出精度，
 // IteratePrecision    表示迭代精度
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION IteratePrecision>
+template <QcuPrecision OutputPrecision,
+          QcuPrecision IteratePrecision>
 class BiCGStabImpl {
 public:
   BiCGStabImpl () = delete;
@@ -151,6 +151,6 @@ private:
   BiCGStabParam& param_;
 };
 
-void ApplyBicgStab (BiCGStabParam& param,  QCU_PRECISION outputPrecision, QCU_PRECISION iteratePrecision,
+void ApplyBicgStab (BiCGStabParam& param,  QcuPrecision outputPrecision, QcuPrecision iteratePrecision,
                     int max_iteration = 1000, double max_precision = 1e-6);
 }  // namespace qcu::solver

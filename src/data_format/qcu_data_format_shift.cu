@@ -5,7 +5,7 @@
 #include "kernel/copy_vector/copy_complex_vector.cuh"
 #include "qcu_public.h"
 #include "check_error/check_cuda.cuh"
-
+#include "base/datatype/qcu_float2.cuh"
 namespace qcu {
 
 template <typename DestFloat, typename SrcFloat>
@@ -64,16 +64,16 @@ void colorSpinorGather(void* __restrict__ global_dst_ptr, void* __restrict__ glo
 
 template <typename DstFloat>
 static void instantiate_copyVector_Complex_SrcFloat(void* __restrict__ dest, void* __restrict__ src,
-                                                    QCU_PRECISION srcPrec, int complex_vector_length,
+                                                    QcuPrecision srcPrec, int complex_vector_length,
                                                     cudaStream_t stream) {
     switch (srcPrec) {
-        case QCU_HALF_PRECISION:
+        case QcuPrecision::kPrecisionHalf:
             copyVector_Complex<DstFloat, half>(dest, src, complex_vector_length, stream);
             break;
-        case QCU_SINGLE_PRECISION:
+        case QcuPrecision::kPrecisionSingle:
             copyVector_Complex<DstFloat, float>(dest, src, complex_vector_length, stream);
             break;
-        case QCU_DOUBLE_PRECISION:
+        case QcuPrecision::kPrecisionDouble:
             copyVector_Complex<DstFloat, double>(dest, src, complex_vector_length, stream);
             break;
         default:
@@ -83,19 +83,20 @@ static void instantiate_copyVector_Complex_SrcFloat(void* __restrict__ dest, voi
 
 template <typename DstFloat>
 static void instantiate_colorSpinorScatter_SrcFloat(void* __restrict__ global_dst_array,
-                                                    void* __restrict__ global_src_ptr, QCU_PRECISION srcPrec, int Lx,
+                                                    void* __restrict__ global_src_ptr,
+                                                    QcuPrecision srcPrec, int Lx,
                                                     int Ly, int Lz, int Lt, int n_color, int m_input,
                                                     cudaStream_t stream) {
     switch (srcPrec) {
-        case QCU_HALF_PRECISION:
+        case QcuPrecision::kPrecisionHalf:
             colorSpinorScatter<DstFloat, half>(global_dst_array, global_src_ptr, Lx, Ly, Lz, Lt, n_color, m_input,
                                                stream);
             break;
-        case QCU_SINGLE_PRECISION:
+        case QcuPrecision::kPrecisionSingle:
             colorSpinorScatter<DstFloat, float>(global_dst_array, global_src_ptr, Lx, Ly, Lz, Lt, n_color, m_input,
                                                 stream);
             break;
-        case QCU_DOUBLE_PRECISION:
+        case QcuPrecision::kPrecisionDouble:
             colorSpinorScatter<DstFloat, double>(global_dst_array, global_src_ptr, Lx, Ly, Lz, Lt, n_color, m_input,
                                                  stream);
             break;
@@ -106,19 +107,19 @@ static void instantiate_colorSpinorScatter_SrcFloat(void* __restrict__ global_ds
 
 template <typename DstFloat>
 static void instantiate_colorSpinorGather_SrcFloat(void* __restrict__ global_dst_ptr,
-                                                   void* __restrict__ global_src_array, QCU_PRECISION srcPrec, int Lx,
+                                                   void* __restrict__ global_src_array, QcuPrecision srcPrec, int Lx,
                                                    int Ly, int Lz, int Lt, int n_color, int m_input,
                                                    cudaStream_t stream) {
     switch (srcPrec) {
-        case QCU_HALF_PRECISION:
+        case QcuPrecision::kPrecisionHalf:
             colorSpinorGather<DstFloat, half>(global_dst_ptr, global_src_array, Lx, Ly, Lz, Lt, n_color, m_input,
                                               stream);
             break;
-        case QCU_SINGLE_PRECISION:
+        case QcuPrecision::kPrecisionSingle:
             colorSpinorGather<DstFloat, float>(global_dst_ptr, global_src_array, Lx, Ly, Lz, Lt, n_color, m_input,
                                                stream);
             break;
-        case QCU_DOUBLE_PRECISION:
+        case QcuPrecision::kPrecisionDouble:
             colorSpinorGather<DstFloat, double>(global_dst_ptr, global_src_array, Lx, Ly, Lz, Lt, n_color, m_input,
                                                 stream);
             break;
@@ -127,20 +128,20 @@ static void instantiate_colorSpinorGather_SrcFloat(void* __restrict__ global_dst
     }
 }
 
-void copyComplexVector_interface(void* __restrict__ dest, QCU_PRECISION destPrec, void* __restrict__ src,
-                                 QCU_PRECISION srcPrec, int complex_vector_length, cudaStream_t stream) {
-    if (destPrec == QCU_PRECISION_UNDEFINED || srcPrec == QCU_PRECISION_UNDEFINED) {
+void copyComplexVector_interface(void* __restrict__ dest, QcuPrecision destPrec, void* __restrict__ src,
+                                 QcuPrecision srcPrec, int complex_vector_length, cudaStream_t stream) {
+    if (destPrec == QcuPrecision::kPrecisionUndefined || srcPrec == QcuPrecision::kPrecisionUndefined) {
         errorQcu("Undefined precision\n");
     }
     // instantiate the template function
     switch (destPrec) {
-        case QCU_HALF_PRECISION:
+        case QcuPrecision::kPrecisionHalf:
             instantiate_copyVector_Complex_SrcFloat<half>(dest, src, srcPrec, complex_vector_length, stream);
             break;
-        case QCU_SINGLE_PRECISION:
+        case QcuPrecision::kPrecisionSingle:
             instantiate_copyVector_Complex_SrcFloat<float>(dest, src, srcPrec, complex_vector_length, stream);
             break;
-        case QCU_DOUBLE_PRECISION:
+        case QcuPrecision::kPrecisionDouble:
             instantiate_copyVector_Complex_SrcFloat<double>(dest, src, srcPrec, complex_vector_length, stream);
             break;
         default:
@@ -149,19 +150,19 @@ void copyComplexVector_interface(void* __restrict__ dest, QCU_PRECISION destPrec
     }
 }
 
-void colorSpinorScatter(void* __restrict__ global_dst_array, QCU_PRECISION dstPrec, void* __restrict__ global_src_ptr,
-                        QCU_PRECISION srcPrec, int Lx, int Ly, int Lz, int Lt, int n_color, int m_input,
+void colorSpinorScatter(void* __restrict__ global_dst_array, QcuPrecision dstPrec, void* __restrict__ global_src_ptr,
+                        QcuPrecision srcPrec, int Lx, int Ly, int Lz, int Lt, int n_color, int m_input,
                         cudaStream_t stream) {
     switch (dstPrec) {
-        case QCU_HALF_PRECISION:
+        case QcuPrecision::kPrecisionHalf:
             instantiate_colorSpinorScatter_SrcFloat<half>(global_dst_array, global_src_ptr, srcPrec, Lx, Ly, Lz, Lt,
                                                           n_color, m_input, stream);
             break;
-        case QCU_SINGLE_PRECISION:
+        case QcuPrecision::kPrecisionSingle:
             instantiate_colorSpinorScatter_SrcFloat<float>(global_dst_array, global_src_ptr, srcPrec, Lx, Ly, Lz, Lt,
                                                            n_color, m_input, stream);
             break;
-        case QCU_DOUBLE_PRECISION:
+        case QcuPrecision::kPrecisionDouble:
             instantiate_colorSpinorScatter_SrcFloat<double>(global_dst_array, global_src_ptr, srcPrec, Lx, Ly, Lz, Lt,
                                                             n_color, m_input, stream);
             break;
@@ -171,19 +172,19 @@ void colorSpinorScatter(void* __restrict__ global_dst_array, QCU_PRECISION dstPr
     }
 }
 
-void colorSpinorGather(void* __restrict__ global_dst_ptr, QCU_PRECISION dstPrec, void* __restrict__ global_src_array,
-                       QCU_PRECISION srcPrec, int Lx, int Ly, int Lz, int Lt, int n_color, int m_input,
+void colorSpinorGather(void* __restrict__ global_dst_ptr, QcuPrecision dstPrec, void* __restrict__ global_src_array,
+                       QcuPrecision srcPrec, int Lx, int Ly, int Lz, int Lt, int n_color, int m_input,
                        cudaStream_t stream) {
     switch (dstPrec) {
-        case QCU_HALF_PRECISION:
+        case QcuPrecision::kPrecisionHalf:
             instantiate_colorSpinorGather_SrcFloat<half>(global_dst_ptr, global_src_array, srcPrec, Lx, Ly, Lz, Lt,
                                                          n_color, m_input, stream);
             break;
-        case QCU_SINGLE_PRECISION:
+        case QcuPrecision::kPrecisionSingle:
             instantiate_colorSpinorGather_SrcFloat<float>(global_dst_ptr, global_src_array, srcPrec, Lx, Ly, Lz, Lt,
                                                           n_color, m_input, stream);
             break;
-        case QCU_DOUBLE_PRECISION:
+        case QcuPrecision::kPrecisionDouble:
             instantiate_colorSpinorGather_SrcFloat<double>(global_dst_ptr, global_src_array, srcPrec, Lx, Ly, Lz, Lt,
                                                            n_color, m_input, stream);
             break;

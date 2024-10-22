@@ -6,7 +6,7 @@
 #include "desc/qcu_desc.h"
 #include "qcd/qcu_dslash.h"
 #include "qcu_public.h"
-
+#include "qcu_helper_macro.h"
 namespace qcu {
 class Qcu {
 public:
@@ -15,13 +15,13 @@ public:
         int32_t m_rhs;      // number of right hand side
         double mass;        // kappa = 1 / (2 * (4 + mass))
         double kappa;
-        QCU_PRECISION out_float_precision;
-        QCU_PRECISION compute_float_precision;
+        QcuPrecision out_float_precision;
+        QcuPrecision compute_float_precision;
         qcu::QcuLattDesc lattice_desc_ptr;
         qcu::QcuProcDesc process_desc_ptr;
 
         Argument (int32_t n_color_, int m_rhs_, double mass_, double kappa_,
-            QCU_PRECISION out_float_precision_, QCU_PRECISION compute_float_precision_,
+            QcuPrecision out_float_precision_, QcuPrecision compute_float_precision_,
             qcu::QcuLattDesc lattice_desc_ptr_, qcu::QcuProcDesc process_desc_ptr_)
         : n_color(n_color_), m_rhs(m_rhs_), mass(mass_), kappa(kappa_),
           out_float_precision(out_float_precision_), compute_float_precision(compute_float_precision_),
@@ -35,8 +35,6 @@ private:
     int32_t m_input_;
     double mass_;
     double kappa_;
-    QCU_PRECISION out_float_precision_; // use it as input and output precision
-    QCU_PRECISION compute_floatprecision_;// use it as calculation precision such as dslash and solver
 
     DslashParam *dslash_param_;
     Dslash *dslash_;
@@ -67,8 +65,8 @@ private:
 
 public:
     Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt,
-        QCU_PRECISION outputFloatPrecision,
-        QCU_PRECISION iterateFloatPrecision = QCU_DOUBLE_PRECISION,
+        QcuPrecision outputFloatPrecision,
+        QcuPrecision iterateFloatPrecision = QcuPrecision::kPrecisionDouble,
         int nColors = 3, int mInputs = 1, double mass = 0.0,
         bool inverterEnabled = false)
         : n_colors_(nColors)
@@ -82,7 +80,6 @@ public:
                                 qcu::QcuLattDesc{Lx, Ly, Lz, Lt},
                                 qcu::QcuProcDesc{Gx, Gy, Gz, Gt}
             )
-        , out_float_precision_(outputFloatPrecision)
         , dslash_param_(nullptr)
         , dslash_(nullptr)
         , gauge_external_(nullptr)
@@ -91,7 +88,6 @@ public:
         , fp16_gauge_(nullptr)
         , fermion_in_mrhs_(nullptr)
         , fermion_out_mrhs_(nullptr)
-        , compute_floatprecision_(iterateFloatPrecision)
     {
         allocateMemory();
     }
@@ -102,10 +98,10 @@ public:
     int32_t rhs_num () const { return m_input_; }
     int32_t n_spin () const { return Ns; }
 
-    void get_dslash (DSLASH_TYPE dslashType, double mass);
+    void get_dslash (DslashType dslashType, double mass);
     void start_dslash (int parity, bool daggerFlag = false);
     void mat_qcu (bool daggerFlag = false);
-    void load_gauge (void *gauge, QCU_PRECISION floatPrecision);
+    void load_gauge (void *gauge, QcuPrecision floatPrecision);
 
     void push_back_fermion (void *fermionOut, void *fermionIn);
     // solve Ax = b

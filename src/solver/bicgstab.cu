@@ -7,8 +7,8 @@
 namespace qcu::solver {
 
 // 申请临时空间
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION IteratePrecision>
+template <QcuPrecision OutputPrecision,
+          QcuPrecision IteratePrecision>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
   if (bufferAllocated_) {
     return true;
@@ -23,14 +23,14 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
 
   int iterate_float_size;
   int output_float_size;
-  if      constexpr (IteratePrecision == QCU_HALF_PRECISION)   { iterate_float_size = sizeof (half);   }
-  else if constexpr (IteratePrecision == QCU_SINGLE_PRECISION) { iterate_float_size = sizeof (float);  }
-  else if constexpr (IteratePrecision == QCU_DOUBLE_PRECISION) { iterate_float_size = sizeof (double); }
+  if      constexpr (IteratePrecision == QcuPrecision::kPrecisionHalf)   { iterate_float_size = sizeof (half);   }
+  else if constexpr (IteratePrecision == QcuPrecision::kPrecisionSingle) { iterate_float_size = sizeof (float);  }
+  else if constexpr (IteratePrecision == QcuPrecision::kPrecisionDouble) { iterate_float_size = sizeof (double); }
   else                                                         { return false; }
 
-  if      constexpr (OutputPrecision == QCU_HALF_PRECISION)    { output_float_size = sizeof (half);   }
-  else if constexpr (OutputPrecision == QCU_SINGLE_PRECISION)  { output_float_size = sizeof (float);  }
-  else if constexpr (OutputPrecision == QCU_DOUBLE_PRECISION)  { output_float_size = sizeof (double); }
+  if      constexpr (OutputPrecision == QcuPrecision::kPrecisionHalf)    { output_float_size = sizeof (half);   }
+  else if constexpr (OutputPrecision == QcuPrecision::kPrecisionSingle)  { output_float_size = sizeof (float);  }
+  else if constexpr (OutputPrecision == QcuPrecision::kPrecisionDouble)  { output_float_size = sizeof (double); }
   else                                                         { return false; }
 
   CHECK_CUDA(cudaMalloc(&tmpReduceMem_,      vol * complex_vec_len * output_float_size  * 2));
@@ -102,8 +102,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
 
 // 释放临时空间
 // 申请临时空间
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION IteratePrecision>
+template <QcuPrecision OutputPrecision,
+          QcuPrecision IteratePrecision>
 void BiCGStabImpl<OutputPrecision,IteratePrecision>::tempBufferFree() {
   CHECK_CUDA(cudaFree(tmpReduceMem_));
   CHECK_CUDA(cudaFree(new_b_iter_prec_));
@@ -140,8 +140,8 @@ void BiCGStabImpl<OutputPrecision,IteratePrecision>::tempBufferFree() {
 }
 
 
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION IteratePrecision>
+template <QcuPrecision OutputPrecision,
+          QcuPrecision IteratePrecision>
 void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
   const int Lx  = param_.lattDesc->X();
   const int Ly  = param_.lattDesc->Y();
@@ -193,10 +193,10 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
   return new_even_b;
 }
 // donnot use HALF to be the output precision
-template class BiCGStabImpl<QCU_DOUBLE_PRECISION, QCU_DOUBLE_PRECISION>;
-template class BiCGStabImpl<QCU_DOUBLE_PRECISION, QCU_SINGLE_PRECISION>;
-template class BiCGStabImpl<QCU_DOUBLE_PRECISION, QCU_HALF_PRECISION>;
-template class BiCGStabImpl<QCU_SINGLE_PRECISION, QCU_DOUBLE_PRECISION>;
-template class BiCGStabImpl<QCU_SINGLE_PRECISION, QCU_SINGLE_PRECISION>;
-template class BiCGStabImpl<QCU_SINGLE_PRECISION, QCU_HALF_PRECISION>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionDouble>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionSingle>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionHalf>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionDouble>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionSingle>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionHalf>;
 }
