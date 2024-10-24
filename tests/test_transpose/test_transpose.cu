@@ -49,8 +49,8 @@ int main () {
   complex<double>* d_b;
 
   // malloc 
-  const int single_vec_length = 1024 * 1024;
-  const int num_vecs = 12;
+  const int single_vec_length = 1024 ;
+  const int num_vecs = 1024;
   const int vector_length = single_vec_length * num_vecs;
 
   vector<complex<double>> d_res_vec (num_vecs);
@@ -92,33 +92,6 @@ int main () {
   cudaMemcpy (h_d_b, d_b, sizeof(complex<double>) * vector_length, cudaMemcpyDeviceToHost);
   cout << "check correct: " << check_correct(h_b, h_d_b, single_vec_length, num_vecs) << endl;
 
-  // for (int i = 0; i < 5; ++i) {
-  //   for (int j = 0; j < 5; ++j) {
-  //     cout << h_b[i * num_vecs + j] << " ";
-  //   }
-  //   cout << endl;
-  // }
-  // cout << "======================" << endl;
-  // for (int i = 0; i < 5; ++i) {
-  //   for (int j = 0; j < 5; ++j) {
-  //     cout << h_d_b[i * num_vecs + j] << " ";
-  //   }
-  //   cout << endl;
-  // }
-  // cout << "======================" << endl;
-  // for (int i = 0; i < 5; ++i) {
-  //   for (int j = 0; j < 5; ++j) {
-  //     cout << h_a[i * num_vecs + j] << " ";
-  //   }
-  //   cout << endl;
-  // }
-
-
-  // cout << h_b[10] << " " << h_d_b[10] << endl;  
-
-  // for (int i = 0; i < vector_length; ++i) {
-  //   cout << h_b[i] << " " << h_d_b[i] << endl;
-  // }
   cudaFree(d_a);
   cudaFree(d_b);
   delete[] h_a;

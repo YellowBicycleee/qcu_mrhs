@@ -1,10 +1,12 @@
-#pragma once 
+#pragma once
 #include <stdio.h>
+
+#include <base/datatype/qcu_complex.cuh>
 namespace qcu::device::kernel {
 
 
 constexpr int M_TILE = 32; 
-constexpr int N_TILE = 16;
+constexpr int N_TILE = 32;
 
 // constexpr int 
 
