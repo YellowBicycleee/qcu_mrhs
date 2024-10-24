@@ -1,99 +1,113 @@
 #pragma once
-// #include <cuda_fp16.h>
 
 #include <vector>
+#include <cstdint>
 
 #include "desc/qcu_desc.h"
 #include "qcd/qcu_dslash.h"
 #include "qcu_public.h"
-#include <cstdint>
-
+#include "qcu_helper_macro.h"
 namespace qcu {
 class Qcu {
-    bool inverterEnabled_;
-    int32_t nColors_;
-    int32_t mInput_;
+public:
+    struct Argument {
+        int32_t n_color;    // number of colors
+        int32_t m_rhs;      // number of right hand side
+        double mass;        // kappa = 1 / (2 * (4 + mass))
+        double kappa;
+        QcuPrecision out_float_precision;
+        QcuPrecision compute_float_precision;
+        qcu::QcuLattDesc lattice_desc_ptr;
+        qcu::QcuProcDesc process_desc_ptr;
+
+        Argument (int32_t n_color_, int m_rhs_, double mass_, double kappa_,
+            QcuPrecision out_float_precision_, QcuPrecision compute_float_precision_,
+            qcu::QcuLattDesc lattice_desc_ptr_, qcu::QcuProcDesc process_desc_ptr_)
+        : n_color(n_color_), m_rhs(m_rhs_), mass(mass_), kappa(kappa_),
+          out_float_precision(out_float_precision_), compute_float_precision(compute_float_precision_),
+          lattice_desc_ptr(lattice_desc_ptr_), process_desc_ptr(process_desc_ptr_)
+        {}
+    };
+private:
+    Argument underlying_args_;
+
+    int32_t n_colors_;
+    int32_t m_input_;
     double mass_;
     double kappa_;
-    QCU_PRECISION outputFloatPrecision_; // use it as input and output precision
-    QCU_PRECISION iterateFloatPrecision_;// use it as calculation precision such as dslash and solver
 
-    QcuLattDesc lattDesc_;
-    QcuProcDesc procDesc_;
-    DslashParam *dslashParam_;
+    DslashParam *dslash_param_;
     Dslash *dslash_;
 
-    std::vector<void *> fermionIn_queue_;
-    std::vector<void *> fermionOut_queue_;
+    std::vector<void *> fermion_in_queue_;
+    std::vector<void *> fermion_out_vec_;
 
-    void *gauge_;      // gauge field, donnot allocate memory, external pointer
-    void *fp64Gauge_;  // double gauge field
-    void *fp32Gauge_;  // single gauge field
-    void *fp16Gauge_;  // half gauge field
+    void *gauge_external_;      // gauge field, donnot allocate memory, external pointer
+    void *fp64_gauge_;          // double gauge field
+    void *fp32_gauge_;          // single gauge field
+    void *fp16_gauge_;          // half gauge field
 
-    // mrhs fermion field
-    void *fermionIn_MRHS_;  // also used as b in Ax=b, to solve x
-    void *fermionOut_MRHS_; // also used as x in Ax=b, to solve x
+    // mrhs fermion field, gathered into my preferred shape
+    void *fermion_in_mrhs_;
+    void *fermion_out_mrhs_;
+
     // lookup table
     void* d_lookup_table_in_;
     void* d_lookup_table_out_;
 
     void* device_kappa_ = nullptr;
-    // TODO: add allocator, reserved for future use
-    void* cpu_allocator_ = nullptr;
-    void* gpu_allocator_ = nullptr;
+
+    void* cpu_allocator_ = nullptr; // TODO: add allocator, reserved for future use
+    void* gpu_allocator_ = nullptr; // TODO: add allocator, reserved for future use
 
     void allocateMemory();
     void freeMemory();
 
-   public:
-   
+public:
     Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt,
-        QCU_PRECISION outputFloatPrecision,
-        QCU_PRECISION iterateFloatPrecision = QCU_DOUBLE_PRECISION,
+        QcuPrecision outputFloatPrecision,
+        QcuPrecision iterateFloatPrecision = QcuPrecision::kPrecisionDouble,
         int nColors = 3, int mInputs = 1, double mass = 0.0,
         bool inverterEnabled = false)
-        : inverterEnabled_(inverterEnabled),
-          nColors_(nColors),
-          mInput_(mInputs),
-          mass_(mass),
-          kappa_(1.0 / (2.0 * (4.0 + mass))),
-          lattDesc_(Lx, Ly, Lz, Lt),
-          procDesc_(Gx, Gy, Gz, Gt),
-          outputFloatPrecision_(outputFloatPrecision),
-          dslashParam_(nullptr),
-          dslash_(nullptr),
-          gauge_(nullptr),
-          fp64Gauge_(nullptr),
-          fp32Gauge_(nullptr),
-          fp16Gauge_(nullptr),
-          fermionIn_MRHS_(nullptr),
-          fermionOut_MRHS_(nullptr),
-          iterateFloatPrecision_(iterateFloatPrecision)
+        : n_colors_(nColors)
+        , m_input_(mInputs)
+        , mass_(mass)
+        , kappa_(1.0 / (2.0 * (4.0 + mass)))
+        , underlying_args_(nColors, mInputs, mass,
+                                1.0 / (2.0 * (4.0 + mass)),
+                                outputFloatPrecision,
+                                iterateFloatPrecision,
+                                qcu::QcuLattDesc{Lx, Ly, Lz, Lt},
+                                qcu::QcuProcDesc{Gx, Gy, Gz, Gt}
+            )
+        , dslash_param_(nullptr)
+        , dslash_(nullptr)
+        , gauge_external_(nullptr)
+        , fp64_gauge_(nullptr)
+        , fp32_gauge_(nullptr)
+        , fp16_gauge_(nullptr)
+        , fermion_in_mrhs_(nullptr)
+        , fermion_out_mrhs_(nullptr)
     {
         allocateMemory();
     }
 
     ~Qcu() { freeMemory(); }
 
-    QcuLattDesc lattDesc() const { return lattDesc_; }
-    QcuProcDesc procDesc() const { return procDesc_; }
-    
-    int32_t color() const { return nColors_; }
-    int32_t rhs_num () const { return mInput_; }
-    int32_t nSpin () const { return Ns; }
+    int32_t color() const { return n_colors_; }
+    int32_t rhs_num () const { return m_input_; }
+    int32_t n_spin () const { return Ns; }
 
-    void getDslash (DSLASH_TYPE dslashType, double mass);
-    void startDslash (int parity, bool daggerFlag = false);
-    void MatQcu (bool daggerFlag = false);
-    void loadGauge (void *gauge, QCU_PRECISION floatPrecision);
+    void get_dslash (DslashType dslashType, double mass);
+    void start_dslash (int parity, bool daggerFlag = false);
+    void mat_qcu (bool daggerFlag = false);
+    void load_gauge (void *gauge, QcuPrecision floatPrecision);
 
-    void pushBackFermions (void *fermionOut, void *fermionIn);
-    void setInverterEnabled (bool enabled) { inverterEnabled_ = enabled; }
+    void push_back_fermion (void *fermionOut, void *fermionIn);
     // solve Ax = b
-    void solveFermions (int max_iteration, double p_max_prec);
+    void solve_fermions (int max_iteration, double p_max_prec);
     // IO
-    void readGaugeFromFile (const char* file_path, void* data_ptr);
+    void read_gauge_from_file (const char* file_path, void* data_ptr);
 };
 
 }  // namespace qcu

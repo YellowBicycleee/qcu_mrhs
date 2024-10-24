@@ -30,6 +30,7 @@ add_library(qcu
     ${PROJECT_SOURCE_DIR}/src/solver/bicgstab.cu
     ${PROJECT_SOURCE_DIR}/src/solver/bicgstab_solve.cu
 	${PROJECT_SOURCE_DIR}/src/solver/bicgstab_interface.cu
+	${PROJECT_SOURCE_DIR}/src/qcu_config/qcu_config.cu
 )
 target_include_directories(qcu 
     PUBLIC

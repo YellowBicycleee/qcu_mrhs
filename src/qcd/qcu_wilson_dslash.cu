@@ -24,19 +24,19 @@ inline void ApplyWilsonDslash_Mrhs( Float* __restrict__ out, Float* __restrict__
 }
 
 void WilsonDslash::apply() {
-    int Lx = dslashParam_->lattDesc->dims[X_DIM];
-    int Ly = dslashParam_->lattDesc->dims[Y_DIM];
-    int Lz = dslashParam_->lattDesc->dims[Z_DIM];
-    int Lt = dslashParam_->lattDesc->dims[T_DIM];
+    int Lx = dslashParam_->lattDesc->data[X_DIM];
+    int Ly = dslashParam_->lattDesc->data[Y_DIM];
+    int Lz = dslashParam_->lattDesc->data[Z_DIM];
+    int Lt = dslashParam_->lattDesc->data[T_DIM];
 
-    int g_x = dslashParam_->procDesc->dims[X_DIM];
-    int g_y = dslashParam_->procDesc->dims[Y_DIM];
-    int g_z = dslashParam_->procDesc->dims[Z_DIM];
-    int g_t = dslashParam_->procDesc->dims[T_DIM];
+    int g_x = dslashParam_->procDesc->data[X_DIM];
+    int g_y = dslashParam_->procDesc->data[Y_DIM];
+    int g_z = dslashParam_->procDesc->data[Z_DIM];
+    int g_t = dslashParam_->procDesc->data[T_DIM];
 
     // clang-format off
     switch (dslashParam_->precision) {
-        case QCU_HALF_PRECISION:
+        case QcuPrecision::kPrecisionHalf:
             ApplyWilsonDslash_Mrhs<half>(static_cast<half*>(dslashParam_->fermionOut_MRHS), 
                                          static_cast<half*>(dslashParam_->fermionIn_MRHS), 
                                          static_cast<half*>(dslashParam_->gauge), 
@@ -44,13 +44,12 @@ void WilsonDslash::apply() {
                                          dslashParam_->parity, dslashParam_->daggerFlag, 
                                          dslashParam_->nColor, dslashParam_->mInput, 
                                          dslashParam_->stream1);
-            /* code */
             break;
-        case QCU_SINGLE_PRECISION:
+        case QcuPrecision::kPrecisionSingle:
             errorQcu("Not implemented yet\n");  // TODO
             assert(0);
             break;
-        case QCU_DOUBLE_PRECISION:
+        case QcuPrecision::kPrecisionDouble:
             // printf("Double precision, FILE %s LINE %d FERMION_OUT_MRHS = %p, FERMION_IN_MRHS = %p\n",
                                             //  __FILE__, __LINE__, dslashParam_->fermionOut_MRHS, dslashParam_->fermionIn_MRHS);
             ApplyWilsonDslash_Mrhs<double>(static_cast<double*>(dslashParam_->fermionOut_MRHS), 

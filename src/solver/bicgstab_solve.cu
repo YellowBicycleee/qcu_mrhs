@@ -96,8 +96,8 @@ inline bool isConverged_policy2 (const _Float norm_r, const _Float norm_b, _Floa
 }
 
 // separator
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION IteratePrecision>
+template <QcuPrecision OutputPrecision,
+          QcuPrecision IteratePrecision>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
   std::cout << "POLICY1 BICGStab" << std::endl;
   std::vector<OutputFloat> norm_r_array  (param_.mInput, 1.0);
@@ -383,8 +383,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
 
   return currentIteration_ < maxIteration_ && isConverged(norm_r_array, norm_b_array, maxPrec_);
 }
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION IteratePrecision>
+template <QcuPrecision OutputPrecision,
+          QcuPrecision IteratePrecision>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
   std::cout << "POLICY2 BICGStab" << std::endl;
   OutputFloat norm_r = OutputFloat(1.0);
@@ -671,13 +671,13 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
   return currentIteration_ < maxIteration_ && isConverged_policy2(norm_r, norm_b, maxPrec_);
 }
 
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION IteratePrecision>
+template <QcuPrecision OutputPrecision,
+          QcuPrecision IteratePrecision>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
   return solve_odd_policy1();
 }
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION IteratePrecision>
+template <QcuPrecision OutputPrecision,
+          QcuPrecision IteratePrecision>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
   const int Lx     = param_.lattDesc->X();
   const int Ly     = param_.lattDesc->Y();
@@ -735,8 +735,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
   return true;
 }
 
-template <QCU_PRECISION OutputPrecision,
-          QCU_PRECISION IteratePrecision>
+template <QcuPrecision OutputPrecision,
+          QcuPrecision IteratePrecision>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve() {
   if (!bufferAllocated_) {
     if (!tempBufferAllocate()) {
@@ -771,10 +771,10 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve() {
 }
 
 // donnot use HALF to be the output precision
-template class BiCGStabImpl<QCU_DOUBLE_PRECISION, QCU_DOUBLE_PRECISION>;
-template class BiCGStabImpl<QCU_DOUBLE_PRECISION, QCU_SINGLE_PRECISION>;
-template class BiCGStabImpl<QCU_DOUBLE_PRECISION, QCU_HALF_PRECISION>;
-template class BiCGStabImpl<QCU_SINGLE_PRECISION, QCU_DOUBLE_PRECISION>;
-template class BiCGStabImpl<QCU_SINGLE_PRECISION, QCU_SINGLE_PRECISION>;
-template class BiCGStabImpl<QCU_SINGLE_PRECISION, QCU_HALF_PRECISION>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionDouble>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionSingle>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionHalf>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionDouble>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionSingle>;
+template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionHalf>;
 }

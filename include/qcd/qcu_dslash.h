@@ -10,7 +10,7 @@ namespace qcu {
 // clang-format off
 struct DslashParam {
     bool daggerFlag;
-    QCU_PRECISION precision;
+    QcuPrecision precision;
     int nColor;
     int mInput;
     int parity;
@@ -25,7 +25,7 @@ struct DslashParam {
     cudaStream_t stream2;
 
     DslashParam(bool p_daggerFlag,
-                QCU_PRECISION p_precision,
+                QcuPrecision p_precision,
                 int p_nColor, 
                 int p_mInput, 
                 int p_parity,
