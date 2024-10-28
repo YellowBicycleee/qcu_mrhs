@@ -3,7 +3,7 @@
 //
 
 #pragma once
-
+#include "qcu_helper.h"
 enum DslashType {
     kDslashWilson = 0,
     kDslashClover,
