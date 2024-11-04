@@ -1,9 +1,11 @@
+#include <qcu_helper_macro.h>
+
 #include <vector>
 
+#include "check_error/check_cuda.cuh"
 #include "qcd/qcu_dslash.h"
 #include "qcu.h"
 #include "qcu_public.h"
-#include "check_error/check_cuda.cuh"
 using namespace qcu;
 using namespace std;
 QcuGrid initGridSize(int Nx, int Ny, int Nz, int Nt) {
@@ -61,8 +63,8 @@ int main() {
 
     QcuGrid process_grid = initGridSize(Nx, Ny, Nz, Nt);
     QcuParam qcu_latt_param = initQcuParam(Lx, Ly, Lz, Lt);
-    int inputFloatPrecision = QCU_DOUBLE_PRECISION;
-    int dslashFloatPrecision = QCU_HALF_PRECISION;
+    int inputFloatPrecision = DslashType::kDslashWilson;
+    int dslashFloatPrecision = QcuPrecision::kPrecisionHalf;
 
     void* gauge;
 
@@ -78,7 +80,7 @@ int main() {
 
     // begin
     initGridSize(&process_grid, &qcu_latt_param, nColor, mInput, inputFloatPrecision, dslashFloatPrecision);
-    getDslash(DSLASH_WILSON, -3.5);
+    getDslash(DslashType::kDslashWilson, -3.5);
     loadQcuGauge(gauge, inputFloatPrecision);
 
     for (int parity = 0; parity < 2; ++parity) {
