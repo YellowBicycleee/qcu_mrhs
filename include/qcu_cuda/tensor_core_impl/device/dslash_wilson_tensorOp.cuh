@@ -1,9 +1,11 @@
 #pragma once
 
+#include <desc/qcu_desc.h>
+
 #include <cstdint>
 
 #include "lattice_desc.h"
-
+#include "qcu_helper.h"
 namespace qcu {
 
 namespace device {
@@ -21,7 +23,8 @@ public:
         int32_t n_color;
         int32_t m_rhs;
         // dim length
-        Latt_Desc latt_desc;
+        qcu::QcuLattDesc* latt_desc;
+        qcu::QcuProcDesc* proc_desc;
 
         _Tp* output; // fermion out
         _Tp* input;  // fermion in   
@@ -35,11 +38,11 @@ private:
 public:
     DslashWilsonDevice () = default;
 
-    Status run (cudaStream_t stream = nullptr) {
-        throw int;
+    qcu::QcuStatus run (cudaStream_t stream = nullptr) {
+        return qcu::QcuStatus::kErrorInternal;
     }
 
-    Status operator () (cudaStream_t stream = nullptr) {
+    qcu::QcuStatus operator () (cudaStream_t stream = nullptr) {
         return run (stream);
     }
 };
