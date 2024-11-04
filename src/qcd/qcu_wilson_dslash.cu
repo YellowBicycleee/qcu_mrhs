@@ -22,7 +22,11 @@ inline void ApplyWilsonDslash_Mrhs( Float* __restrict__ out, Float* __restrict__
     device::wilson_dslash_su_n_mrhs<Float> <<<grid_size, block_size, 0, stream>>>(
         out, in, gauge, Lx, Ly, Lz, Lt, g_x, g_y, g_z, g_t, parity, dagger_flag, n_color, m_rhs);
 }
+void WilsonDslash::async_work_flow(
+    )
+{
 
+}
 void WilsonDslash::apply() {
     int Lx = dslashParam_->lattDesc->data[X_DIM];
     int Ly = dslashParam_->lattDesc->data[Y_DIM];

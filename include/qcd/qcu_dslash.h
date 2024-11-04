@@ -52,14 +52,13 @@ struct DslashParam {
           stream2(p_stream2) {}
 };
 
-// clang-format on
 class Dslash {
-   protected:
+protected:
     // DslashParam& dslashParam_;
     DslashParam* dslashParam_;
     float dslashFlops_;
 
-   public:
+public:
     // Dslash(DslashParam& dslashParam) : dslashParam_(dslashParam) {}
     Dslash() = delete;
     Dslash(DslashParam* dslashParam) : dslashParam_(dslashParam) {}
@@ -72,13 +71,14 @@ class Dslash {
 };
 
 class WilsonDslash : public Dslash {
-   public:
-    WilsonDslash(DslashParam* dslashParam) : Dslash(dslashParam) {}
-    virtual ~WilsonDslash() = default;
-    virtual void apply();
-    virtual void preApply();
-    virtual void postApply();
-    virtual void flops();
+public:
+  WilsonDslash(DslashParam* dslashParam) : Dslash(dslashParam) {}
+  virtual void async_work_flow();
+  virtual ~WilsonDslash() = default;
+  virtual void apply();
+  virtual void preApply();
+  virtual void postApply();
+  virtual void flops();
 };
 
 }  // namespace qcu
