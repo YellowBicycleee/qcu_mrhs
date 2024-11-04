@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
+include_directories(/usr/lib/x86_64-linux-gnu/openmpi/include)
 set(CMAKE_CUDA_ARCHITECTURES 89)    # for 4060 laptop
 set(CMAKE_BUILD_TYPE Release)
 # set(CMAKE_BUILD_TYPE Debug)
@@ -9,6 +10,12 @@ set(CMAKE_CXX_STANDARD 20)
 # set(CMAKE_BUILD_TYPE Debug) # 设定默认构建类型为Debug
 
 project(QCU LANGUAGES C CXX CUDA) # project name = ${PROJECT_NAME}
+find_package(MPI REQUIRED)
+
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcu_blas QCU_BLAS)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/communication QCU_COMMUNICATION)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/solver QCU_SOLVER)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcu_config QCU_CONFIG)
 
 # shared library
 add_library(qcu 
@@ -17,20 +24,10 @@ add_library(qcu
     ${PROJECT_SOURCE_DIR}/src/qcu_interface.cu  
     ${PROJECT_SOURCE_DIR}/src/qcd/qcu_wilson_dslash.cu
     ${PROJECT_SOURCE_DIR}/src/data_format/qcu_data_format_shift.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_axpby.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_axpbypcz.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_dotc.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_norm.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_xsay.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_complex_xpay.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_elementwise_div.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_elementwise_init.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_elementwise_mul.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_blas/qcu_transpose_2d.cu
-    ${PROJECT_SOURCE_DIR}/src/solver/bicgstab.cu
-    ${PROJECT_SOURCE_DIR}/src/solver/bicgstab_solve.cu
-	${PROJECT_SOURCE_DIR}/src/solver/bicgstab_interface.cu
-	${PROJECT_SOURCE_DIR}/src/qcu_config/qcu_config.cu
+    ${QCU_BLAS}
+    ${QCU_SOLVER}
+	${QCU_CONFIG}
+	${QCU_COMMUNICATION}
 )
 target_include_directories(qcu 
     PUBLIC
@@ -45,6 +42,9 @@ target_link_libraries(qcu
 	cudart
 	cudadevrt
     cublas
+	${MPI_LIBRARIES}
+	nccl
 )
+
 
 add_subdirectory(tests)
