@@ -125,7 +125,7 @@ public:
         return instance;
     }
 private:
-    static std::shared_ptr<MpiCommunicator> instance;
+    inline static std::shared_ptr<MpiCommunicator> instance;
 };
 class NcclCommunicatorFactory {
 public:
@@ -136,7 +136,7 @@ public:
         return instance;
     }
 private:
-    static std::shared_ptr<NcclCommunicator> instance;
+    inline static std::shared_ptr<NcclCommunicator> instance;
 };
 
 class CommunicatorFactory {
