@@ -12,5 +12,6 @@ struct MemoryGhost {
   void* neighbor_buf[_dims][2]; //2 means fwd bwd
 };
 
+using MemoryGhost_4D = MemoryGhost<4>;
 }
 }

@@ -35,75 +35,82 @@ enum class QcuCommStatus {
     kQcuCommSuccess = 0,
     kQcuCommError = 1,
     kQcuCommUnimplemented = 2,
-    kQcuCommInvalid = 3,
+    kQcuCommInvalidDataType = 3,
 };
 
 class Communicator {
 public:
     //               MPI_Send (const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm);
-    //               MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request);
-    // ncclResult_t  ncclSend (const void* sendbuff, size_t count, ncclDataType_t datatype, int peer, ncclComm_t comm, cudaStream_t stream);
-    virtual QcuCommStatus send(const void* send_buff, size_t count, QcuDataType data_type, int dest/*dest or peer*/,
-        void* comm, void* stream, int tag) = 0;
+    //               MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm,
+    //                          MPI_Request *request);
+    // ncclResult_t  ncclSend (const void* sendbuff, size_t count, ncclDataType_t datatype, int peer, ncclComm_t comm,
+    //                          cudaStream_t stream);
+    virtual QcuCommStatus send (const void* send_buff, size_t count, QcuDataType data_type, int dest,
+        int tag, void* comm, void* stream = nullptr) = 0;
     virtual QcuCommStatus isend(const void* send_buff, size_t count, QcuDataType data_type, int dest,
-        void* comm, void* stream, int tag, void * request) = 0;
+        int tag, void* comm, void * request, void* stream = nullptr) = 0;
 
-    // int           MPI_Recv (void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status);
-    // int           MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Request *request);
-    // ncclResult_t  ncclRecv (void* recvbuff, size_t count, ncclDataType_t datatype, int peer, ncclComm_t comm, cudaStream_t stream);
-    virtual QcuCommStatus recv(void* recv_buf, size_t count, QcuDataType data_type, int source, void* comm,
-        void* stream, int tag, void * request_or_status) = 0;
-    virtual QcuCommStatus irecv(void* recv_buf, size_t count, QcuDataType data_type, int source, void* comm,
-        void* stream, int tag, void * request_or_status) = 0;
+    // int           MPI_Recv (void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm,
+    //                          MPI_Status *status);
+    // int           MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm,
+    //                          MPI_Request *request);
+    // ncclResult_t  ncclRecv (void* recvbuff, size_t count, ncclDataType_t datatype, int peer, ncclComm_t comm,
+    //                          cudaStream_t stream);
+    virtual QcuCommStatus recv(void* recv_buf, QcuDataType data_type, size_t count, int source, int tag, void* comm,
+        void * request_or_status, void* stream = nullptr) = 0;
+    virtual QcuCommStatus irecv(void* recv_buf, QcuDataType data_type, size_t count, int source, int tag, void* comm,
+        void * request_or_status, void* stream = nullptr) = 0;
 
     // reduce_sum
     // int
-    //     MPI_Allreduce(const void *sendbuf, void *recvbuf,   int count,    MPI_Datatype datatype,   MPI_Op op, MPI_Comm comm);
+    //     MPI_Allreduce(const void *sendbuf, void *recvbuf,   int count,    MPI_Datatype datatype,   MPI_Op op,
+    //          MPI_Comm comm);
     // ncclResult_t
-    //     ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count, ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm, cudaStream_t stream);
+    //     ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count, ncclDataType_t datatype, ncclRedOp_t op,
+    //          ncclComm_t comm, cudaStream_t stream);
     virtual QcuCommStatus reduce_sum (const void* send_buf, void* recv_buf, size_t count, QcuDataType data_type,
         void* comm, void* stream) = 0;
 
     // barrier
-    virtual QcuCommStatus barrier() = 0;
+    virtual QcuCommStatus barrier(void* comm) = 0;
 };
 
 class MpiCommunicator : public Communicator {
 public:
-    QcuCommStatus send(const void* send_buff, size_t count, QcuDataType data_type, int dest/*dest or peer*/,
-        void* comm, void* stream, int tag) override;
+    QcuCommStatus send (const void* send_buff, size_t count, QcuDataType data_type, int dest,
+        int tag, void* comm, void* stream = nullptr) override;
     QcuCommStatus isend(const void* send_buff, size_t count, QcuDataType data_type, int dest,
-        void* comm, void* stream, int tag, void * request) override;
+        int tag, void* comm, void * request, void* stream = nullptr) override;
 
-    QcuCommStatus recv(void* recv_buf, size_t count, QcuDataType data_type, int source, void* comm,
-        void* stream, int tag, void * request_or_status) override;
-    QcuCommStatus irecv(void* recv_buf, size_t count, QcuDataType data_type, int source, void* comm,
-        void* stream, int tag, void * request_or_status) override;
+    QcuCommStatus recv(void* recv_buf, QcuDataType data_type, size_t count, int source, int tag, void* comm,
+        void * request_or_status, void* stream = nullptr) override;
+    QcuCommStatus irecv(void* recv_buf, QcuDataType data_type, size_t count, int source, int tag, void* comm,
+        void * request_or_status, void* stream = nullptr) override;
 
     QcuCommStatus reduce_sum (const void* send_buf, void* recv_buf, size_t count, QcuDataType data_type,
         void* comm, void* stream) override;
 
     // barrier
-    QcuCommStatus barrier() override;
+    QcuCommStatus barrier(void* comm) override;
 };
 
 class NcclCommunicator : public Communicator {
 public:
-    QcuCommStatus send(const void* send_buff, size_t count, QcuDataType data_type, int dest/*dest or peer*/,
-    void* comm, void* stream, int tag) override;
+    QcuCommStatus send (const void* send_buff, size_t count, QcuDataType data_type, int dest,
+        int tag, void* comm, void* stream = nullptr) override;
     QcuCommStatus isend(const void* send_buff, size_t count, QcuDataType data_type, int dest,
-        void* comm, void* stream, int tag, void * request) override;
+        int tag, void* comm, void * request, void* stream = nullptr) override;
 
-    QcuCommStatus recv(void* recv_buf, size_t count, QcuDataType data_type, int source, void* comm,
-        void* stream, int tag, void * request_or_status) override;
-    QcuCommStatus irecv(void* recv_buf, size_t count, QcuDataType data_type, int source, void* comm,
-        void* stream, int tag, void * request_or_status) override;
+    QcuCommStatus recv(void* recv_buf, QcuDataType data_type, size_t count, int source, int tag, void* comm,
+        void * request_or_status, void* stream = nullptr) override;
+    QcuCommStatus irecv(void* recv_buf, QcuDataType data_type, size_t count, int source, int tag, void* comm,
+        void * request_or_status, void* stream = nullptr) override;
 
     QcuCommStatus reduce_sum (const void* send_buf, void* recv_buf, size_t count, QcuDataType data_type,
         void* comm, void* stream) override;
 
-    // nccl does not support barrier
-    QcuCommStatus barrier() override {
+    // barrier : nccl does not support barrier
+    QcuCommStatus barrier(void* comm) override {
         return QcuCommStatus::kQcuCommSuccess;
     }
 };
