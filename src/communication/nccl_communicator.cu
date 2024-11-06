@@ -1,7 +1,7 @@
 //
 // Created by wjc on 24-10-24.
 //
-#include "nccl.h"
+// #include "nccl.h"
 #include "qcu_helper.h"
 
 #include "communication/communicator.h"

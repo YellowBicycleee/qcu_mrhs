@@ -43,7 +43,7 @@ target_link_libraries(qcu
 	cudadevrt
     cublas
 	${MPI_LIBRARIES}
-	nccl
+	# nccl
 )
 
 

@@ -63,7 +63,7 @@ int main () {
     h_lookup_table[0] = (void*) d_src;
     CHECK_CUDA(cudaMemcpy(d_lookup_table, h_lookup_table, sizeof(void *) * mInput, cudaMemcpyHostToDevice));
 
-    colorSpinorGather(d_dst, QCU_DOUBLE_PRECISION, d_lookup_table, QCU_DOUBLE_PRECISION, Lx, Ly, Lz, Lt, nColor, 1);
+    colorSpinorGather(d_dst, kPrecisionDouble, d_lookup_table, kPrecisionDouble, Lx, Ly, Lz, Lt, nColor, 1);
     CHECK_CUDA(cudaDeviceSynchronize());
     // colorSpinorScatter(d_dst, QCU_DOUBLE_PRECISION, d_src, QCU_DOUBLE_PRECISION, Lx, Ly, Lz, Lt, nColor, 1);
     CHECK_CUDA(cudaMemcpy(h_dst, d_dst, vol * sizeof(double) * 2, cudaMemcpyDeviceToHost));
