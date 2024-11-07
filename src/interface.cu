@@ -12,9 +12,9 @@
 static qcu::Qcu *qcu_ptr = nullptr;
 
 static void check_qcu_ptr() {
-  if (qcu_ptr == nullptr) {
-    errorQcu("Qcu is not initialized\n");
-  }
+    if (qcu_ptr == nullptr) {
+        errorQcu("Qcu is not initialized\n");
+    }
 }
 
 void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int inputFloatPrecision,
@@ -35,38 +35,38 @@ void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int in
 }
 
 void pushBackFermions(void *fermionOut, void *fermionIn) {
-  check_qcu_ptr();
-  qcu_ptr->push_back_fermion(fermionOut, fermionIn);
+    check_qcu_ptr();
+    qcu_ptr->push_back_fermion(fermionOut, fermionIn);
 }
 
 void loadQcuGauge(void *gauge, int floatPrecision) { 
-  check_qcu_ptr();
-  qcu_ptr->load_gauge(gauge, (QcuPrecision)floatPrecision);
+    check_qcu_ptr();
+    qcu_ptr->load_gauge(gauge, (QcuPrecision)floatPrecision);
 }
 
 void getDslash(int dslashType, double mass) { 
-  check_qcu_ptr();
-  qcu_ptr->get_dslash((DslashType)dslashType, mass);
+    check_qcu_ptr();
+    qcu_ptr->get_dslash((DslashType)dslashType, mass);
 }
 
 void start_dslash(int parity, int daggerFlag) {
-  check_qcu_ptr();
-  qcu_ptr->start_dslash(parity, (bool)daggerFlag);
+    check_qcu_ptr();
+    qcu_ptr->start_dslash(parity, (bool)daggerFlag);
 }
 void mat_Qcu(int daggerFlag) {
-  check_qcu_ptr();
-  qcu_ptr->mat_qcu((bool)daggerFlag);
+    check_qcu_ptr();
+    qcu_ptr->mat_qcu((bool)daggerFlag);
 }
 
 void finalizeQcu() {
-  // check_qcu_ptr();
-  delete qcu_ptr;
-  qcu_ptr = nullptr;
+    // check_qcu_ptr();
+    delete qcu_ptr;
+    qcu_ptr = nullptr;
 }
 
 void qcuInvert(int max_iteration, double max_precison) {
-  check_qcu_ptr();
-  qcu_ptr->solve_fermions(max_iteration, max_precison);
+    check_qcu_ptr();
+    qcu_ptr->solve_fermions(max_iteration, max_precison);
 }
 
 // 奇偶预处理接口
@@ -146,6 +146,6 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
 }
 
 void read_gauge_from_file (void* gauge, const char* file_path_prefix) {
-  check_qcu_ptr();
-  qcu_ptr->read_gauge_from_file(file_path_prefix, gauge);
+    check_qcu_ptr();
+    qcu_ptr->read_gauge_from_file(file_path_prefix, gauge);
 }
