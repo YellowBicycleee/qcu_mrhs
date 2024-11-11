@@ -3,7 +3,6 @@
 
 #include "kernel/su_n_m_rhs_matmul.cuh"
 #include "point/qcu_point.cuh"
-// #include "qcu_float_float2_wrapper.h"
 #include "base/datatype/qcu_float2.cuh"
 #include "qcu_utils.h"
 #include "qcu_wmma_constant.h"
@@ -12,10 +11,13 @@ namespace qcu {
 namespace device {
 
 template <typename Float>
-__device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __restrict__ in, Float* __restrict__ gauge,
-                                           Float* smem, int Lx, int Ly, int Lz, int Lt, int g_x, int g_y, int g_z,
-                                           int g_t, int parity, bool dagger_flag, int n_color, int m_rhs,
-                                           int virtual_point_id, Float kappa = 0, bool mat = false) {
+__forceinline__ __device__ 
+void single_point_wilson_dslash(
+    Float* __restrict__ out, Float* __restrict__ in, Float* __restrict__ gauge, Float* smem, 
+    int Lx, int Ly, int Lz, int Lt, int g_x, int g_y, int g_z, int g_t, int parity,
+    bool dagger_flag, int n_color, int m_rhs, int virtual_point_id, 
+    Float kappa = 0, bool mat = false) 
+{
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
     constexpr int WMMA_M = WMMA_Param<Float>::WMMA_M;
     constexpr int WMMA_N = WMMA_Param<Float>::WMMA_N;
@@ -101,15 +103,6 @@ __device__ void single_point_wilson_dslash(Float* __restrict__ out, Float* __res
             dslash_mat_mul_new<Float>(L_frag, R_frag, smem_U, smem_R, smem_T, point_gauge_matrix, point_in_matrix, dagger_flag,
                                   n_color, m_rhs, warp_begin_row, warp_begin_col, dim, BWD);
         }
-
-        // addition : kappa * in
-//         if (mat) {
-// #pragma unroll
-//             for (int i = 0; i < Ns; ++i) {
-
-//             }
-//         }
-        // end addition
 
         // store L to smem
         #pragma unroll
