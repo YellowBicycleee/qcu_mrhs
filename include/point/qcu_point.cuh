@@ -86,4 +86,10 @@ class Point {
         parity_ = rhs.parity_;
         return *this;
     }
+
+    __device__ __forceinline__ int X() const { return x_; }
+    __device__ __forceinline__ int Y() const { return y_; }
+    __device__ __forceinline__ int Z() const { return z_; }
+    __device__ __forceinline__ int T() const { return t_; }
+    __device__ __forceinline__ int Parity() const { return parity_; }
 };
