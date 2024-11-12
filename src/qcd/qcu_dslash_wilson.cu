@@ -27,7 +27,7 @@ inline void ApplyWilsonDslash_Mrhs( Float* __restrict__ out, Float* __restrict__
 // {
 //
 // }
-void WilsonDslash::apply(DslashParam dslashParam) {
+void WilsonDslash::apply(DslashParam& dslashParam) {
     int Lx = dslashParam.lattDesc->data[X_DIM];
     int Ly = dslashParam.lattDesc->data[Y_DIM];
     int Lz = dslashParam.lattDesc->data[Z_DIM];

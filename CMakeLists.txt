@@ -17,8 +17,6 @@ aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcd QCU_QCD)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/communication QCU_COMMUNICATION)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/solver QCU_SOLVER)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcu_config QCU_CONFIG)
-# new impl
-aux_source_directory(${PROJECT_SOURCE_DIR}/src/new_impl/dslash NEW_IMPL)
 
 # shared library
 add_library(qcu 
@@ -31,7 +29,6 @@ add_library(qcu
     ${QCU_SOLVER}
 	${QCU_CONFIG}
 	${QCU_COMMUNICATION}
-	${NEW_IMPL}
 )
 target_include_directories(qcu 
     PUBLIC

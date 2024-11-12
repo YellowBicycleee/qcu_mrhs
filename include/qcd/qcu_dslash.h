@@ -62,7 +62,7 @@ protected:
 public:
     Dslash(bool if_matric = false) : if_metric_(if_matric) {}
     virtual ~Dslash() noexcept = default;
-    virtual void apply(DslashParam param) = 0;
+    virtual void apply(DslashParam& param) = 0;
     virtual double flops() = 0;
 };
 
