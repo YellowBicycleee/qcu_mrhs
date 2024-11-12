@@ -42,8 +42,7 @@ static inline void fused_x_sub_Doe_Deo_x (void* output, void* input, void* temp,
   param.fermionOut_MRHS = temp;
   param.fermionIn_MRHS = input;
   param.parity = EVEN_PARITY;
-  dslash->setParam(&param);
-  dslash->apply();
+  dslash->apply(param);
   CHECK_CUDA(cudaStreamSynchronize(stream1));
   CHECK_CUDA(cudaStreamSynchronize(stream2));
 
@@ -51,8 +50,8 @@ static inline void fused_x_sub_Doe_Deo_x (void* output, void* input, void* temp,
   param.fermionOut_MRHS = output;
   param.fermionIn_MRHS = temp;
   param.parity = ODD_PARITY;
-  dslash->setParam(&param);
-  dslash->apply();
+
+  dslash->apply(param);
   CHECK_CUDA(cudaStreamSynchronize(stream1));
   CHECK_CUDA(cudaStreamSynchronize(stream2));
 
@@ -711,8 +710,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
     param_.stream1,             // cudaStream_t p_stream1 = NULL,
     param_.stream2              // cudaStream_t p_stream2 = NULL)
   }; 
-  dslash_operator_->setParam(&dslashParam);
-  dslash_operator_->apply();  // x_e = D_{eo} x_{o}
+
+  dslash_operator_->apply(dslashParam);  // x_e = D_{eo} x_{o}
 
   CHECK_CUDA(cudaDeviceSynchronize());
 

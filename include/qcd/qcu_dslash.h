@@ -1,7 +1,6 @@
 #pragma once
 
 #include "desc/qcu_desc.h"
-#include "qcu.h"
 #include "qcu_public.h"
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -54,31 +53,29 @@ struct DslashParam {
 
 class Dslash {
 protected:
-    // DslashParam& dslashParam_;
-    DslashParam* dslashParam_;
-    float dslashFlops_;
+    bool if_metric_ = false;
+    double operations_ = 0.0;
+    double time_ = 0.0;
 
+    virtual void preApply(const DslashParam&) = 0;
+    virtual void postApply(const DslashParam&) = 0;
 public:
-    // Dslash(DslashParam& dslashParam) : dslashParam_(dslashParam) {}
-    Dslash() = delete;
-    Dslash(DslashParam* dslashParam) : dslashParam_(dslashParam) {}
-    void setParam(DslashParam* dslashParam) { dslashParam_ = dslashParam; }
-    virtual ~Dslash() = default;
-    virtual void apply() = 0;
-    virtual void preApply() = 0;
-    virtual void postApply() = 0;
-    virtual void flops() = 0;
+    Dslash(bool if_matric = false) : if_metric_(if_matric) {}
+    virtual ~Dslash() noexcept = default;
+    virtual void apply(DslashParam param) = 0;
+    virtual double flops() = 0;
 };
 
 class WilsonDslash : public Dslash {
+    virtual void preApply(const DslashParam&);
+    virtual void postApply(const DslashParam&);
 public:
-  WilsonDslash(DslashParam* dslashParam) : Dslash(dslashParam) {}
-  virtual void async_work_flow();
-  virtual ~WilsonDslash() = default;
-  virtual void apply();
-  virtual void preApply();
-  virtual void postApply();
-  virtual void flops();
+    WilsonDslash(bool if_metric = false) : Dslash(if_metric) {}
+    virtual ~WilsonDslash() noexcept = default;
+    // virtual void async_work_flow();
+
+    virtual void apply(DslashParam dslashParam);
+    virtual double flops();
 };
 
 }  // namespace qcu

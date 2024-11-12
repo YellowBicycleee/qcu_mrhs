@@ -184,7 +184,7 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
         );
     }
     
-    TIMER_EVENT(dslash_->apply(), num_op, "wilson dslash");
+    TIMER_EVENT(dslash_->apply(*dslash_param_), num_op, "wilson dslash");
     TIMER_EVENT(colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision, fermion_out_mrhs_,
                               underlying_args_.compute_float_precision, Lx, Ly, Lz,
                               Lt, n_colors_, m_input_, NULL), 0, "scatter");
@@ -238,7 +238,7 @@ void Qcu::mat_qcu (bool daggerFlag) {
                 underlying_args_.out_float_precision, Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL);
         CHECK_CUDA(cudaDeviceSynchronize());
 
-        dslash_->apply();
+        dslash_->apply(*dslash_param_);
         CHECK_CUDA(cudaDeviceSynchronize());
 
         colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision,

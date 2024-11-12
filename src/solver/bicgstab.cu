@@ -58,7 +58,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
   CHECK_CUDA(cudaMalloc(&omega_array, param_.mInput * output_float_size * 2));
 
   // dslash运算符构造
-  dslash_operator_ = new WilsonDslash(nullptr);
+  dslash_operator_ = new WilsonDslash(false);
   // cublasHandler申请
   if (const cublasStatus_t stat = cublasCreate(&cublasHandle_); stat != CUBLAS_STATUS_SUCCESS) {
     printf("IN file %s, line %d, error happened\n", __FILE__, __LINE__);
@@ -173,8 +173,7 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
     /*param.stream2         */   param_.stream2,
   };
 
-  dslash_operator_->setParam(&param);
-  dslash_operator_->apply();  // new_even_b = D_{oe} b_{e}
+  dslash_operator_->apply(param);  // new_even_b = D_{oe} b_{e}
 
   void* output_prec_kappa = output_scala_array_[0]; // this array stores kappa
 
