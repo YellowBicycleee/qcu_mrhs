@@ -18,17 +18,20 @@
  * Policy2: MPI + NCCL
  */
 
-template <typename Float>
-void async_execution_stream(
-    complex<Float>* device_send_buf, complex<Float>* host_send_buff,
-    complex<Float>* device_recv_buf, complex<Float>* host_recv_buff,
-    bool gpu_direct, size_t count, int direction_1_dim /* no_dim * directions + dir */
-    )
-{
-    // byte send
-}
 
-namespace qcu {
-namespace dslash {
-}
-}
+#include "kernel/su_n_m_rhs_dslash_new.cuh"
+
+//template <typename Float>
+//void async_execution_stream(
+//    complex<Float>* device_send_buf, complex<Float>* host_send_buff,
+//    complex<Float>* device_recv_buf, complex<Float>* host_recv_buff,
+//    bool gpu_direct, size_t count, int direction_1_dim /* no_dim * directions + dir */
+//    )
+//{
+//    // byte send
+//}
+//
+//namespace qcu {
+//namespace dslash {
+//}
+//}
