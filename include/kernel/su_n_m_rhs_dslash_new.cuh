@@ -246,7 +246,7 @@ void single_point_wilson_dslash(
                 , coord_1dim % (Ly * half_Lx) / half_Lx
                 , coord_1dim % half_Lx
                 , parity};
-
+    Point move_coord;
     // for i = X_DIM, Y_DIM, Z_DIM, T_DIM
     //      for j in BWD, FWD
     //          load A
@@ -278,10 +278,14 @@ void single_point_wilson_dslash(
                 for (int dim_dir = 0; dim_dir < Nd * DIRECTIONS; dim_dir++) {
                     int dir = dim_dir & 1;  // same with '% DIRECTIONS'
                     int dim = dim_dir >> 1; // same with '/ DIRECTIONS'
-                    
+
+                    move_coord = coord.move(dir, dim, Lx, Ly, Lz, Lt);
                     // calculate start addr of global A and B
-                    Float2_t<_FloatType>* glb_A = gauge + ((2 * i + parity) * half_vol + IDX4D(t, z, y, x, Lx, Ly, Lz)) * n_color * n_color;
-                    Float2_t<_FloatType>* glb_B = in + IDX4D(t, z, y, x, Lx, Ly, Lz) * n_color * m_rhs * Ns;
+                    Float2_t<_FloatType>* glb_A = gauge + ((2 * dim + parity) * half_vol +
+                                                            IDX4D(coord.T(), coord.Z(), coord.Y(), coord.X(), Lz, Ly, Lx)
+                                                            ) * n_color * n_color;
+                    Float2_t<_FloatType>* glb_B = in + IDX4D(move_coord.T(), move_coord.Z(), move_coord.Y(), move_coord.X(), Lz, Ly, Lx)
+                                                        * n_color * m_rhs * Ns;
 
                     // set dagger, BE CAREFUL: it is possible to be wrong here
                     if (dir == FWD) { // fwd default: dagger 
@@ -300,14 +304,14 @@ void single_point_wilson_dslash(
                         scale2 = get_scale<_FloatType>(dim, 0, 1);
 
                         mat1_pos = 0;
-                        if (i == 0 || i == 1) { mat2_pos = 3; } 
+                        if (dim == 0 || dim == 1) { mat2_pos = 3; }
                         else { mat2_pos = 2; }
                     } else {            // col \in [m_rhs, 2 * m_rhs)
                         scale1 = get_scale<_FloatType>(dim, 1, 1);
                         scale2 = get_scale<_FloatType>(dim, 1, 1);
 
                         mat1_pos = 1;
-                        if (i == 2 || i == 3) { mat2_pos = 3; } 
+                        if (dim == 2 || dim == 3) { mat2_pos = 3; }
                         else { mat2_pos = 2; }
                     }
 
