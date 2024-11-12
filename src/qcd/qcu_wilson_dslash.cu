@@ -70,10 +70,10 @@ void WilsonDslash::apply(DslashParam dslashParam) {
     CHECK_CUDA(cudaStreamSynchronize(dslashParam.stream1));
     // clang-format on
 }
-void WilsonDslash::preApply(const DslashParam&) {
+void WilsonDslash::pre_apply(const DslashParam&) {
     errorQcu("Not implemented yet\n");  // TODO
 }
-void WilsonDslash::postApply(const DslashParam&) {
+void WilsonDslash::post_apply(const DslashParam&) {
     errorQcu("Not implemented yet\n");  // TODO
 }
 // TODO : calc flops

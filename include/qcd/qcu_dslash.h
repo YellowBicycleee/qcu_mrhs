@@ -57,8 +57,8 @@ protected:
     double operations_ = 0.0;
     double time_ = 0.0;
 
-    virtual void preApply(const DslashParam&) = 0;
-    virtual void postApply(const DslashParam&) = 0;
+    virtual void pre_apply(const DslashParam&) = 0;
+    virtual void post_apply(const DslashParam&) = 0;
 public:
     Dslash(bool if_matric = false) : if_metric_(if_matric) {}
     virtual ~Dslash() noexcept = default;
@@ -67,8 +67,8 @@ public:
 };
 
 class WilsonDslash : public Dslash {
-    virtual void preApply(const DslashParam&);
-    virtual void postApply(const DslashParam&);
+    virtual void pre_apply(const DslashParam&);
+    virtual void post_apply(const DslashParam&);
 public:
     WilsonDslash(bool if_metric = false) : Dslash(if_metric) {}
     virtual ~WilsonDslash() noexcept = default;
