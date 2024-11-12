@@ -4,7 +4,7 @@
 #include <cstdint>
 
 #include "desc/qcu_desc.h"
-#include "qcd/qcu_dslash.h"
+#include "qcd/qcu_dslash_wilson.h"
 #include "qcu_public.h"
 #include "qcu_helper_macro.h"
 namespace qcu {

@@ -13,6 +13,7 @@ project(QCU LANGUAGES C CXX CUDA) # project name = ${PROJECT_NAME}
 find_package(MPI REQUIRED)
 
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcu_blas QCU_BLAS)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcd QCU_QCD)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/communication QCU_COMMUNICATION)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/solver QCU_SOLVER)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcu_config QCU_CONFIG)
@@ -23,8 +24,8 @@ aux_source_directory(${PROJECT_SOURCE_DIR}/src/new_impl/dslash NEW_IMPL)
 add_library(qcu 
     SHARED
     ${PROJECT_SOURCE_DIR}/src/interface.cu
-    ${PROJECT_SOURCE_DIR}/src/qcu_interface.cu  
-    ${PROJECT_SOURCE_DIR}/src/qcd/qcu_wilson_dslash.cu
+    ${PROJECT_SOURCE_DIR}/src/qcu_interface.cu
+	${QCU_QCD}
     ${PROJECT_SOURCE_DIR}/src/data_format/qcu_data_format_shift.cu
     ${QCU_BLAS}
     ${QCU_SOLVER}

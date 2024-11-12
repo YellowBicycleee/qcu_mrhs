@@ -3,7 +3,7 @@
 #include <cublas_v2.h>
 #include "base/datatype/qcu_float2.cuh"
 #include "desc/qcu_desc.h"
-#include "qcd/qcu_dslash.h"
+#include "qcd/qcu_dslash_wilson.h"
 #include "qcu_blas/qcu_blas.h"
 #include "qcu_public.h"
 

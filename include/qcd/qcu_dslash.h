@@ -2,8 +2,8 @@
 
 #include "desc/qcu_desc.h"
 #include "qcu_public.h"
-#include <cuda.h>
 #include <cuda_runtime.h>
+
 namespace qcu {
 
 // clang-format off
@@ -64,18 +64,6 @@ public:
     virtual ~Dslash() noexcept = default;
     virtual void apply(DslashParam param) = 0;
     virtual double flops() = 0;
-};
-
-class WilsonDslash : public Dslash {
-    virtual void pre_apply(const DslashParam&);
-    virtual void post_apply(const DslashParam&);
-public:
-    WilsonDslash(bool if_metric = false) : Dslash(if_metric) {}
-    virtual ~WilsonDslash() noexcept = default;
-    // virtual void async_work_flow();
-
-    virtual void apply(DslashParam dslashParam);
-    virtual double flops();
 };
 
 }  // namespace qcu
