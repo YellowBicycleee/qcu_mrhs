@@ -5,174 +5,53 @@
 #include "base/datatype/qcu_complex.cuh"
 #include "base/datatype/qcu_float2.cuh"
 #include "desc/qcu_desc.h"
+#include "kernel/check_boundary.cuh"
+#include "kernel/qcu_gamma.cuh"
 #include "kernel/su_n_m_rhs_matmul.cuh"
 #include "point/qcu_point.cuh"
 #include "qcu_helper.h"
-#include "su_n_m_rhs_dslash_new.cuh"
-#include "kernel/qcu_gamma.cuh"
+#include "kernel/gemm/qcu_gemm_configure.cuh"
+#include "kernel/gemm/qcu_gemm_loader.cuh"
 namespace qcu {
 namespace device {
 
-constexpr int THREADS_PER_WARP_LINE = 8;
-constexpr int WARP_LINES = 4;
-// calculate 1 + gamma, if dagger, just set col(1) = -col(1)
-// for example,
-// ---------------------------------------
-// 1 + gamma_1 = 
-//      [ 1  0  0  i]
-//      [ 0  1  i  0]
-//      [ 0 -i  1  0]
-//      [-i  0  0  1]   
-// ---------------------------------------
-// we can see that (1 + gamma_1) row(2, 3) = row(0, 1) * (-i, -i), so we constrain row to 0, 1
-// only 2 columns have elem, so we constrain col to 0, 1
-
-template <typename _FloatType>
-QCU_DEVICE
-Complex<_FloatType> get_scale(int gamma_id, int row) {
-    kernel::Gamma<_FloatType> gamma;
-    if (gamma_id < 0 || gamma_id > 3) {
-        printf("Fatal: gamma_id %d out of range\n", gamma_id + 1);
-        exit(-1);
-    }
-    if (!(row == 0 || row == 1)) {
-        printf("Fatal: row or col out of range\n");
-        exit(-1);
-    }
-    // 1 + gamma_1 
-    if (gamma_id == 0 || gamma_id == 1) {
-        if (row == 0) return gamma.get_elem(gamma_id, 0, 3);
-        else return gamma.get_elem(gamma_id, 1, 2);
-    }
-
-    else if (gamma_id == 2 || gamma_id == 3) {
-        if (row == 0) return gamma.get_elem(gamma_id, 0, 2);
-        else return gamma.get_elem(gamma_id, 1, 3);
-    }
-
-    // error handling
-    printf("gamma_id = %d, row = %d,some parameter out of range\n", gamma_id, row);
-    exit(-1);
-}
-
-
-// always row-major
+/**
+* @brief calculate the wilson dslash for a single point
+*
+* use Batch-gemm like method
+*   A is Gauge, is row-col major and col-major in glb memory, col-major in smem, glb_size = n_color * n_color
+*   B is fermion in, we calculate 2 * n_color * m_rhs size of projected fermion, row-major in glb and smem
+*
+*   C is 4 *[m_rhs * n_color] size of projected fermion in reg, 2 * n_color * m_rhs size of temp_res in register
+*/
 template <
-    typename _FloatType = double,
-    int _BLK_M = 16,
-    int _BLK_N = 16
->
-QCU_DEVICE
-void ldg_mat_to_reg(Float2_t<_FloatType>* __restrict__ glb_mat, int M, int N,
-                    Float2_t<_FloatType>* __restrict__ reg_mat, int start_m, int start_n) 
-{
-    int rows = _BLK_M / blockDim.y;  // how many rows each thread load
-    int cols = _BLK_N / blockDim.x;  // how many cols each thread load
-
-    int glb_start_m = start_m + threadIdx.y * rows;
-    int glb_start_n = start_n + threadIdx.x * cols;
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            if (glb_start_m + i < M && glb_start_n + j < N) {
-                reg_mat[IDX2D(i, j, cols)] = glb_mat[IDX2D(glb_start_m + i, glb_start_n + j, N)];
-            } else {
-                reg_mat[IDX2D(i, j, cols)] = Float2_t<_FloatType>(0.0);
-            }
-        }
-    }
-}
-
-
-template <
-    typename _FloatType = double,
-    int _BLK_M = 16,
-    int _BLK_N = 16
->
-QCU_DEVICE
-void sts_mat( Float2_t<_FloatType>* __restrict__ smem_mat,
-                     Float2_t<_FloatType>* __restrict__ reg_mat) 
-{
-    int rows = _BLK_M / blockDim.y;  // how many rows each thread has
-    int cols = _BLK_N / blockDim.x;  // how many cols each thread has
-
-    int smem_start_m = threadIdx.y * rows;
-    int smem_start_n = threadIdx.x * cols;
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            smem_mat[IDX2D(smem_start_m + i, smem_start_n + j, _BLK_N)] = reg_mat[IDX2D(i, j, cols)];
-        }
-    }
-}
-
-
-template <
-    typename _FloatType = double,
-    int _BLK_M = 16,
-    int _BLK_N = 16
->
-QCU_DEVICE
-void sts_mat_transpose( Float2_t<_FloatType>* __restrict__ smem_mat,
-                        Float2_t<_FloatType>* __restrict__ reg_mat) 
-{
-    int rows = _BLK_M / blockDim.y;  // how many rows each thread has
-    int cols = _BLK_N / blockDim.x;  // how many cols each thread has
-
-    int smem_start_m = threadIdx.y * rows;
-    int smem_start_n = threadIdx.x * cols;
-    // transpose
-    // 假想一个smem[row][col]到真实的smem[col][row]的transpose
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            smem_mat[IDX2D(smem_start_n + j, smem_start_m + i, _BLK_M)] = reg_mat[IDX2D(i, j, cols)];
-        }
-    }
-}
-
-// assume warp threads is always 4 * 8
-template <
-    typename _FloatType = double,
-    int _BLK_SIZE = 128,
-    int _BLK_M = 16,
-    int _BLK_N = 16,
-    int _BLK_K = 8,
-    int _WARP_M = 8,
-    int _WARP_N = 8,
+    typename FloatType_ = double,
+    int BlockSize_ = 128,
+    typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
+    typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
     bool _use_tensor_core = false
 >
 QCU_DEVICE
 void single_point_wilson_dslash(
-    _FloatType* __restrict__ out, _FloatType* __restrict__ in, _FloatType* __restrict__ gauge,
-    QcuLattDesc latt_desc, uint32_t multiprocess , int parity,
+    FloatType_* __restrict__ out,
+    FloatType_* __restrict__ in,
+    FloatType_* __restrict__ gauge,
+    QcuLattDesc latt_desc, int multiprocess , int parity,
     bool dagger_flag, int n_color, int m_rhs, int coord_1dim, 
-    _FloatType kappa = 0, bool mat = false) 
-{   
-    int lane_id, warp_id;
-    asm ("mov.u32 %0, %%laneid;" : "=r"(lane_id) : );
-    asm ("mov.u32 %0, %%warpid;" : "=r"(warp_id) : );
+    FloatType_ kappa = 0, bool mat = false)
+{
 
     // used for ping pong
-    __shared__ Float2_t<_FloatType> smem_A[2][_BLK_M * _BLK_K];
-    __shared__ Float2_t<_FloatType> smem_B[2][_BLK_K * _BLK_N];
+    __shared__ Float2_t<FloatType_> smem_A[2][BlockShape_::kMK]; // smem A size = BlockShape_::kMK
+    __shared__ Float2_t<FloatType_> smem_B[2][BlockShape_::kKN]; // smem B size = BlockShape_::kKN
+    // C size = _BLK_M * _BLK_N in register and Res size is _BLK_N * _BLK_N * 2 in register
 
     // ldg_A and ldg_B are used to load A and B from global memory
-    Float2_t<_FloatType> ldg_A[2][_BLK_M * _BLK_K / _BLK_SIZE];
-    Float2_t<_FloatType> ldg_B[2][_BLK_K * _BLK_N / _BLK_SIZE];
+    Complex<FloatType_> ldg_A[2][BlockShape_::kMK / BlockSize_];
+    Complex<FloatType_> ldg_B[2][BlockShape_::kKN / BlockSize_];
 
-    // for future utility, now set to 0 
-    int row_start = 0;
-    int col_start = 0;
-
-    // Batch Gemm , every block calculate one point, 
-    // 4 * n_color * m_rhs size of res in register
-    // 2 * n_color * m_rhs size of temp_res in register (add to res)
-    // in global memory, A: ncolor * ncolor, B: ncolor * m_rhs * 4,
-    // in smem, A: ncolor * ncolor, B: ncolor * m_rhs * 2 (combine 2 of 4 in global memory, into 2 in smem)
-
-
-    // assume we are calculating half volume
-    // smem A size = _BLK_M * _BLK_N
-    // smem B size = _BLK_K * _BLK_N
-    // C size = _BLK_M * _BLK_N in register and Res size is _BLK_N * _BLK_N * 2 in register
+    Complex<FloatType_> temp_res[BlockShape_::kMN];
+    Complex<FloatType_> res[BlockShape_::kMN * 2];
 
     int half_Lx = (latt_desc.X() << 1);
 
@@ -182,68 +61,60 @@ void single_point_wilson_dslash(
                 , coord_1dim % half_Lx
                 , parity};
     Point move_coord;
-    // for i = X_DIM, Y_DIM, Z_DIM, T_DIM
-    //      for j in BWD, FWD
-    //          load A
-    //          load B
-    //          gemm
-    //          add temp{1, 2} to res{1, 2, 3, 4}
 
-    int half_vol = latt_desc.half_lattice_volume();
-    Float2_t<_FloatType> scale1;    // when read B, use scale1 B1 + scale2 B2
-    Float2_t<_FloatType> scale2;
 
-    int row = row_start + threadIdx.y;
-    int col = col_start + threadIdx.x;
 
     int32_t mat1_pos; // will be 0 or 1, use this to set mat1 position
-    int32_t mat2_pos; // will be 2 or 3, use this to set mat2 position     temp_mat = scale1 * mat1 + scale2 * mat2 
+    int32_t mat2_pos; // will be 2 or 3, use this to set mat2 position     temp_mat = mat1 + scale * mat2
 
+    int32_t blocks_m = div_ceil(n_color, BlockShape_::kM);
+    int32_t blocks_n = div_ceil(2 * m_rhs, BlockShape_::kN);
 
-    int32_t blocks_m = (n_color + _BLK_M - 1) / _BLK_M;
-    int32_t blocks_n = (2 * m_rhs + _BLK_N - 1) / _BLK_N;
+    Float2_t<FloatType_> scale; // when read B, use B1 + scale B2
 
     for (int loop_blk_m = 0; loop_blk_m < blocks_m; ++loop_blk_m) {
         for (int loop_blk_n = 0; loop_blk_n < blocks_n; ++loop_blk_n) {
 
-            int row = row_start + loop_blk_m * _WARP_M + threadIdx.y;
-            int col = col_start + loop_blk_n * _WARP_N + threadIdx.x;
+            int row = loop_blk_m * BlockShape_::kM + threadIdx.y;
+            int col = loop_blk_n * BlockShape_::kN + threadIdx.x;
 
             if (row < n_color && col < 2 * m_rhs) {
+                mat1_pos = col / m_rhs;
+
                 for (int dim_dir = 0; dim_dir < Nd * DIRECTIONS; dim_dir++) {
                     int dir = dim_dir & 1;  // same with '% DIRECTIONS'
                     int dim = dim_dir >> 1; // same with '/ DIRECTIONS'
 
+                    mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
+
                     move_coord = coord.move(dir, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
                     // calculate start addr of global A and B
-                    Float2_t<_FloatType>* glb_A;
-                    Float2_t<_FloatType>* glb_B = move_coord.getGatheredColorSpinorAddr(in, half_Lx, latt_desc.Y(),
+                    Float2_t<FloatType_>* glb_A;
+                    Float2_t<FloatType_>* glb_B = move_coord.getGatheredColorSpinorAddr(in, half_Lx, latt_desc.Y(),
                         latt_desc.Z(), latt_desc.T(), n_color, m_rhs);
 
                     // set dagger, BE CAREFUL: it is possible to be wrong here
                     if (dir == FWD) { // fwd default: dagger
                         glb_A = coord.getGaugeAddr(gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
                         if (!dagger_flag) {
-                            scale2 = -scale2;
+                            scale = -scale;
                         }
                     } else { // bwd default: not dagger
                         glb_A = move_coord.getGaugeAddr(gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
                         if (dagger_flag) {
-                            scale2 = -scale2;
+                            scale = -scale;
                         }
                     }
 
                     // get scale
                     if (col < m_rhs) { // col \in [0, m_rhs)
-                        scale1 = Complex<_FloatType>(1, 0);
-                        scale2 = get_scale<_FloatType>(dim, 0);
+                        scale = kernel::get_scale<FloatType_>(dim, 0);
 
                         mat1_pos = 0;
                         if (dim == 0 || dim == 1) { mat2_pos = 3; }
                         else { mat2_pos = 2; }
                     } else {            // col \in [m_rhs, 2 * m_rhs)
-                        scale1 = Complex<_FloatType>(1, 0);
-                        scale2 = get_scale<_FloatType>(dim, 1);
+                        scale = kernel::get_scale<FloatType_>(dim, 1);
 
                         mat1_pos = 1;
                         if (dim == 2 || dim == 3) { mat2_pos = 3; }
@@ -251,13 +122,13 @@ void single_point_wilson_dslash(
                     }
 
                     // main loop
-                    for (int k = 0; k < n_color; k += _BLK_K) {
+                    for (int k = 0; k < n_color; k += BlockShape_::kK) {
                         // load A from global memory to register, then store to smem
                         if (dir == 0) { // global memory is row-major, col-major in smem
-                            ldg_mat_to_reg<_FloatType, _BLK_M, _BLK_K>(glb_A, n_color, n_color, ldg_A[0], row, col); 
+                            // ldg_mat_to_reg<_FloatType, BlockShape_::kM, BlockShape_::kK>(glb_A, n_color, n_color, ldg_A[0], row, col);
                             // when store, transpose
                         } else {        // global memory is col-major, col-major in smem
-                            ldg_mat_to_reg<_FloatType, _BLK_K, _BLK_M>(glb_A, n_color, n_color, ldg_A[0], row, col);
+                            // ldg_mat_to_reg<_FloatType, BlockShape_, _BLK_M>(glb_A, n_color, n_color, ldg_A[0], row, col);
                         } 
 
 
@@ -274,21 +145,21 @@ void single_point_wilson_dslash(
 }
 
 // entry function
+// parity is the parity of the point of fermion out,
+// 1 - parity is the parity of the point of fermion in
 template <
-    typename _FloatType = double,
-    int _BLK_M = 16,
-    int _BLK_N = 16,
-    int _BLK_K = 8,
-    int _WARP_M = 8,
-    int _WARP_N = 8,
+    typename FloatType_ = double,
+    int BlockSize_ = 128,
+    typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
+    typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
     bool _use_tensor_core = false
 >
 QCU_GLOBAL
 void wilson_dslash_su_n_mrhs(
-    _FloatType* __restrict__ out,
-    _FloatType* __restrict__ in,
-    _FloatType* __restrict__ gauge,
-    QcuLattDesc latt_desc, unsigned int multiprocess,
+    FloatType_* __restrict__ out,
+    FloatType_* __restrict__ in,
+    FloatType_* __restrict__ gauge,
+    QcuLattDesc latt_desc, int multiprocess,
     int parity, bool dagger_flag, int n_color, int m_rhs) 
 {
     // block切分使用2D，dim3(WARP_SIZE, WARP_NUMBER)
