@@ -39,7 +39,7 @@ private:
     DslashParam *dslash_param_;
     Dslash *dslash_;
 
-    std::vector<void *> fermion_in_queue_;
+    std::vector<void *> fermion_in_vec_;
     std::vector<void *> fermion_out_vec_;
 
     void *gauge_external_;      // gauge field, donnot allocate memory, external pointer
