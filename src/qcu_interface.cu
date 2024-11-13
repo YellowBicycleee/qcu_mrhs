@@ -130,7 +130,7 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
     if (nullptr == dslash_) {
         errorQcu("Dslash is not initialized\n");
     }
-    if (fermion_in_queue_.size() != m_input_ || fermion_out_vec_.size() != m_input_) {
+    if (fermion_in_vec_.size() != m_input_ || fermion_out_vec_.size() != m_input_) {
         errorQcu("Fermion queue is not full\n");
     }
 
@@ -144,9 +144,9 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
     dslash_param_->fermionIn_MRHS = fermion_in_mrhs_;
     dslash_param_->fermionOut_MRHS = fermion_out_mrhs_;
 
-    CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermion_in_queue_.data(), sizeof(void*) * fermion_in_queue_.size(),
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermion_in_vec_.data(), sizeof(void*) * fermion_in_vec_.size(),
                           cudaMemcpyHostToDevice));
-    CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(), sizeof(void*) * fermion_in_queue_.size(),
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(), sizeof(void*) * fermion_in_vec_.size(),
                           cudaMemcpyHostToDevice));
 
     TIMER_EVENT(colorSpinorGather(fermion_in_mrhs_, underlying_args_.compute_float_precision, d_lookup_table_in_,
@@ -190,7 +190,7 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
                               Lt, n_colors_, m_input_, NULL), 0, "scatter");
     CHECK_CUDA(cudaDeviceSynchronize());
 
-    fermion_in_queue_.clear();
+    fermion_in_vec_.clear();
     fermion_out_vec_.clear();
 }
 
@@ -198,7 +198,7 @@ void Qcu::mat_qcu (bool daggerFlag) {
     if (nullptr == dslash_) {
         errorQcu("Dslash is not initialized\n");
     }
-    if (fermion_in_queue_.size() != m_input_ || fermion_out_vec_.size() != m_input_) {
+    if (fermion_in_vec_.size() != m_input_ || fermion_out_vec_.size() != m_input_) {
         errorQcu("Fermion queue is not full\n");
     }
 
@@ -215,18 +215,18 @@ void Qcu::mat_qcu (bool daggerFlag) {
     CHECK_CUDA(cudaMalloc(&device_kappa_, sizeof(Complex<OutputFloat>) ));
     CHECK_CUDA(cudaMemcpy(device_kappa_, &host_kappa, sizeof(Complex<OutputFloat>), cudaMemcpyHostToDevice));
 
-    vector<void*> fermion_in_half (fermion_in_queue_.size());
-    vector<void*> fermion_out_half (fermion_out_vec_.size());
-    const int vol = Lx * Ly * Lz * Lt;
+    vector<void*> fermion_in_half (m_input_);
+    vector<void*> fermion_out_half (m_input_);
+    const int vol = underlying_args_.lattice_desc_ptr.lattice_volume();
     const int fermion_half_len = (vol / 2) * Ns * n_colors_ * m_input_;
     // mat_qcu = fermionIn - kappa fermionOut   
     qcu::qcu_blas::Complex_xsay<OutputFloat> xsay_op;
 
-    for (int parity =0; parity < 2; ++parity) {
+    for (int parity = 0; parity < 2; ++parity) {
         dslash_param_->parity = parity;
         for (int i = 0; i < m_input_; ++i) {
-            fermion_out_half[i] = static_cast<Complex<OutputFloat>*>(fermion_out_vec_[i]) + parity * fermion_half_len;
-            fermion_in_half[i] = static_cast<Complex<OutputFloat>*>(fermion_in_queue_[i]) + (1 - parity) * fermion_half_len;
+            fermion_out_half[i] = static_cast<Complex<OutputFloat>*>(fermion_out_vec_[i]) + parity * vol / 2 * Ns * n_colors_;
+            fermion_in_half[i] = static_cast<Complex<OutputFloat>*>(fermion_in_vec_[i]) + (1 - parity) * vol / 2 * Ns * n_colors_;
         }
         CHECK_CUDA(
             cudaMemcpy(d_lookup_table_in_, fermion_in_half.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
@@ -248,7 +248,7 @@ void Qcu::mat_qcu (bool daggerFlag) {
     }
 
     CHECK_CUDA(
-        cudaMemcpy(d_lookup_table_in_, fermion_in_queue_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
+        cudaMemcpy(d_lookup_table_in_, fermion_in_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
     );
     CHECK_CUDA(
         cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
@@ -274,7 +274,7 @@ void Qcu::mat_qcu (bool daggerFlag) {
             Lx * 2, Ly, Lz, Lt, n_colors_, m_input_, NULL);
     
     CHECK_CUDA(cudaFree(device_kappa_));
-    fermion_in_queue_.clear();
+    fermion_in_vec_.clear();
     fermion_out_vec_.clear();
 }
 void Qcu::load_gauge(void* gauge, QcuPrecision floatPrecision) {
@@ -291,10 +291,10 @@ void Qcu::load_gauge(void* gauge, QcuPrecision floatPrecision) {
 }
 
 void Qcu::push_back_fermion(void* fermionOut, void* fermionIn) {
-    if (fermion_in_queue_.size() >= m_input_ || fermion_out_vec_.size() >= m_input_) {
+    if (fermion_in_vec_.size() >= m_input_ || fermion_out_vec_.size() >= m_input_) {
         errorQcu("Fermion queue is full\n");
     }
-    fermion_in_queue_.push_back(fermionIn);
+    fermion_in_vec_.push_back(fermionIn);
     fermion_out_vec_.push_back(fermionOut);
 }
 
@@ -308,16 +308,16 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
   const int vol = Lx * Ly * Lz * Lt;
   const int colorSpinor_len = Ns * n_colors_;
 
-  if (m_input_ != fermion_in_queue_.size()) {
+  if (m_input_ != fermion_in_vec_.size()) {
     errorQcu("number of fermion is different from mInput\n");
   } else {
     printf("numbers matched, now begin bicg\n");
   }
 
-  vector<void*> fermionIn_queue_odd(fermion_in_queue_.size());
+  vector<void*> fermionIn_queue_odd(fermion_in_vec_.size());
   vector<void*> fermionOut_queue_odd(fermion_out_vec_.size());
-  for (int i = 0; i < fermion_in_queue_.size(); i++) {
-    fermionIn_queue_odd[i] = static_cast<Complex<OutputFloat>*>(fermion_in_queue_[i]) + colorSpinor_len * vol / 2;
+  for (int i = 0; i < fermion_in_vec_.size(); i++) {
+    fermionIn_queue_odd[i] = static_cast<Complex<OutputFloat>*>(fermion_in_vec_[i]) + colorSpinor_len * vol / 2;
     fermionOut_queue_odd[i] = static_cast<Complex<OutputFloat>*>(fermion_out_vec_[i]) + colorSpinor_len * vol / 2;
   }
 
@@ -325,7 +325,7 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
   void* fermionIn_MRHS_odd = static_cast<Complex<OutputFloat>*>(fermion_in_mrhs_)
                                 + colorSpinor_len * m_input_ * vol / 2;
   // gather even
-  CHECK_CUDA(cudaMemcpy(d_lookup_table_in_,  fermion_in_queue_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaMemcpy(d_lookup_table_in_,  fermion_in_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
   TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_even, underlying_args_.compute_float_precision,
                                 d_lookup_table_in_,   underlying_args_.out_float_precision,
                                 Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL)
@@ -385,7 +385,7 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
                         Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL),
     0, "scatter");
   CHECK_CUDA(cudaStreamSynchronize(NULL));
-  fermion_in_queue_.clear();
+  fermion_in_vec_.clear();
   fermion_out_vec_.clear();
 }
 
