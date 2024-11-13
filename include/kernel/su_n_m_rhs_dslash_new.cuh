@@ -1,15 +1,15 @@
 #pragma once
 
 #include <cstdint>
-#include <cuda_fp16.h>
 
 #include "base/datatype/qcu_complex.cuh"
 #include "base/datatype/qcu_float2.cuh"
+#include "desc/qcu_desc.h"
 #include "kernel/su_n_m_rhs_matmul.cuh"
 #include "point/qcu_point.cuh"
-#include "qcu_utils.h"
-#include "qcu_wmma_constant.h"
-
+#include "qcu_helper.h"
+#include "su_n_m_rhs_dslash_new.cuh"
+#include "kernel/qcu_gamma.cuh"
 namespace qcu {
 namespace device {
 
@@ -24,98 +24,34 @@ constexpr int WARP_LINES = 4;
 //      [ 0 -i  1  0]
 //      [-i  0  0  1]   
 // ---------------------------------------
-// 1 + gamma_2 = 
-//      [ 1  0  0 -1]
-//      [ 0  1  1  0]
-//      [ 0  1  1  0]
-//      [-1  0  0  1]
-// ---------------------------------------
-// 1 + gamma_3 = 
-//      [ 1  0  i   0]
-//      [ 0  1  0  -i]
-//      [-i  0  1   0]
-//      [ 0  i  0   1]
-// ---------------------------------------
-// 1 + gamma_4 = 
-//      [ 1  0  1  0]
-//      [ 0  1  0  1]
-//      [ 1  0  1  0]
-//      [ 0  1  0  1]
-// ---------------------------------------
 // we can see that (1 + gamma_1) row(2, 3) = row(0, 1) * (-i, -i), so we constrain row to 0, 1
 // only 2 columns have elem, so we constrain col to 0, 1
 
 template <typename _FloatType>
-__forceinline__ __device__
-Complex<_FloatType> get_scale(int gamma_id, int row, int col) {
+QCU_DEVICE
+Complex<_FloatType> get_scale(int gamma_id, int row) {
+    kernel::Gamma<_FloatType> gamma;
     if (gamma_id < 0 || gamma_id > 3) {
-        printf("gamma_id out of range\n");
+        printf("Fatal: gamma_id %d out of range\n", gamma_id + 1);
         exit(-1);
     }
-    if (!(row == 0 || row == 1) || !(col == 0 || col == 1)) {
-        printf("row or col out of range\n");
+    if (!(row == 0 || row == 1)) {
+        printf("Fatal: row or col out of range\n");
         exit(-1);
     }
     // 1 + gamma_1 
-    if (gamma_id == 0) {
-        // if (row == 0) {
-        //     if (col == 0) return Complex<_FloatType>(1.0);
-        //     if (col == 1) return Complex<_FloatType>(0.0, 1.0);
-        // } else {
-        //     if (col == 0) return Complex<_FloatType>(1.0);
-        //     if (col == 1) return Complex<_FloatType>(0.0, 1.0);
-        // }
-
-        // reduce warp divergence
-        if (col == 0) return Complex<_FloatType>(1.0);
-        if (col == 1) return Complex<_FloatType>(0.0, 1.0);
+    if (gamma_id == 0 || gamma_id == 1) {
+        if (row == 0) return gamma.get_elem(gamma_id, 0, 3);
+        else return gamma.get_elem(gamma_id, 1, 2);
     }
 
-    else if (gamma_id == 1) {
-        // if (row == 0) {
-        //     if (col == 0) return Complex<_FloatType>(1.0);
-        //     if (col == 1) return Complex<_FloatType>(-1.0);
-        // } else {
-        //     if (col == 0) return Complex<_FloatType>(1.0);
-        //     if (col == 1) return Complex<_FloatType>(1.0);
-        // }
-
-        // reduce warp divergence
-        if (col == 0) return Complex<_FloatType>(1.0);
-        else if (row == 0) return Complex<_FloatType>(-1.0);
-        else return Complex<_FloatType>(1.0);
-    }
-
-    else if (gamma_id == 2) {
-        // if (row == 0) {
-        //     if (col == 0) return Complex<_FloatType>(1.0);
-        //     if (col == 1) return Complex<_FloatType>(0.0, 1.0);
-        // } else {
-        //     if (col == 0) return Complex<_FloatType>(1.0);
-        //     if (col == 1) return Complex<_FloatType>(0.0, -1.0);
-        // }
-
-        // reduce warp divergence
-        if (col == 0) return Complex<_FloatType>(1.0);
-        else if (row == 0) return Complex<_FloatType>(0.0, 1.0);
-        else return Complex<_FloatType>(0.0, -1.0);
-    }
-
-    else if (gamma_id == 3) {
-        // if (row == 0) {
-        //     if (col == 0) return Complex<_FloatType>(1.0);
-        //     if (col == 1) return Complex<_FloatType>(1.0);
-        // } else {
-        //     if (col == 0) return Complex<_FloatType>(1.0);
-        //     if (col == 1) return Complex<_FloatType>(1.0);
-        // }
-
-        // reduce warp divergence
-        return Complex<_FloatType>(1.0);
+    else if (gamma_id == 2 || gamma_id == 3) {
+        if (row == 0) return gamma.get_elem(gamma_id, 0, 2);
+        else return gamma.get_elem(gamma_id, 1, 3);
     }
 
     // error handling
-    printf("gamma_id = %d, row = %d, col = %d, some parameter out of range\n", gamma_id, row, col);
+    printf("gamma_id = %d, row = %d,some parameter out of range\n", gamma_id, row);
     exit(-1);
 }
 
@@ -126,7 +62,7 @@ template <
     int _BLK_M = 16,
     int _BLK_N = 16
 >
-__forceinline__ __device__ 
+QCU_DEVICE
 void ldg_mat_to_reg(Float2_t<_FloatType>* __restrict__ glb_mat, int M, int N,
                     Float2_t<_FloatType>* __restrict__ reg_mat, int start_m, int start_n) 
 {
@@ -152,7 +88,7 @@ template <
     int _BLK_M = 16,
     int _BLK_N = 16
 >
-__forceinline__ __device__ 
+QCU_DEVICE
 void sts_mat( Float2_t<_FloatType>* __restrict__ smem_mat,
                      Float2_t<_FloatType>* __restrict__ reg_mat) 
 {
@@ -174,7 +110,7 @@ template <
     int _BLK_M = 16,
     int _BLK_N = 16
 >
-__forceinline__ __device__ 
+QCU_DEVICE
 void sts_mat_transpose( Float2_t<_FloatType>* __restrict__ smem_mat,
                         Float2_t<_FloatType>* __restrict__ reg_mat) 
 {
@@ -203,11 +139,10 @@ template <
     int _WARP_N = 8,
     bool _use_tensor_core = false
 >
-__forceinline__ __device__ 
+QCU_DEVICE
 void single_point_wilson_dslash(
     _FloatType* __restrict__ out, _FloatType* __restrict__ in, _FloatType* __restrict__ gauge,
-    // Float2_t<_FloatType>* __restrict__ smem_A, Float2_t<_FloatType>* __restrict__ smem_B,
-    int Lx, int Ly, int Lz, int Lt, uint32_t multiprocess , int parity,
+    QcuLattDesc latt_desc, uint32_t multiprocess , int parity,
     bool dagger_flag, int n_color, int m_rhs, int coord_1dim, 
     _FloatType kappa = 0, bool mat = false) 
 {   
@@ -239,11 +174,11 @@ void single_point_wilson_dslash(
     // smem B size = _BLK_K * _BLK_N
     // C size = _BLK_M * _BLK_N in register and Res size is _BLK_N * _BLK_N * 2 in register
 
-    int half_Lx = (Lx << 1);
+    int half_Lx = (latt_desc.X() << 1);
 
-    Point coord { coord_1dim / (Lz * Ly * half_Lx)
-                , coord_1dim % (Lz * Ly * half_Lx) / (Ly * half_Lx)
-                , coord_1dim % (Ly * half_Lx) / half_Lx
+    Point coord { coord_1dim / (latt_desc.Z() * latt_desc.Y() * half_Lx)
+                , coord_1dim % (latt_desc.Z() * latt_desc.Y() * half_Lx) / (latt_desc.Y() * half_Lx)
+                , coord_1dim % (latt_desc.Y() * half_Lx) / half_Lx
                 , coord_1dim % half_Lx
                 , parity};
     Point move_coord;
@@ -254,7 +189,7 @@ void single_point_wilson_dslash(
     //          gemm
     //          add temp{1, 2} to res{1, 2, 3, 4}
 
-    int half_vol = half_Lx * Ly * Lz * Lt;
+    int half_vol = latt_desc.half_lattice_volume();
     Float2_t<_FloatType> scale1;    // when read B, use scale1 B1 + scale2 B2
     Float2_t<_FloatType> scale2;
 
@@ -279,20 +214,20 @@ void single_point_wilson_dslash(
                     int dir = dim_dir & 1;  // same with '% DIRECTIONS'
                     int dim = dim_dir >> 1; // same with '/ DIRECTIONS'
 
-                    move_coord = coord.move(dir, dim, Lx, Ly, Lz, Lt);
+                    move_coord = coord.move(dir, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
                     // calculate start addr of global A and B
-                    Float2_t<_FloatType>* glb_A = gauge + ((2 * dim + parity) * half_vol +
-                                                            IDX4D(coord.T(), coord.Z(), coord.Y(), coord.X(), Lz, Ly, Lx)
-                                                            ) * n_color * n_color;
-                    Float2_t<_FloatType>* glb_B = in + IDX4D(move_coord.T(), move_coord.Z(), move_coord.Y(), move_coord.X(), Lz, Ly, Lx)
-                                                        * n_color * m_rhs * Ns;
+                    Float2_t<_FloatType>* glb_A;
+                    Float2_t<_FloatType>* glb_B = move_coord.getGatheredColorSpinorAddr(in, half_Lx, latt_desc.Y(),
+                        latt_desc.Z(), latt_desc.T(), n_color, m_rhs);
 
                     // set dagger, BE CAREFUL: it is possible to be wrong here
-                    if (dir == FWD) { // fwd default: dagger 
+                    if (dir == FWD) { // fwd default: dagger
+                        glb_A = coord.getGaugeAddr(gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
                         if (!dagger_flag) {
                             scale2 = -scale2;
                         }
                     } else { // bwd default: not dagger
+                        glb_A = move_coord.getGaugeAddr(gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
                         if (dagger_flag) {
                             scale2 = -scale2;
                         }
@@ -300,15 +235,15 @@ void single_point_wilson_dslash(
 
                     // get scale
                     if (col < m_rhs) { // col \in [0, m_rhs)
-                        scale1 = get_scale<_FloatType>(dim, 0, 0);
-                        scale2 = get_scale<_FloatType>(dim, 0, 1);
+                        scale1 = Complex<_FloatType>(1, 0);
+                        scale2 = get_scale<_FloatType>(dim, 0);
 
                         mat1_pos = 0;
                         if (dim == 0 || dim == 1) { mat2_pos = 3; }
                         else { mat2_pos = 2; }
                     } else {            // col \in [m_rhs, 2 * m_rhs)
-                        scale1 = get_scale<_FloatType>(dim, 1, 1);
-                        scale2 = get_scale<_FloatType>(dim, 1, 1);
+                        scale1 = Complex<_FloatType>(1, 0);
+                        scale2 = get_scale<_FloatType>(dim, 1);
 
                         mat1_pos = 1;
                         if (dim == 2 || dim == 3) { mat2_pos = 3; }
@@ -322,10 +257,11 @@ void single_point_wilson_dslash(
                             ldg_mat_to_reg<_FloatType, _BLK_M, _BLK_K>(glb_A, n_color, n_color, ldg_A[0], row, col); 
                             // when store, transpose
                         } else {        // global memory is col-major, col-major in smem
+                            ldg_mat_to_reg<_FloatType, _BLK_K, _BLK_M>(glb_A, n_color, n_color, ldg_A[0], row, col);
                         } 
 
 
-                        // load B from global memory to register
+                        // load B from global memory to register, need combine 2 of 4 in global memory to 2 in smem
                         // gemm
                         // add to res
                     }
@@ -335,9 +271,6 @@ void single_point_wilson_dslash(
 
         }
     }
-
-
-
 }
 
 // entry function
@@ -350,25 +283,24 @@ template <
     int _WARP_N = 8,
     bool _use_tensor_core = false
 >
-__global__ void wilson_dslash_su_n_mrhs(
-    _FloatType* __restrict__ out, _FloatType* __restrict__ in, _FloatType* __restrict__ gauge,
-    int Lx, int Ly, int Lz, int Lt, int g_x, int g_y, int g_z, int g_t, 
+QCU_GLOBAL
+void wilson_dslash_su_n_mrhs(
+    _FloatType* __restrict__ out,
+    _FloatType* __restrict__ in,
+    _FloatType* __restrict__ gauge,
+    QcuLattDesc latt_desc, unsigned int multiprocess,
     int parity, bool dagger_flag, int n_color, int m_rhs) 
 {
     // block切分使用2D，dim3(WARP_SIZE, WARP_NUMBER)
     int block_id = blockIdx.x;
     int grid_size = gridDim.x;  // 1D grid
-    int half_vol = Lx * Ly * Lz * Lt / 2;
+    int half_vol = latt_desc.half_lattice_volume();
 
-    // __shared__ _FloatType smem_A[_BLK_M * _BLK_N * 2];
-    // __shared__ _FloatType smem_B[_BLK_K * _BLK_N * 2];
-
-    // clang-format off
     for (int i = block_id; i < half_vol; i += grid_size) {
         // single_point_wilson_dslash<_FloatType>(  out, in, gauge, smem, Lx, Ly, Lz, Lt, g_x, g_y, g_z, g_t,
                                             // parity, dagger_flag, n_color, m_rhs, i);
     }
-    // clang-format on
+
 }
 
 }  // namespace device
