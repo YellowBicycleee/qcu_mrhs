@@ -15,11 +15,11 @@ struct DslashParam {
     int parity;
     double kappa;
 
-    void* fermionIn_MRHS;
-    void* fermionOut_MRHS;
-    void* gauge;
-    const QcuLattDesc* lattDesc;
-    const QcuProcDesc* procDesc;
+    void* __restrict__ fermionIn_MRHS;
+    void* __restrict__ fermionOut_MRHS;
+    void* __restrict__ gauge;
+    const QcuLattDesc* __restrict__ lattDesc;
+    const QcuProcDesc* __restrict__ procDesc;
     cudaStream_t stream1;
     cudaStream_t stream2;
 

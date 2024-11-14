@@ -32,6 +32,7 @@ void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int in
     qcu::config::set_config(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt);
     qcu_ptr = new qcu::Qcu(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt, (QcuPrecision)inputFloatPrecision,
                          (QcuPrecision)dslashFloatPrecision, n_color, m_rhs);
+    qcu::config::init_streams();
 }
 
 void pushBackFermions(void *fermionOut, void *fermionIn) {
@@ -62,6 +63,7 @@ void finalizeQcu() {
     // check_qcu_ptr();
     delete qcu_ptr;
     qcu_ptr = nullptr;
+    qcu::config::destroy_streams();
 }
 
 void qcuInvert(int max_iteration, double max_precison) {

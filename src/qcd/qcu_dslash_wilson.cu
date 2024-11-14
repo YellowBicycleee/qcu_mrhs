@@ -4,6 +4,7 @@
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_public.h"
 #include "check_error/check_cuda.cuh"
+#include "qcu_config/qcu_config.h"
 
 namespace qcu {
 
@@ -14,11 +15,11 @@ inline void ApplyWilsonDslash_Mrhs( Float* __restrict__ out, Float* __restrict__
                                     int parity, bool dagger_flag, int n_color, int m_rhs, cudaStream_t& stream
 ) {
     // clang-format on
-    int vol = Lx * Ly * Lz * Lt / 2;
+    int half_vol = config::lattice_volume() / 2;
     int warp_num_per_block = WARP_PER_BLOCK;
 
     dim3 block_size(WARP_SIZE, warp_num_per_block);
-    dim3 grid_size(vol);
+    dim3 grid_size(half_vol);
     device::wilson_dslash_su_n_mrhs<Float> <<<grid_size, block_size, 0, stream>>>(
         out, in, gauge, Lx, Ly, Lz, Lt, g_x, g_y, g_z, g_t, parity, dagger_flag, n_color, m_rhs);
 }
