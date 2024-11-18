@@ -150,7 +150,7 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
                           cudaMemcpyHostToDevice));
 
     TIMER_EVENT(colorSpinorGather(fermion_in_mrhs_, underlying_args_.compute_float_precision, d_lookup_table_in_,
-                                underlying_args_.out_float_precision, Lx, Ly, Lz, Lt,
+                                underlying_args_.out_float_precision, *qcu::config::get_lattice_desc_ptr(),
                       n_colors_, m_input_, NULL), 0, "gather");
     CHECK_CUDA(cudaDeviceSynchronize());
 
@@ -186,8 +186,7 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
     
     TIMER_EVENT(dslash_->apply(*dslash_param_), num_op, "wilson dslash");
     TIMER_EVENT(colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision, fermion_out_mrhs_,
-                              underlying_args_.compute_float_precision, Lx, Ly, Lz,
-                              Lt, n_colors_, m_input_, NULL), 0, "scatter");
+                              underlying_args_.compute_float_precision, *config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL), 0, "scatter");
     CHECK_CUDA(cudaDeviceSynchronize());
 
     fermion_in_vec_.clear();
@@ -202,10 +201,6 @@ void Qcu::mat_qcu (bool daggerFlag) {
         errorQcu("Fermion queue is not full\n");
     }
 
-    const int Lx = underlying_args_.lattice_desc_ptr.data[X_DIM];
-    const int Ly = underlying_args_.lattice_desc_ptr.data[Y_DIM];
-    const int Lz = underlying_args_.lattice_desc_ptr.data[Z_DIM];
-    const int Lt = underlying_args_.lattice_desc_ptr.data[T_DIM];
     // dslash_param_->parity = parity;
     dslash_param_->daggerFlag = daggerFlag;
     dslash_param_->fermionIn_MRHS = fermion_in_mrhs_;
@@ -235,7 +230,7 @@ void Qcu::mat_qcu (bool daggerFlag) {
             cudaMemcpy(d_lookup_table_out_, fermion_out_half.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
         );
         colorSpinorGather(fermion_in_mrhs_, underlying_args_.compute_float_precision, d_lookup_table_in_,
-                underlying_args_.out_float_precision, Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL);
+                underlying_args_.out_float_precision, *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL);
         CHECK_CUDA(cudaDeviceSynchronize());
 
         dslash_->apply(*dslash_param_);
@@ -243,7 +238,7 @@ void Qcu::mat_qcu (bool daggerFlag) {
 
         colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision,
             fermion_out_mrhs_, underlying_args_.compute_float_precision,
-            Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL);
+            *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL);
         CHECK_CUDA(cudaDeviceSynchronize());
     }
 
@@ -253,12 +248,15 @@ void Qcu::mat_qcu (bool daggerFlag) {
     CHECK_CUDA(
         cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
     );
+    QcuLattDesc latt_desc_temp = *qcu::config::get_lattice_desc_ptr();
+    latt_desc_temp.data[X_DIM] *= 2;
+
     colorSpinorGather(fermion_in_mrhs_, underlying_args_.compute_float_precision,
         d_lookup_table_in_, underlying_args_.out_float_precision,
-            Lx * 2, Ly, Lz, Lt, n_colors_, m_input_, NULL);
+            latt_desc_temp, n_colors_, m_input_, NULL);
     colorSpinorGather(fermion_out_mrhs_, underlying_args_.compute_float_precision,
         d_lookup_table_out_, underlying_args_.out_float_precision,
-            Lx * 2, Ly, Lz, Lt, n_colors_, m_input_, NULL);
+            latt_desc_temp, n_colors_, m_input_, NULL);
     qcu::qcu_blas::Complex_xsay<OutputFloat>::Complex_xsayArgument arg (
         static_cast<Complex<OutputFloat>*>(fermion_out_mrhs_),   // Complex<_Float>* res,
         static_cast<Complex<OutputFloat>*>(fermion_in_mrhs_),    // Complex<_Float>* x,
@@ -269,9 +267,10 @@ void Qcu::mat_qcu (bool daggerFlag) {
         nullptr                                                 // cudaStream_t stream = nullptr
     );
     xsay_op(arg);
+
     colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision,
         fermion_out_mrhs_, underlying_args_.compute_float_precision,
-            Lx * 2, Ly, Lz, Lt, n_colors_, m_input_, NULL);
+            latt_desc_temp, n_colors_, m_input_, NULL);
     
     CHECK_CUDA(cudaFree(device_kappa_));
     fermion_in_vec_.clear();
@@ -328,14 +327,14 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
   CHECK_CUDA(cudaMemcpy(d_lookup_table_in_,  fermion_in_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
   TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_even, underlying_args_.compute_float_precision,
                                 d_lookup_table_in_,   underlying_args_.out_float_precision,
-                                Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL)
+                                *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL)
       , 0, "gather");
 
   // gather odd
   CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermionIn_queue_odd.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
   TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_odd, underlying_args_.compute_float_precision,
                                 d_lookup_table_in_, underlying_args_.out_float_precision,
-                                Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL)
+                                *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL)
       , 0, "gather");
 
 
@@ -375,14 +374,14 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
   TIMER_EVENT(
     colorSpinorScatter( d_lookup_table_out_,   underlying_args_.out_float_precision,
                         fermionOut_MRHS_even, underlying_args_.compute_float_precision,
-                        Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL),
+                        *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL),
     0, "scatter");
   // scatter odd
   CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermionOut_queue_odd.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
   TIMER_EVENT(
     colorSpinorScatter( d_lookup_table_out_,  underlying_args_.out_float_precision,
                         fermionOut_MRHS_odd, underlying_args_.compute_float_precision,
-                        Lx, Ly, Lz, Lt, n_colors_, m_input_, NULL),
+                        *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL),
     0, "scatter");
   CHECK_CUDA(cudaStreamSynchronize(NULL));
   fermion_in_vec_.clear();

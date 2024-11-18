@@ -138,11 +138,11 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
     qcu::GaugeEOPreconditioner<float> preconditioner;
     preconditioner.reverse(static_cast<Complex<float> *>(non_prec_gauge), static_cast<Complex<float> *>(prec_gauge),
                            local_latt_desc, site_vec_len);
-  } else if (precision == QcuPrecision::kPrecisionHalf) {
-    qcu::GaugeEOPreconditioner<half> preconditioner;
-    preconditioner.reverse(static_cast<Complex<half> *>(non_prec_gauge), static_cast<Complex<half> *>(prec_gauge),
+    } else if (precision == QcuPrecision::kPrecisionHalf) {
+        qcu::GaugeEOPreconditioner<half> preconditioner;
+        preconditioner.reverse(static_cast<Complex<half> *>(non_prec_gauge), static_cast<Complex<half> *>(prec_gauge),
                            local_latt_desc, site_vec_len);
-  } else {
+    } else {
     errorQcu("UNDEFINED precision");
   }
 }
