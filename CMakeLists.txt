@@ -12,6 +12,8 @@ set(CMAKE_CXX_STANDARD 20)
 project(QCU LANGUAGES C CXX CUDA) # project name = ${PROJECT_NAME}
 find_package(MPI REQUIRED)
 
+add_subdirectory(external/qcu_io)
+
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcu_blas QCU_BLAS)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcd QCU_QCD)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/communication QCU_COMMUNICATION)
@@ -37,7 +39,7 @@ target_include_directories(qcu
     /usr/local/cuda/bin/../targets/x86_64-linux/include
 )
 
-target_link_directories(qcu PUBLIC ${PROJECT_SOURCE_DIR}/external/qcu_io/build)
+target_link_directories(qcu PUBLIC ${PROJECT_BINARY_DIR}/external/qcu_io)
 target_link_libraries(qcu
     qcu_io
 	cudart
