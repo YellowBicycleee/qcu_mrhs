@@ -125,7 +125,9 @@ void single_point_wilson_dslash(
 }
 
 template <typename Float>
-__global__ void wilson_dslash_su_n_mrhs(Float* __restrict__ out, Float* __restrict__ in, Float* __restrict__ gauge,
+__global__ void wilson_dslash_su_n_mrhs(Float* __restrict__ out,
+                                        Float* __restrict__ in,
+                                        Float* __restrict__ gauge,
                                         int Lx, int Ly, int Lz, int Lt, int g_x, int g_y, int g_z, int g_t, int parity,
                                         bool dagger_flag, int n_color, int m_rhs) {
     // block切分使用2D，dim3(WARP_SIZE, WARP_NUMBER)

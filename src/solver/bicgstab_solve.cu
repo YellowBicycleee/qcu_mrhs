@@ -1,3 +1,4 @@
+#include <qcu_config/qcu_config.h>
 #include <thrust/system/cuda/detail/par.h>
 
 #include <type_traits>
@@ -25,31 +26,27 @@ void checkNorm (void* global_mem, int round = 1) {}
 // out = in - a DoeDeo in
 template <typename _Float>
 static inline void fused_x_sub_Doe_Deo_x (void* output, void* input, void* temp, void* a,
-                                          qcu::Dslash* dslash, qcu::DslashParam& param)
+                                          std::shared_ptr<qcu::Dslash> dslash, std::shared_ptr<qcu::DslashParam> param)
 {
-  const int Lx = param.lattDesc->X();
-  const int Ly = param.lattDesc->Y();
-  const int Lz = param.lattDesc->Z();
-  const int Lt = param.lattDesc->T();
-  const int vol = Lx * Ly * Lz * Lt;
-  const int mInput = param.mInput;
-  const int nColor = param.nColor;
+  const int vol = qcu::config::lattice_volume();
+  const int mInput = param->mInput;
+  const int nColor = param->nColor;
   const int single_vec_len = Nd * nColor;
 
-  cudaStream_t stream1 = param.stream1;
-  cudaStream_t stream2 = param.stream2;
+  cudaStream_t stream1 = param->stream1;
+  cudaStream_t stream2 = param->stream2;
   // temp = Deo in
-  param.fermionOut_MRHS = temp;
-  param.fermionIn_MRHS = input;
-  param.parity = EVEN_PARITY;
+  param->fermionOut_MRHS = temp;
+  param->fermionIn_MRHS = input;
+  param->parity = EVEN_PARITY;
   dslash->apply(param);
   CHECK_CUDA(cudaStreamSynchronize(stream1));
   CHECK_CUDA(cudaStreamSynchronize(stream2));
 
   // out = Doe temp
-  param.fermionOut_MRHS = output;
-  param.fermionIn_MRHS = temp;
-  param.parity = ODD_PARITY;
+  param->fermionOut_MRHS = output;
+  param->fermionIn_MRHS = temp;
+  param->parity = ODD_PARITY;
 
   dslash->apply(param);
   CHECK_CUDA(cudaStreamSynchronize(stream1));
@@ -102,12 +99,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
   std::vector<OutputFloat> norm_r_array  (param_.mInput, 1.0);
   std::vector<OutputFloat> norm_b_array  (param_.mInput, 1.0);  // 计算b的模长
   // diff_array = [r1, r2, r3, ...] / [b1, b2, b3, ...]
-  const int Lx     = param_.lattDesc->X();
-  const int Ly     = param_.lattDesc->Y();
-  const int Lz     = param_.lattDesc->Z();
-  const int Lt     = param_.lattDesc->T();
   const int mInput = param_.mInput;
-  const int vol    = Lx * Ly * Lz * Lt;
+  const int vol = param_.lattDesc->lattice_volume();
   const int single_complex_vec_len = param_.nColor * Ns;
   const int complex_vec_len =   param_.mInput * single_complex_vec_len; // m-rhs on single point
 
@@ -171,7 +164,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
   CHECK_CUDA(cudaStreamSynchronize(stream1));
 
   // R = b - A * x = b - Dslash * x, x可以初始化为0
-  DslashParam dslashParam {
+  std::shared_ptr<DslashParam> dslashParam = std::make_shared<DslashParam>(
     false,                      // daggerFlag,
     OutputPrecision,            // dslash precision
     param_.nColor,              // nColor,
@@ -185,7 +178,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
     param_.procDesc,            // procDesc,
     stream1,                    // stream1 = NULL,
     stream2                     // stream2 = NULL
-  };
+  );
 
   using Output_xsayArgument = typename InteriorOperator::template Complex_xsay<OutputFloat>
                                                        ::template Complex_xsayArgument;
@@ -252,8 +245,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
 
     // vj = Ap = Ap_{j} = Doe Deo * p_{j} ----> outputBuffer_[1];
     fused_x_sub_Doe_Deo_x<OutputFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
-    cudaStreamSynchronize(dslashParam.stream1);
-    cudaStreamSynchronize(dslashParam.stream2);
+    cudaStreamSynchronize(dslashParam->stream1);
+    cudaStreamSynchronize(dslashParam->stream2);
 
     // r0_dot_vj = <r0, vj> = <r0, Ap_j>
     // , norm <r0, Ap>
@@ -390,12 +383,9 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
   OutputFloat norm_b = OutputFloat(1.0);
 
   // diff_array = [r1, r2, r3, ...] / [b1, b2, b3, ...]
-  const int Lx     = param_.lattDesc->X();
-  const int Ly     = param_.lattDesc->Y();
-  const int Lz     = param_.lattDesc->Z();
-  const int Lt     = param_.lattDesc->T();
+
   const int mInput = param_.mInput;
-  const int vol    = Lx * Ly * Lz * Lt;
+  const int vol = param_.lattDesc->lattice_volume();
   const int single_complex_vec_len = param_.nColor * Ns;
   const int complex_vec_len =   param_.mInput * single_complex_vec_len; // m-rhs on single point
 
@@ -456,7 +446,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
   CHECK_CUDA(cudaStreamSynchronize(stream1));
 
   // R = b - A * x = b - Dslash * x, x可以初始化为0
-  DslashParam dslashParam {
+  std::shared_ptr<DslashParam> dslashParam = std::make_shared<DslashParam>(
     false,                      // daggerFlag,
     OutputPrecision,            // dslash precision
     param_.nColor,              // nColor,
@@ -470,7 +460,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
     param_.procDesc,            // procDesc,
     stream1,                    // stream1 = NULL,
     stream2                     // stream2 = NULL
-  };
+  );
 
   using Output_xsayArgument = typename InteriorOperator::template Complex_xsay<OutputFloat>
                                                        ::template Complex_xsayArgument;
@@ -541,8 +531,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
 
     // vj = Ap = Ap_{j} = Doe Deo * p_{j} ----> outputBuffer_[1];
     fused_x_sub_Doe_Deo_x<OutputFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
-    cudaStreamSynchronize(dslashParam.stream1);
-    cudaStreamSynchronize(dslashParam.stream2);
+    cudaStreamSynchronize(dslashParam->stream1);
+    cudaStreamSynchronize(dslashParam->stream2);
 
     // r0_dot_vj = <r0, vj> = <r0, Ap_j>
     // , norm <r0, Ap>
@@ -678,12 +668,9 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
 template <QcuPrecision OutputPrecision,
           QcuPrecision IteratePrecision>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
-  const int Lx     = param_.lattDesc->X();
-  const int Ly     = param_.lattDesc->Y();
-  const int Lz     = param_.lattDesc->Z();
-  const int Lt     = param_.lattDesc->T();
+
   const int mInput = param_.mInput;
-  const int vol = Lx * Ly * Lz * Lt;
+  const int vol = param_.lattDesc->lattice_volume();
   const int single_complex_vec_len = param_.nColor * Ns;
   const int mrhs_complex_vec_len = param_.mInput * single_complex_vec_len;
   // solve x_e
@@ -695,7 +682,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
   void* kappa_array = output_scala_array_[0];
 
   // D_{eo} x_{o} ----> x_e
-  DslashParam dslashParam {
+  std::shared_ptr<DslashParam> dslashParam = std::make_shared<DslashParam>(
     false,                      // bool p_daggerFlag,
     OutputPrecision,            // QCU_PRECISION p_precision,
     param_.nColor,              // int p_nColor,
@@ -709,7 +696,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
     param_.procDesc,            // const QcuProcDesc* p_procDesc,
     param_.stream1,             // cudaStream_t p_stream1 = NULL,
     param_.stream2              // cudaStream_t p_stream2 = NULL)
-  }; 
+  );
 
   dslash_operator_->apply(dslashParam);  // x_e = D_{eo} x_{o}
 
@@ -753,11 +740,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve() {
   }
 
   printf("QCU BICGStab solve success, %d iterations\n", currentIteration_);
-  const int Lx     = param_.lattDesc->X();
-  const int Ly     = param_.lattDesc->Y();
-  const int Lz     = param_.lattDesc->Z();
-  const int Lt     = param_.lattDesc->T();
-  const int vol = Lx * Ly * Lz * Lt;
+  const int vol = param_.lattDesc->lattice_volume();
   const int mrhs_vec_len = param_.mInput * param_.nColor * Ns; // on single point
   const cudaStream_t cuda_stream = param_.stream1;
   // copy x to outputBuffer

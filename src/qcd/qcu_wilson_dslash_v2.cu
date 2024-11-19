@@ -38,55 +38,14 @@ inline void ApplyWilsonDslash_Mrhs( Float* __restrict__ out, Float* __restrict__
         out, in, gauge, Lx, Ly, Lz, Lt, g_x, g_y, g_z, g_t, parity, dagger_flag, n_color, m_rhs);
 }
 
-void WilsonDslash::apply(DslashParam& dslashParam) {
+void WilsonDslash::apply(const std::shared_ptr<DslashParam> dslash_param) {
     errorQcu("Not implemented yet\n");  // TODO
 
-    // int Lx = dslashParam.lattDesc->data[X_DIM];
-    // int Ly = dslashParam.lattDesc->data[Y_DIM];
-    // int Lz = dslashParam.lattDesc->data[Z_DIM];
-    // int Lt = dslashParam.lattDesc->data[T_DIM];
-    //
-    // int g_x = dslashParam.procDesc->data[X_DIM];
-    // int g_y = dslashParam.procDesc->data[Y_DIM];
-    // int g_z = dslashParam.procDesc->data[Z_DIM];
-    // int g_t = dslashParam.procDesc->data[T_DIM];
-    //
-    // // clang-format off
-    // switch (dslashParam.precision) {
-    //     case QcuPrecision::kPrecisionHalf:
-    //         ApplyWilsonDslash_Mrhs<half>(static_cast<half*>(dslashParam.fermionOut_MRHS),
-    //                                      static_cast<half*>(dslashParam.fermionIn_MRHS),
-    //                                      static_cast<half*>(dslashParam.gauge),
-    //                                      Lx, Ly, Lz, Lt, g_x, g_y, g_z, g_t,
-    //                                      dslashParam.parity, dslashParam.daggerFlag,
-    //                                      dslashParam.nColor, dslashParam.mInput,
-    //                                      dslashParam.stream1);
-    //         break;
-    //     case QcuPrecision::kPrecisionSingle:
-    //         errorQcu("Not implemented yet\n");  // TODO
-    //         assert(0);
-    //         break;
-    //     case QcuPrecision::kPrecisionDouble:
-    //         ApplyWilsonDslash_Mrhs<double>(static_cast<double*>(dslashParam.fermionOut_MRHS),
-    //                                        static_cast<double*>(dslashParam.fermionIn_MRHS),
-    //                                        static_cast<double*>(dslashParam.gauge),
-    //                                        Lx, Ly, Lz, Lt, g_x, g_y, g_z, g_t,
-    //                                        dslashParam.parity, dslashParam.daggerFlag,
-    //                                        dslashParam.nColor, dslashParam.mInput,
-    //                                        dslashParam.stream1);
-    //         break;
-    //     default:
-    //         errorQcu("Not implemented yet\n");  // TODO
-    //         assert(0);
-    //         break;
-    // }
-    // CHECK_CUDA(cudaStreamSynchronize(dslashParam.stream1));
-    // clang-format on
 }
-void WilsonDslash::pre_apply(const DslashParam&) {
+void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam>) {
     errorQcu("Not implemented yet\n");  // TODO
 }
-void WilsonDslash::post_apply(const DslashParam&) {
+void WilsonDslash::post_apply(const std::shared_ptr<DslashParam>) {
     errorQcu("Not implemented yet\n");  // TODO
 }
 // TODO : calc flops

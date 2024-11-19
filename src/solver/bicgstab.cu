@@ -57,7 +57,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
   CHECK_CUDA(cudaMalloc(&omega_array, param_.mInput * output_float_size * 2));
 
   // dslash运算符构造
-  dslash_operator_ = new WilsonDslash(false);
+  dslash_operator_ = std::make_shared<WilsonDslash>(false);
   // cublasHandler申请
   if (const cublasStatus_t stat = cublasCreate(&cublasHandle_); stat != CUBLAS_STATUS_SUCCESS) {
     printf("IN file %s, line %d, error happened\n", __FILE__, __LINE__);
@@ -132,9 +132,6 @@ void BiCGStabImpl<OutputPrecision,IteratePrecision>::tempBufferFree() {
     abort();
   }
 
-  if (dslash_operator_) {
-    delete dslash_operator_;
-  }
   bufferAllocated_ = false;
 }
 
@@ -156,7 +153,7 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
   // then, regenerate new_b on right hand side of equation. by new_even_b = \kappa D_{oe} b_{e} + b_{o}
   void* new_even_b = new_b_output_prec_;
 
-  DslashParam param {
+  std::shared_ptr<DslashParam> param = std::make_shared<DslashParam> (
     /*param.daggerFlag      */   false,
     /*param.precision       */   OutputPrecision,
     /*param.nColor          */   param_.nColor,
@@ -169,8 +166,8 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
     /*param.lattDesc        */   param_.lattDesc,
     /*param.procDesc        */   param_.procDesc,
     /*param.stream1         */   param_.stream1,
-    /*param.stream2         */   param_.stream2,
-  };
+    /*param.stream2         */   param_.stream2
+  );
 
   dslash_operator_->apply(param);  // new_even_b = D_{oe} b_{e}
 
@@ -184,8 +181,8 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
     static_cast<Complex<OutputFloat>*>(output_prec_kappa), // a = output_prec_kappa
     static_cast<Complex<OutputFloat>*>(new_even_b),        // y = new_even_b = D_{oe} b_{e}
     single_vec_len * vol / 2,
-    param.mInput,
-    param.stream1
+    param->mInput,
+    param->stream1
   );
   interior_operator_.output_xpay(output_xpay_arg);
   return new_even_b;

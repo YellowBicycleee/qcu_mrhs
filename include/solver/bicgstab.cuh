@@ -123,7 +123,7 @@ private:
   OutputFloat  maxPrec_          = 1e-6;
 
   // Dslash*      dslash_operator_oe_      = nullptr;
-  Dslash*      dslash_operator_      = nullptr;
+  std::shared_ptr<Dslash>  dslash_operator_      = nullptr;
   // Dslash*      dslash_operator_eo_   = nullptr;
 
   // 计算中间需要的临时buffer

@@ -1,12 +1,13 @@
 #pragma once
 
-#include <vector>
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 #include "desc/qcu_desc.h"
 #include "qcd/qcu_dslash_wilson.h"
-#include "qcu_public.h"
 #include "qcu_helper_macro.h"
+#include "qcu_public.h"
 namespace qcu {
 class Qcu {
 public:
@@ -36,8 +37,8 @@ private:
     double mass_;
     double kappa_;
 
-    DslashParam *dslash_param_;
-    Dslash *dslash_;
+    std::shared_ptr<DslashParam> dslash_param_ = nullptr;
+    std::shared_ptr<Dslash> dslash_ = nullptr;
 
     std::vector<void *> fermion_in_vec_;
     std::vector<void *> fermion_out_vec_;

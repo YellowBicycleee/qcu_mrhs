@@ -51,42 +51,22 @@ void Qcu::allocateMemory() {
 }
 
 void Qcu::freeMemory() {
-    if (dslash_param_ != nullptr) {
-        delete dslash_param_;
-    }
-    if (dslash_ != nullptr) {
-        delete dslash_;
-    }
 
-    if (fp64_gauge_ != nullptr) {
-        CHECK_CUDA(cudaFree(fp64_gauge_));
-    }
-    if (fp32_gauge_ != nullptr) {
-        CHECK_CUDA(cudaFree(fp32_gauge_));
-    }
-    if (fp16_gauge_ != nullptr) {
-        CHECK_CUDA(cudaFree(fp16_gauge_));
-    }
-    if (fermion_in_mrhs_ != nullptr) {
-        CHECK_CUDA(cudaFree(fermion_in_mrhs_));
-    }
-    if (fermion_out_mrhs_ != nullptr) {
-        CHECK_CUDA(cudaFree(fermion_out_mrhs_));
-    }
+    if (fp64_gauge_ != nullptr) { CHECK_CUDA(cudaFree(fp64_gauge_)); }
+    if (fp32_gauge_ != nullptr) { CHECK_CUDA(cudaFree(fp32_gauge_)); }
+    if (fp16_gauge_ != nullptr) { CHECK_CUDA(cudaFree(fp16_gauge_)); }
+    if (fermion_in_mrhs_ != nullptr) { CHECK_CUDA(cudaFree(fermion_in_mrhs_)); }
+    if (fermion_out_mrhs_ != nullptr) { CHECK_CUDA(cudaFree(fermion_out_mrhs_)); }
 
-    if (d_lookup_table_in_ != nullptr) {
-        CHECK_CUDA(cudaFree(d_lookup_table_in_));
-    }
+    if (d_lookup_table_in_ != nullptr) { CHECK_CUDA(cudaFree(d_lookup_table_in_)); }
 
-    if (d_lookup_table_out_ != nullptr) {
-        CHECK_CUDA(cudaFree(d_lookup_table_out_));
-    }
+    if (d_lookup_table_out_ != nullptr) { CHECK_CUDA(cudaFree(d_lookup_table_out_)); }
 }
 
 void Qcu::get_dslash(DslashType dslashType, double mass) {
-    if (nullptr != dslash_) {
-        delete dslash_;
-    }
+    // if (nullptr != dslash_) {
+    //     delete dslash_;
+    // }
     void* gauge;
     switch (underlying_args_.compute_float_precision) {
         case QcuPrecision::kPrecisionHalf:
@@ -106,7 +86,7 @@ void Qcu::get_dslash(DslashType dslashType, double mass) {
     mass_ = mass;
     kappa_ = (1.0 / (2.0 * (4.0 + mass)));
 
-    dslash_param_ = new DslashParam
+    dslash_param_ = std::make_shared<DslashParam>//new DslashParam
                     (
                         default_dagger_flag, underlying_args_.compute_float_precision, n_colors_, m_input_,
                         QCU_PARITY::EVEN_PARITY, kappa_, fermion_in_mrhs_, fermion_out_mrhs_,
@@ -115,7 +95,7 @@ void Qcu::get_dslash(DslashType dslashType, double mass) {
 
     switch (dslashType) {
         case DslashType::kDslashWilson:
-            dslash_ = new WilsonDslash(dslash_param_);
+            dslash_ = std::make_shared<WilsonDslash>(); // new WilsonDslash(dslash_param_);
             break;
 
         default: {
@@ -134,10 +114,6 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
         errorQcu("Fermion queue is not full\n");
     }
 
-    const int Lx = underlying_args_.lattice_desc_ptr.data[X_DIM];
-    const int Ly = underlying_args_.lattice_desc_ptr.data[Y_DIM];
-    const int Lz = underlying_args_.lattice_desc_ptr.data[Z_DIM];
-    const int Lt = underlying_args_.lattice_desc_ptr.data[T_DIM];
     dslash_param_->parity = parity;
     dslash_param_->daggerFlag = daggerFlag;
 
@@ -157,7 +133,7 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
     // real op
     int mv_flops = (8 * n_colors_ - 2) * n_colors_; // (8 * in.Ncolor() - 2) * in.Ncolor();
     int num_mv = Ns / 2;
-    double num_op = Lx * Ly * Lz * Lt / 2 * m_input_ * (
+    double num_op = static_cast<double>(qcu::config::lattice_volume()) / 2 * m_input_ * (
         2 * Nd * Ns * n_colors_ +
         2 * Nd * num_mv * mv_flops +
         (2 * Nd - 1) * Ns * n_colors_
@@ -174,7 +150,8 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
         
         int gemm_flops = wmma_m * wmma_n * (8 * wmma_k - 2);
 
-        real_num_op = Lx * Ly * Lz * Lt / 2 * 8 * warp_line * warp_col *(
+        real_num_op = /*Lx * Ly * Lz * Lt*/
+            static_cast<double>(qcu::config::lattice_volume()) / 2 * 8 * warp_line * warp_col *(
             // combination
             double(2 * wmma_m * wmma_k * 2) + // 2个矩阵
             // gemm
@@ -184,7 +161,7 @@ void Qcu::start_dslash(int parity, bool daggerFlag) {
         );
     }
     
-    TIMER_EVENT(dslash_->apply(*dslash_param_), num_op, "wilson dslash");
+    TIMER_EVENT(dslash_->apply(dslash_param_), num_op, "wilson dslash");
     TIMER_EVENT(colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision, fermion_out_mrhs_,
                               underlying_args_.compute_float_precision, *config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL), 0, "scatter");
     CHECK_CUDA(cudaDeviceSynchronize());
@@ -233,7 +210,7 @@ void Qcu::mat_qcu (bool daggerFlag) {
                 underlying_args_.out_float_precision, *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL);
         CHECK_CUDA(cudaDeviceSynchronize());
 
-        dslash_->apply(*dslash_param_);
+        dslash_->apply(dslash_param_);
         CHECK_CUDA(cudaDeviceSynchronize());
 
         colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision,
@@ -300,11 +277,7 @@ void Qcu::push_back_fermion(void* fermionOut, void* fermionIn) {
 
 
 void Qcu::solve_fermions(int max_iteration, double max_precision) {
-  const int Lx = underlying_args_.lattice_desc_ptr.data[X_DIM];
-  const int Ly = underlying_args_.lattice_desc_ptr.data[Y_DIM];
-  const int Lz = underlying_args_.lattice_desc_ptr.data[Z_DIM];
-  const int Lt = underlying_args_.lattice_desc_ptr.data[T_DIM];
-  const int vol = Lx * Ly * Lz * Lt;
+  const int vol = qcu::config::lattice_volume();
   const int colorSpinor_len = Ns * n_colors_;
 
   if (m_input_ != fermion_in_vec_.size()) {

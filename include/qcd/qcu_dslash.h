@@ -3,7 +3,7 @@
 #include "desc/qcu_desc.h"
 #include "qcu_public.h"
 #include <cuda_runtime.h>
-
+#include <memory>
 namespace qcu {
 
 // clang-format off
@@ -57,12 +57,12 @@ protected:
     double operations_ = 0.0;
     double time_ = 0.0;
 
-    virtual void pre_apply(const DslashParam&) = 0;
-    virtual void post_apply(const DslashParam&) = 0;
+    virtual void pre_apply(const std::shared_ptr<DslashParam>) = 0;
+    virtual void post_apply(const std::shared_ptr<DslashParam>) = 0;
 public:
     Dslash(bool if_matric = false) : if_metric_(if_matric) {}
     virtual ~Dslash() noexcept = default;
-    virtual void apply(DslashParam& param) = 0;
+    virtual void apply(const std::shared_ptr<DslashParam> dslash_param) = 0;
     virtual double flops() = 0;
 };
 
