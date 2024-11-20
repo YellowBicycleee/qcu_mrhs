@@ -1,17 +1,18 @@
 #pragma once
 
 #include <cstdint>
+#include <cub/block/block_load.cuh>
 
 #include "base/datatype/qcu_complex.cuh"
 #include "base/datatype/qcu_float2.cuh"
 #include "desc/qcu_desc.h"
 #include "kernel/check_boundary.cuh"
+#include "kernel/gemm/qcu_gemm_configure.cuh"
+#include "kernel/gemm/qcu_gemm_loader.cuh"
 #include "kernel/qcu_gamma.cuh"
 #include "kernel/su_n_m_rhs_matmul.cuh"
 #include "point/qcu_point.cuh"
 #include "qcu_helper.h"
-#include "kernel/gemm/qcu_gemm_configure.cuh"
-#include "kernel/gemm/qcu_gemm_loader.cuh"
 namespace qcu {
 namespace device {
 
@@ -40,7 +41,7 @@ void single_point_wilson_dslash(
     bool dagger_flag, int n_color, int m_rhs, int coord_1dim, 
     FloatType_ kappa = 0, bool mat = false)
 {
-
+    const int fermion_site_length = n_color * m_rhs * 2    ;
     // used for ping pong
     __shared__ Float2_t<FloatType_> smem_A[2][BlockShape_::kMK]; // smem A size = BlockShape_::kMK
     __shared__ Float2_t<FloatType_> smem_B[2][BlockShape_::kKN]; // smem B size = BlockShape_::kKN
@@ -50,9 +51,9 @@ void single_point_wilson_dslash(
     Complex<FloatType_> ldg_A[2][BlockShape_::kMK / BlockSize_];
     Complex<FloatType_> ldg_B[2][BlockShape_::kKN / BlockSize_];
 
-    Complex<FloatType_> temp_res[BlockShape_::kMN];
-    Complex<FloatType_> res[BlockShape_::kMN * 2];
-
+    Complex<FloatType_> temp_res[BlockShape_::kMN / BlockSize_];
+    Complex<FloatType_> res1[BlockShape_::kMN * 2 / BlockSize_];
+    Complex<FloatType_> res2[BlockShape_::kMN * 2 / BlockSize_];
     int half_Lx = (latt_desc.X() << 1);
 
     Point coord { coord_1dim / (latt_desc.Z() * latt_desc.Y() * half_Lx)
@@ -61,8 +62,6 @@ void single_point_wilson_dslash(
                 , coord_1dim % half_Lx
                 , parity};
     Point move_coord;
-
-
 
     int32_t mat1_pos; // will be 0 or 1, use this to set mat1 position
     int32_t mat2_pos; // will be 2 or 3, use this to set mat2 position     temp_mat = mat1 + scale * mat2
@@ -86,6 +85,8 @@ void single_point_wilson_dslash(
                     int dim = dim_dir >> 1; // same with '/ DIRECTIONS'
 
                     mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
+                    // get scale
+                    scale = kernel::get_scale<FloatType_>(dim, mat1_pos);
 
                     move_coord = coord.move(dir, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
                     // calculate start addr of global A and B
@@ -106,38 +107,53 @@ void single_point_wilson_dslash(
                         }
                     }
 
-                    // get scale
-                    if (col < m_rhs) { // col \in [0, m_rhs)
-                        scale = kernel::get_scale<FloatType_>(dim, 0);
-
-                        mat1_pos = 0;
-                        if (dim == 0 || dim == 1) { mat2_pos = 3; }
-                        else { mat2_pos = 2; }
-                    } else {            // col \in [m_rhs, 2 * m_rhs)
-                        scale = kernel::get_scale<FloatType_>(dim, 1);
-
-                        mat1_pos = 1;
-                        if (dim == 2 || dim == 3) { mat2_pos = 3; }
-                        else { mat2_pos = 2; }
-                    }
-
                     // main loop
                     for (int k = 0; k < n_color; k += BlockShape_::kK) {
                         // load A from global memory to register, then store to smem
-                        if (dir == 0) { // global memory is row-major, col-major in smem
-                            // ldg_mat_to_reg<_FloatType, BlockShape_::kM, BlockShape_::kK>(glb_A, n_color, n_color, ldg_A[0], row, col);
-                            // when store, transpose
+                        if (dir == FWD) { // global memory is row-major, col-major in smem
+                            gemm::ldg<Float2_t<FloatType_>, BlockShape_, WarpShape_>>(glb_A, n_color, n_color, row, col, ldg_A[0]);
+                            gemm::sts_direct<Float2_t<FloatType_>,
+                                    gemm::GemmShape<BlockShape_::kM, BlockShape_::kK, 0>,
+                                    WarpShape_>
+                                >(smem_A, ldg_A[0]);
                         } else {        // global memory is col-major, col-major in smem
-                            // ldg_mat_to_reg<_FloatType, BlockShape_, _BLK_M>(glb_A, n_color, n_color, ldg_A[0], row, col);
-                        } 
-
+                            gemm::ldg<Float2_t<FloatType_>, gemm::GemmShapeTranspose<BlockShape_>, WarpShape_>>
+                                (glb_A, n_color, n_color, col, row, ldg_A[0]);
+                            gemm::sts_transpose<Float2_t<FloatType_>,
+                                    gemm::GemmShape<BlockShape_::kM, BlockShape_::kK, 0>,
+                                    WarpShape_>
+                                >(smem_A, ldg_A[0]);
+                        }
 
                         // load B from global memory to register, need combine 2 of 4 in global memory to 2 in smem
-                        // gemm
+                        gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
+                            glb_B + mat1_pos * fermion_site_length * 2, glb_B + mat2_pos * fermion_site_length * 2, /*float->complex<Float>*/
+                            n_color, 2 * m_rhs, scale, k, col, ldg_B[0]);
+                        // gemm, MMA
+                        temp_res[0][0] = 0;
+                        for (int kk = 0; kk < BlockShape_::kK; ++kk) {
+                            Complex<FloatType_> a = smem_A[threadIdx.y * BlockShape_::kK + kk];
+                            Complex<FloatType_> b = smem_B[kk * BlockShape_::kN + threadIdx.x];
+                            temp_res += a * b;
+                        }
+
                         // add to res
+                        scale = kernel::Gamma<FloatType_>::get_reconstruct_scale(dim, mat1_pos);
+                        res1[0][0] += temp_res[0][0];
+                        res2[0][0] += temp_res[0][0] * scale;
                     }
                 }
                 // store res to global memory
+                Float2_t<FloatType_>* glb_out = coord.getGatheredColorSpinorAddr(out, half_Lx, latt_desc.Y(),
+                        latt_desc.Z(), latt_desc.T(), n_color, m_rhs);
+
+                // we calculated [row ~ row + BlockShape_::kM, col ~ col + BlockShape_::kN]
+                gemm::stg<Float2_t<FloatType_>, BlockShape_, WarpShape_> (
+                    reinterpret_cast<Float2_t<FloatType_>*>(glb_out),
+                    n_color, 2 * m_rhs, row, col, reinterpret_cast<Float2_t<FloatType_>*>(res1[0]));
+                gemm::stg<Float2_t<FloatType_>, BlockShape_, WarpShape_> (
+                    reinterpret_cast<Float2_t<FloatType_>*>(glb_out) + 2 * n_color * m_rhs,
+                    n_color, 2 * m_rhs, row, col, reinterpret_cast<Float2_t<FloatType_>*>(res1[0]));
             }
 
         }
@@ -162,14 +178,14 @@ void wilson_dslash_su_n_mrhs(
     QcuLattDesc latt_desc, int multiprocess,
     int parity, bool dagger_flag, int n_color, int m_rhs) 
 {
-    // block切分使用2D，dim3(WARP_SIZE, WARP_NUMBER)
-    int block_id = blockIdx.x;
-    int grid_size = gridDim.x;  // 1D grid
+    // z 轴切分矩阵坐标点，(x,y)切分单个矩阵
+    int block_id = blockIdx.z;
+    int grid_size = gridDim.z;  // 1D grid
     int half_vol = latt_desc.half_lattice_volume();
 
     for (int i = block_id; i < half_vol; i += grid_size) {
-        // single_point_wilson_dslash<_FloatType>(  out, in, gauge, smem, Lx, Ly, Lz, Lt, g_x, g_y, g_z, g_t,
-                                            // parity, dagger_flag, n_color, m_rhs, i);
+        single_point_wilson_dslash<FloatType_, BlockSize_, BlockShape_, WarpShape_>(
+            out, in, gauge, latt_desc, multiprocess, parity, dagger_flag, n_color, m_rhs, i);
     }
 
 }
