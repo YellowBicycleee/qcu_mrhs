@@ -48,7 +48,6 @@ void colorSpinorScatter(void* __restrict__ global_dst_array, void* __restrict__ 
     using DstFloat2 = typename qcu::Float2Wrapper<DstFloat>::Float2;
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
     int block_size = 256;
-    // int grid_size = (Lx / 2 * Ly * Lz * Lt + block_size - 1) / block_size;
     int grid_size = (qcu::config::lattice_volume() / 2 + block_size - 1) / block_size;
 
     device::color_spinor_scatter_kernel<DstFloat2, SrcFloat2>
