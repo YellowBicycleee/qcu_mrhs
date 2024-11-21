@@ -95,7 +95,7 @@ void Qcu::get_dslash(DslashType dslashType, double mass) {
 
     switch (dslashType) {
         case DslashType::kDslashWilson:
-            dslash_ = std::make_shared<WilsonDslash>(); // new WilsonDslash(dslash_param_);
+            dslash_ = std::make_shared<qcu::developing::WilsonDslash>(); // new WilsonDslash(dslash_param_);
             break;
 
         default: {
