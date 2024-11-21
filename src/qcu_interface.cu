@@ -259,8 +259,8 @@ void Qcu::load_gauge(void* gauge, QcuPrecision floatPrecision) {
     int volume = qcu::config::lattice_volume();
     int complex_vector_length = Nd * volume * n_colors_ * n_colors_;
     
-    assert(floatPrecision == QCU_DOUBLE_PRECISION || floatPrecision == QCU_SINGLE_PRECISION ||
-           floatPrecision == QCU_HALF_PRECISION);
+    assert(floatPrecision == kPrecisionDouble || floatPrecision == kPrecisionSingle ||
+           floatPrecision == kPrecisionHalf);
     copyComplexVector_interface(fp64_gauge_, QcuPrecision::kPrecisionDouble, gauge_external_, floatPrecision, complex_vector_length);
     copyComplexVector_interface(fp32_gauge_, QcuPrecision::kPrecisionSingle, gauge_external_, floatPrecision, complex_vector_length);
     copyComplexVector_interface(fp16_gauge_, QcuPrecision::kPrecisionHalf, gauge_external_, floatPrecision, complex_vector_length);
