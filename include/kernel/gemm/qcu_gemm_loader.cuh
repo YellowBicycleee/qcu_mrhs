@@ -1,73 +1,102 @@
 #pragma once
 
+#include <base/datatype/qcu_complex.cuh>
 namespace qcu::gemm {
-// always row-major
-template <
-    typename _FloatType = double,
-    typename BlockShape_ = gemm::GemmShape<16, 16, 8> // only use M, N, donnot use K !!!
+
+// new function
+template <typename Tp_,
+    typename BlockShape_ = GemmShape<16, 16, 8>,
+    typename WarpShape_ = GemmShape<8, 8, 4>,
+    int WarpRow_ = 4,
+    int WarpCol = 8
 >
 QCU_DEVICE
-void ldg_mat_to_reg(Float2_t<_FloatType>* __restrict__ glb_mat,
-                    int start_m, int start_n, int M, int N,
-                    Float2_t<_FloatType>* __restrict__ reg_mat)
-{
-    int rows = BlockShape_::kM / blockDim.y;  // how many rows each thread load
-    int cols = BlockShape_::kN / blockDim.x;  // how many cols each thread load
+void stg (Tp_* glb, int M, int N, int start_m, int start_n, Tp_* reg) {
 
-    int glb_start_m = start_m + threadIdx.y * rows;
-    int glb_start_n = start_n + threadIdx.x * cols;
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            if (glb_start_m + i < M && glb_start_n + j < N) {
-                reg_mat[IDX2D(i, j, cols)] = glb_mat[IDX2D(glb_start_m + i, glb_start_n + j, N)];
-            } else {
-                reg_mat[IDX2D(i, j, cols)] = Float2_t<_FloatType>(0.0);
-            }
-        }
+    int m = start_m + threadIdx.y;
+    int n = start_n + threadIdx.x;
+
+    if (m < M && n < N) {
+        glb[m * N + n] = *reg;
+    } // else do nothing
+}
+
+// new function
+template <typename Tp_,
+    typename BlockShape_ = GemmShape<16, 16, 8>,
+    typename WarpShape_ = GemmShape<8, 8, 4>,
+    int WarpRow_ = 4,
+    int WarpCol = 8
+>
+QCU_DEVICE
+void ldg (Tp_* glb, int M, int N, int start_m, int start_n, Tp_* reg) {
+
+    int m = start_m + threadIdx.y;
+    int n = start_n + threadIdx.x;
+
+    if (m < M && n < N) {
+        *reg = glb[m * N + n];
+    }
+    else { // padding
+        *reg = {0};
     }
 }
 
 
-template <
-    typename FloatType_ = double,
-    typename BlockShape_ = gemm::GemmShape<16, 16, 8> // only use M, N, donnot use K !!!
+template <typename Float_,
+    typename BlockShape_ = GemmShape<16, 16, 8>,
+    typename WarpShape_ = GemmShape<8, 8, 4>,
+    int WarpRow_ = 4,
+    int WarpCol = 8
 >
 QCU_DEVICE
-void sts_mat( Float2_t<FloatType_>* __restrict__ smem_mat,
-                Float2_t<FloatType_>* __restrict__ reg_mat)
+void ldg_fermion (Float_* glb1, Float_* glb2, int M, int N,
+    Complex<Float_> scale, int start_m, int start_n, Float2_t<Float_>* reg)
 {
-    int rows = BlockShape_::kM / blockDim.y;  // how many rows each thread has
-    int cols = BlockShape_::kN / blockDim.x;  // how many cols each thread has
 
-    int smem_start_m = threadIdx.y * rows;
-    int smem_start_n = threadIdx.x * cols;
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            smem_mat[IDX2D(smem_start_m + i, smem_start_n + j, BlockShape_::kN)] = reg_mat[IDX2D(i, j, cols)];
-        }
+    int m = start_m + threadIdx.y;
+    int n = start_n + threadIdx.x;
+
+    Complex<Float_> temp1;
+    Complex<Float_> temp2;
+
+    if (m < M && n < N) {
+        temp1 = reinterpret_cast<Float2_t<Float_>*>(glb1) [m * N + n];
+        temp2 = reinterpret_cast<Float2_t<Float_>*>(glb2) [m * N + n];
+        Complex<Float_> temp = temp1 + scale * temp2;
+        reg->x = temp.real();
+        reg->y = temp.imag();
+    }
+    else {
+        *reg = {0, 0};
     }
 }
 
-
-template <
-    typename FloatType_ = double,
-    typename BlockShape_ = gemm::GemmShape<16, 16, 8> // only use M, N, donnot use K !!!
+template <typename Tp_,
+    typename BlockShape_ = GemmShape<16, 16, 8>, // K is not used
+    typename WarpShape_ = GemmShape<8, 8, 4>,
+    int WarpRow_ = 4,
+    int WarpCol = 8
 >
-QCU_DEVICE
-void sts_mat_transpose( Float2_t<FloatType_>* __restrict__ smem_mat,
-                        Float2_t<FloatType_>* __restrict__ reg_mat)
-{
-    int rows = BlockShape_::kM / blockDim.y;  // how many rows each thread has
-    int cols = BlockShape_::kN / blockDim.x;  // how many cols each thread has
-
-    int smem_start_m = threadIdx.y * rows;
-    int smem_start_n = threadIdx.x * cols;
-    // transpose
-    // 假想一个smem[row][col]到真实的smem[col][row]的transpose
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            smem_mat[IDX2D(smem_start_n + j, smem_start_m + i, BlockShape_::kM)] = reg_mat[IDX2D(i, j, cols)];
-        }
-    }
+QCU_DEVICE void sts_direct (Tp_* smem, Tp_* reg) {
+    int row = threadIdx.y;
+    int col = threadIdx.x ;
+    smem[row * BlockShape_::kN + col] = * reg; // reduce bank conflict
+    // __syncthreads();
 }
+
+template <typename Float_,
+    typename BlockShape_ = GemmShape<16, 16, 8>,
+    typename WarpShape_ = GemmShape<8, 8, 4>,
+    int WarpRow_ = 4,
+    int WarpCol = 8
+>
+QCU_DEVICE void sts_transpose (Float_* smem, Float_* reg) {
+    int row = threadIdx.y;
+    int col = threadIdx.x;
+    smem[col * BlockShape_::kM + row] = * reg; // reduce bank conflict
+    // __syncthreads();
+}
+
+
 }
