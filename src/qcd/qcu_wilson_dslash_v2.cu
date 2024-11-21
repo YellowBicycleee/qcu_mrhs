@@ -1,10 +1,13 @@
 #include <cuda_fp16.h>
 
+#include "check_error/check_cuda.cuh"
 #include "kernel/su_n_m_rhs_dslash_new.cuh"
 #include "qcd/qcu_dslash_wilson.h"
+#include "qcu_base/qcu_alloc.h"
+#include "qcu_config/qcu_config.h"
 #include "qcu_public.h"
-#include "check_error/check_cuda.cuh"
 
+#include "qcu_base/qcu_base.h"
 /** how to impl dslash
  * Policy1: MPI Naive
  *    main thread-flag=false----------stream9--------------------------------------internal Kernel----flag=true--------join, sync---flag=false
@@ -24,28 +27,68 @@ namespace qcu {
 namespace developing {
 // clang-format off
 template <typename Float>
-inline void ApplyWilsonDslash_Mrhs( Float* __restrict__ out, Float* __restrict__ in, Float* __restrict__ gauge, 
-                                    int Lx, int Ly, int Lz, int Lt, int g_x, int g_y, int g_z, int g_t, 
-                                    int parity, bool dagger_flag, int n_color, int m_rhs, cudaStream_t& stream
-) {
+inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
+{
     // clang-format on
-    int vol = Lx * Ly * Lz * Lt / 2;
+    int half_vol = config::lattice_volume() / 2;
     int warp_num_per_block = WARP_PER_BLOCK;
 
-    dim3 block_size(WARP_SIZE, warp_num_per_block);
-    dim3 grid_size(vol);
-    device::wilson_dslash_su_n_mrhs<Float> <<<grid_size, block_size, 0, stream>>>(
-        out, in, gauge, Lx, Ly, Lz, Lt, g_x, g_y, g_z, g_t, parity, dagger_flag, n_color, m_rhs);
+    const qcu::QcuLattDesc& latt_desc = *(dslash_param.lattDesc);
+    const qcu::QcuProcDesc& proc_desc = *(dslash_param.procDesc);
+
+    using BlockShape = gemm::GemmShape<8, 8, 8>;
+
+    int multiprocess = 0;
+    for (int i = 0; i < Nd; ++i) {
+        if (proc_desc.data[i] > 0) {
+            multiprocess |= (1 << i);
+        }
+    }
+
+    // dim3 block_size(WARP_SIZE, warp_num_per_block);
+    // dim3 grid_size(half_vol);
+
+    dim3 grid_size(1, 1, min(half_vol, 65535));
+    dim3 block_size(8, 8, 1);
+
+    printf("SIMT dslash Beginning\n");
+    qcu::device::wilson_dslash_su_n_mrhs<Float, 64, BlockShape>
+        <<<grid_size, block_size, 0, dslash_param.stream1>>>
+        (static_cast<Float*>(dslash_param.fermionOut_MRHS), static_cast<Float*>(dslash_param.fermionIn_MRHS),
+            static_cast<Float*>(dslash_param.gauge), latt_desc, multiprocess,
+            dslash_param.parity, dslash_param.daggerFlag, dslash_param.nColor, dslash_param.mInput);
 }
 
-void WilsonDslash::apply(const std::shared_ptr<DslashParam> dslash_param) {
-    errorQcu("Not implemented yet\n");  // TODO
+void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
 
+    // clang-format off
+    switch (dslash_param->precision) {
+        case QcuPrecision::kPrecisionHalf:
+            { ApplyWilsonDslash_Mrhs<half>(*dslash_param); }
+            break;
+        case QcuPrecision::kPrecisionSingle:
+            {
+                errorQcu("Not implemented yet\n");  // TODO
+                assert(0);
+            }
+            break;
+        case QcuPrecision::kPrecisionDouble:
+            { ApplyWilsonDslash_Mrhs<double>(*dslash_param);}
+            break;
+        default:
+            {
+                errorQcu("Not implemented yet\n");  // TODO
+                assert(0);
+            }
+            break;
+    }
+    CHECK_CUDA(cudaStreamSynchronize(dslash_param->stream1));
+    // clang-format on
 }
-void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam>) {
+void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
     errorQcu("Not implemented yet\n");  // TODO
 }
-void WilsonDslash::post_apply(const std::shared_ptr<DslashParam>) {
+void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
     errorQcu("Not implemented yet\n");  // TODO
 }
 // TODO : calc flops
@@ -57,5 +100,6 @@ double WilsonDslash::flops() {
         return 0;
     }
 }
+
 }
 }  // namespace qcu
