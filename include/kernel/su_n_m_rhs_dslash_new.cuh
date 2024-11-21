@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cub/block/block_load.cuh>
+#include <kernel/precondition/eo_precondition.cuh>
 
 #include "base/datatype/qcu_complex.cuh"
 #include "base/datatype/qcu_float2.cuh"
@@ -48,13 +49,14 @@ void single_point_wilson_dslash(
     // C size = _BLK_M * _BLK_N in register and Res size is _BLK_N * _BLK_N * 2 in register
 
     // ldg_A and ldg_B are used to load A and B from global memory
-    Complex<FloatType_> ldg_A[2][BlockShape_::kMK / BlockSize_];
-    Complex<FloatType_> ldg_B[2][BlockShape_::kKN / BlockSize_];
+    Complex<FloatType_> ldg_A[BlockShape_::kMK / BlockSize_];
+    Complex<FloatType_> ldg_B[BlockShape_::kKN / BlockSize_];
 
-    Complex<FloatType_> temp_res[BlockShape_::kMN / BlockSize_];
-    Complex<FloatType_> res1[BlockShape_::kMN * 2 / BlockSize_];
+    Complex<FloatType_> temp_res[BlockShape_::kMN / BlockSize_] = {{1, 0}};
+    Complex<FloatType_> res1[BlockShape_::kMN * 2 / BlockSize_] = {{0, 1}};
     Complex<FloatType_> res2[BlockShape_::kMN * 2 / BlockSize_];
     int half_Lx = (latt_desc.X() << 1);
+
 
     Point coord { coord_1dim / (latt_desc.Z() * latt_desc.Y() * half_Lx)
                 , coord_1dim % (latt_desc.Z() * latt_desc.Y() * half_Lx) / (latt_desc.Y() * half_Lx)
@@ -69,7 +71,7 @@ void single_point_wilson_dslash(
     int32_t blocks_m = div_ceil(n_color, BlockShape_::kM);
     int32_t blocks_n = div_ceil(2 * m_rhs, BlockShape_::kN);
 
-    Float2_t<FloatType_> scale; // when read B, use B1 + scale B2
+    Complex<FloatType_> scale; // when read B, use B1 + scale B2
 
     for (int loop_blk_m = 0; loop_blk_m < blocks_m; ++loop_blk_m) {
         for (int loop_blk_n = 0; loop_blk_n < blocks_n; ++loop_blk_n) {
@@ -77,31 +79,39 @@ void single_point_wilson_dslash(
             int row = loop_blk_m * BlockShape_::kM + threadIdx.y;
             int col = loop_blk_n * BlockShape_::kN + threadIdx.x;
 
-            if (row < n_color && col < 2 * m_rhs) {
+            // if (row < n_color && col < 2 * m_rhs) -- this if condition is wrong, will result in deadlock
+            {
                 mat1_pos = col / m_rhs;
 
                 for (int dim_dir = 0; dim_dir < Nd * DIRECTIONS; dim_dir++) {
                     int dir = dim_dir & 1;  // same with '% DIRECTIONS'
                     int dim = dim_dir >> 1; // same with '/ DIRECTIONS'
 
-                    mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
-                    // get scale
-                    scale = kernel::get_scale<FloatType_>(dim, mat1_pos);
+                    if (mat1_pos < 2) {
+                        mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
+                        // get scale
+                        scale = kernel::Gamma<FloatType_>::get_projection_scale(dir, mat1_pos);
+                    }
 
                     move_coord = coord.move(dir, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
                     // calculate start addr of global A and B
                     Float2_t<FloatType_>* glb_A;
-                    Float2_t<FloatType_>* glb_B = move_coord.getGatheredColorSpinorAddr(in, half_Lx, latt_desc.Y(),
-                        latt_desc.Z(), latt_desc.T(), n_color, m_rhs);
+                    Float2_t<FloatType_>* glb_B =
+                        reinterpret_cast<Float2_t<FloatType_> *>(
+                            move_coord.getGatheredColorSpinorAddr(in, half_Lx, latt_desc.Y(),
+                            latt_desc.Z(), latt_desc.T(), n_color, m_rhs)
+                        );
 
                     // set dagger, BE CAREFUL: it is possible to be wrong here
                     if (dir == FWD) { // fwd default: dagger
-                        glb_A = coord.getGaugeAddr(gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
+                        glb_A = reinterpret_cast<Float2_t<FloatType_> *>(coord.getGaugeAddr(
+                            gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color));
                         if (!dagger_flag) {
                             scale = -scale;
                         }
                     } else { // bwd default: not dagger
-                        glb_A = move_coord.getGaugeAddr(gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T());
+                        glb_A = reinterpret_cast<Float2_t<FloatType_> *>(move_coord.getGaugeAddr(
+                            gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color));
                         if (dagger_flag) {
                             scale = -scale;
                         }
@@ -109,52 +119,75 @@ void single_point_wilson_dslash(
 
                     // main loop
                     for (int k = 0; k < n_color; k += BlockShape_::kK) {
-                        // load A from global memory to register, then store to smem
-                        if (dir == FWD) { // global memory is row-major, col-major in smem
-                            gemm::ldg<Float2_t<FloatType_>, BlockShape_, WarpShape_>>(glb_A, n_color, n_color, row, col, ldg_A[0]);
-                            gemm::sts_direct<Float2_t<FloatType_>,
-                                    gemm::GemmShape<BlockShape_::kM, BlockShape_::kK, 0>,
-                                    WarpShape_>
-                                >(smem_A, ldg_A[0]);
-                        } else {        // global memory is col-major, col-major in smem
-                            gemm::ldg<Float2_t<FloatType_>, gemm::GemmShapeTranspose<BlockShape_>, WarpShape_>>
-                                (glb_A, n_color, n_color, col, row, ldg_A[0]);
-                            gemm::sts_transpose<Float2_t<FloatType_>,
-                                    gemm::GemmShape<BlockShape_::kM, BlockShape_::kK, 0>,
-                                    WarpShape_>
-                                >(smem_A, ldg_A[0]);
-                        }
-
-                        // load B from global memory to register, need combine 2 of 4 in global memory to 2 in smem
-                        gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
-                            glb_B + mat1_pos * fermion_site_length * 2, glb_B + mat2_pos * fermion_site_length * 2, /*float->complex<Float>*/
-                            n_color, 2 * m_rhs, scale, k, col, ldg_B[0]);
-                        // gemm, MMA
-                        temp_res[0][0] = 0;
-                        for (int kk = 0; kk < BlockShape_::kK; ++kk) {
-                            Complex<FloatType_> a = smem_A[threadIdx.y * BlockShape_::kK + kk];
-                            Complex<FloatType_> b = smem_B[kk * BlockShape_::kN + threadIdx.x];
-                            temp_res += a * b;
-                        }
-
+                    //     // load A from global memory to register, then store to smem
+                    //     if (dir == FWD) { // global memory is row-major, col-major in smem
+                    //         gemm::ldg<Float2_t<FloatType_>, BlockShape_, WarpShape_> (
+                    //             glb_A, n_color, n_color, row, col,
+                    //             reinterpret_cast<Float2_t<FloatType_>*>(ldg_A));
+                    //         gemm::sts_direct<Float2_t<FloatType_>,
+                    //                 gemm::GemmShape<BlockShape_::kM, BlockShape_::kK, 0>,
+                    //                 WarpShape_>
+                    //             (smem_A[0], reinterpret_cast<Float2_t<FloatType_>*>(ldg_A));
+                    //     } else {        // global memory is col-major, col-major in smem
+                    //         gemm::ldg<Float2_t<FloatType_>, gemm::GemmShapeTranspose<BlockShape_>, WarpShape_>
+                    //             (glb_A, n_color, n_color, col, row, reinterpret_cast<Float2_t<FloatType_>*>(ldg_A));
+                    //         gemm::sts_transpose<Float2_t<FloatType_>,
+                    //                 gemm::GemmShape<BlockShape_::kM, BlockShape_::kK, 0>,
+                    //                 WarpShape_>
+                    //             (smem_A[0], reinterpret_cast<Float2_t<FloatType_>*>(ldg_A));
+                    //     }
+                    //     __syncthreads();
+                    //
+                    //     // load B from global memory to register, need combine 2 of 4 in global memory to 2 in smem
+                    //     gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
+                    //         reinterpret_cast<FloatType_*>(glb_B + mat1_pos * fermion_site_length),
+                    //         reinterpret_cast<FloatType_*>(glb_B + mat2_pos * fermion_site_length),
+                    //         n_color, 2 * m_rhs, scale, k, col, reinterpret_cast<Float2_t<FloatType_> *>(ldg_B));
+                    //     // gemm, MMA
+                    //     temp_res[0] = 0;
+                    //     for (int kk = 0; kk < BlockShape_::kK; ++kk) {
+                    //         Float2_t<FloatType_> a = smem_A[0][threadIdx.y * BlockShape_::kK + kk];
+                    //         Float2_t<FloatType_> b = smem_B[0][kk * BlockShape_::kN + threadIdx.x];
+                    //         temp_res[0] += Complex<FloatType_>(a) * Complex<FloatType_>(b);
+                    //     }
+                    //     __syncthreads();
                         // add to res
-                        scale = kernel::Gamma<FloatType_>::get_reconstruct_scale(dim, mat1_pos);
-                        res1[0][0] += temp_res[0][0];
-                        res2[0][0] += temp_res[0][0] * scale;
-                    }
+                        if (mat1_pos < 2) {
+                            scale = kernel::Gamma<FloatType_>::get_reconstruct_scale(dim, mat1_pos);
+                            // if (threadIdx.x == 0 && threadIdx.y == 0 && blockIdx.z == 0) {
+                            //     printf("DEBUG========= temp_res[0] = (%lf, %lf)\n", temp_res[0].real(), temp_res->imag());
+                            //     printf("DEBUG========= res1[0] = (%lf, %lf)\n", res1[0].real(), res1->imag());
+                            //     // printf("dir dim = %d %d, scale = (%lf, %lf)\n", dir, dim, scale.real(), scale.imag());
+                            // }
+                            res1[0]  += temp_res[0];
+
+                            // if (threadIdx.x == 0 && threadIdx.y == 0 && blockIdx.z == 0) {
+                            //     printf("++++DEBUG: sizeof res1 = %d\n", sizeof(res1));
+                            //     printf("BlockShape_::kMN / BlockSize_ = %d\n", BlockShape_::kMN / BlockSize_);
+                            // }
+                            // temp_res[0] = 0;
+                            // res2[0] += temp_res[0] * scale;
+                        }
+                    } // end main loop for
+
                 }
                 // store res to global memory
-                Float2_t<FloatType_>* glb_out = coord.getGatheredColorSpinorAddr(out, half_Lx, latt_desc.Y(),
-                        latt_desc.Z(), latt_desc.T(), n_color, m_rhs);
+                Float2_t<FloatType_>* glb_out =
+                    reinterpret_cast<Float2_t<FloatType_> *> (
+                        coord.getGatheredColorSpinorAddr(out, half_Lx, latt_desc.Y(),
+                        latt_desc.Z(), latt_desc.T(), n_color, m_rhs));
 
                 // we calculated [row ~ row + BlockShape_::kM, col ~ col + BlockShape_::kN]
-                gemm::stg<Float2_t<FloatType_>, BlockShape_, WarpShape_> (
-                    reinterpret_cast<Float2_t<FloatType_>*>(glb_out),
-                    n_color, 2 * m_rhs, row, col, reinterpret_cast<Float2_t<FloatType_>*>(res1[0]));
-                gemm::stg<Float2_t<FloatType_>, BlockShape_, WarpShape_> (
-                    reinterpret_cast<Float2_t<FloatType_>*>(glb_out) + 2 * n_color * m_rhs,
-                    n_color, 2 * m_rhs, row, col, reinterpret_cast<Float2_t<FloatType_>*>(res1[0]));
-            }
+
+                if (mat1_pos < 2) {
+                    gemm::stg<Float2_t<FloatType_>, BlockShape_, WarpShape_> (
+                        reinterpret_cast<Float2_t<FloatType_>*>(glb_out) + mat1_pos * n_color * m_rhs,
+                        n_color, m_rhs, row, col, reinterpret_cast<Float2_t<FloatType_>*>(&res1[0]));
+                    gemm::stg<Float2_t<FloatType_>, BlockShape_, WarpShape_> (
+                        reinterpret_cast<Float2_t<FloatType_>*>(glb_out) + (mat1_pos + 2) * n_color * m_rhs,
+                        n_color, m_rhs, row, col, reinterpret_cast<Float2_t<FloatType_>*>(&res2[0]));
+                }
+            } // end if
 
         }
     }
@@ -178,6 +211,9 @@ void wilson_dslash_su_n_mrhs(
     QcuLattDesc latt_desc, int multiprocess,
     int parity, bool dagger_flag, int n_color, int m_rhs) 
 {
+    assert(BlockShape_::kM > 0 && BlockShape_::kN > 0 && BlockShape_::kK > 0
+        && BlockSize_ <= BlockShape_::kM * BlockShape_::kN
+    );
     // z 轴切分矩阵坐标点，(x,y)切分单个矩阵
     int block_id = blockIdx.z;
     int grid_size = gridDim.z;  // 1D grid
