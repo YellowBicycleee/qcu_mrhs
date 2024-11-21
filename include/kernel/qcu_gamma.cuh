@@ -3,8 +3,7 @@
 //
 
 #pragma once
-
-
+#include <cassert>
 
 namespace qcu::kernel {
 
@@ -27,7 +26,7 @@ protected:
             else if (col == 1 || col == 2) return {0, 0};
             else {
                 printf("Fatal: gamma_1[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
         }
         else if (row == 1) {
@@ -36,49 +35,53 @@ protected:
             else if (col == 0 || col == 3) return {0, 0};
             else {
                 printf("Fatal: gamma_1[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
         }
         else if (row == 2) {
             if (col > 3) {
                 printf("Fatal: gamma_1[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
             return Complex<FloatType>(0, -1) * get_elem(1, col);
         }
         else if (row == 3) {
             if (col > 3) {
                 printf("Fatal: gamma_1[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
             return Complex<FloatType>(0, -1) * get_elem(0, col);
         }
         else {
             printf("Fatal: gamma_1[%d, %d] is not exist\n", row + 1, col + 1);
-            errorQcu("Fatal Error\n");
+            assert(0);
         }
+        return {0, 0};
     }
     static QCU_DEVICE int get_reconstruct_mat_id (int row) {
         if (row == 0 || row == 1) return (3 - row);
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
+            assert(0);
         }
+        return -1;
     }
     static QCU_DEVICE Complex<FloatType> get_reconstruct_scale (int row) {
         if (row == 0 || row == 1) return {0, -1};
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
+            assert(0);
+            return {0, 0};
         }
     }
     // only row 0 and 1 have projection scale
     static QCU_DEVICE Complex<FloatType> get_projection_scale (int row) {
         if (row == 0 || row == 1) return {0, 1};
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
         }
+        assert(0);
+        return {0, 0};
     }
 };
 
@@ -99,7 +102,7 @@ protected:
             else if (col == 1 || col == 2) return {0, 0};
             else {
                 printf("Fatal: gamma_2[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
         }
         else if (row == 1) {
@@ -107,44 +110,48 @@ protected:
             else if (col == 0 || col == 3) return {0, 0};
             else {
                 printf("Fatal: gamma_2[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
         }
         else if (row == 2 || row == 3) {
             if (col > 3) {
                 printf("Fatal: gamma_2[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
             if (row == 2) return get_elem(1, col);
             else return Complex<FloatType>{-1, 0} * get_elem(1, col);
         }
         else {
             printf("Fatal: gamma_2[%d, %d] is not exist\n", row + 1, col + 1);
-            errorQcu("Fatal Error\n");
+            assert(0);
         }
+        return {0, 0};
     }
     static QCU_DEVICE int get_reconstruct_mat_id (int row) {
         if (row == 0 || row == 1) return (3 - row);
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
         }
+        assert(0);
+        return -1;
     }
     static QCU_DEVICE Complex<FloatType> get_reconstruct_scale (int row) {
         if (row == 0) return {-1, 0};
         else if (row == 1) return {1, 0};
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
         }
+        assert(0);
+        return {0, 0};
     }
     static QCU_DEVICE Complex<FloatType> get_projection_scale (int row) {
         if (row == 0) return {-1, 0};
         else if (row == 1) return {1, 0};
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
         }
+        assert(0);
+        return {0, 0};
     }
 };
 
@@ -165,7 +172,7 @@ protected:
             else if (col == 1 || col == 3) return {0, 0};
             else {
                 printf("Fatal: gamma_3[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
         }
         else if (row == 1) {
@@ -174,46 +181,53 @@ protected:
             else if (col == 0 || col == 2) return {0, 0};
             else {
                 printf("Fatal: gamma_3[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
         }
         else if (row == 2) {
             if (col > 3) {
-                printf("Fatal: gamma_2[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                printf("Fatal: gamma_3[%d, %d] is not exist\n", row + 1, col + 1);
+                assert(0);
             }
             return Complex<FloatType>{0, -1} * get_elem(0, col);
         }
         else if (row == 3) {
             if (col > 3) {
-                printf("Fatal: gamma_2[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                printf("Fatal: gamma_3[%d, %d] is not exist\n", row + 1, col + 1);
+                assert(0);
             }
             return Complex<FloatType>{0, 1} * get_elem(1, col);
         }
+        printf("Fatal: gamma_3[%d, x] is not exist\n", row + 1);
+        assert(0);
+        return {0, 0};
     }
     static QCU_DEVICE int get_reconstruct_mat_id (int row) {
         if (row == 0 || row == 1) return (2 + row);
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
         }
+        assert(0);
+        return -1;
     }
     static QCU_DEVICE Complex<FloatType> get_reconstruct_scale (int row) {
         if (row == 0) return {0, -1};
         else if (row == 1) return {0, 1};
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
+
         }
+        assert(0);
+        return {0, 0};
     }
     static QCU_DEVICE Complex<FloatType> get_projection_scale (int row) {
         if (row == 0) return {0, 1};
         else if (row == 1) return {0, -1};
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
         }
+        assert(0);
+        return {0, 0};
     }
 };
 
@@ -235,7 +249,7 @@ protected:
             else if (col == 1 || col == 3) return {0, 0};
             else {
                 printf("Fatal: gamma_4[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
             }
         }
         else if (row == 1 || row == 3) {
@@ -243,34 +257,39 @@ protected:
             else if (col == 0 || col == 2) return {0, 0};
             else {
                 printf("Fatal: gamma_4[%d, %d] is not exist\n", row + 1, col + 1);
-                errorQcu("Fatal Error\n");
+                assert(0);
+                return {0, 0};
             }
         }
         else {
             printf("Fatal: gamma_4[%d, %d] is not exist\n", row + 1, col + 1);
-            errorQcu("Fatal Error\n");
+            assert(0);
         }
+        return {0, 0};
     }
     static QCU_DEVICE int get_reconstruct_mat_id (int row) {
         if (row == 0 || row == 1) return (2 + row);
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
         }
+        assert(0);
+        return -1;
     }
     static QCU_DEVICE Complex<FloatType> get_reconstruct_scale (int row) {
         if (row == 0 || row == 1) return {1, 0};
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
         }
+        assert(0);
+        return {0, 0};
     }
     static QCU_DEVICE Complex<FloatType> get_projection_scale (int row) {
         if (row == 0 || row == 1) return {1, 0};
         else {
-            printf("Fatal: row must be 0 or 1, but it is %d\n", row);
-            exit(-1);
+            printf("Fatal: file %s line %d, row must be 0 or 1, but it is %d\n", __FILE__, __LINE__, row);
         }
+        assert(0);
+        return {0, 0};
     }
 };
 
@@ -292,7 +311,9 @@ public:
                 return Gamma4<FloatType>::get_elem(row, col);
             } break;
             default: {
-                errorQcu("Wrong gamma_id\n");
+                printf("Fatal: Wrong gamma_id\n");
+                assert(0);
+                return {0, 0};
             } break;
         }
     }
@@ -312,7 +333,9 @@ public:
                 return Gamma4<FloatType>::get_reconstruct_mat_id(row);
             } break;
             default: {
-                errorQcu("Wrong gamma_id\n");
+                printf("Fatal: Wrong gamma_id\n");
+                assert(0);
+                return -1;
             } break;
         }
     }
@@ -332,7 +355,9 @@ public:
                 return Gamma4<FloatType>::get_reconstruct_scale(row);
             } break;
             default: {
-                errorQcu("Wrong gamma_id\n");
+                printf("Fatal: Wrong gamma_id\n");
+                assert(0);
+                return {0, 0};
             } break;
         }
     }
@@ -352,10 +377,12 @@ public:
                 return Gamma4<FloatType>::get_projection_scale(row);
             }
             default: {
-                errorQcu("Wrong gamma_id\n");
+                printf("Fatal: Wrong gamma_id\n");
+                assert(0);
             }
             break;;
         }
+        return {0, 0};
     }
 };
 
@@ -377,11 +404,11 @@ Complex<_FloatType> get_scale(int gamma_id, int row) {
     kernel::Gamma<_FloatType> gamma;
     if (gamma_id < 0 || gamma_id > 3) {
         printf("Fatal: gamma_id %d out of range\n", gamma_id + 1);
-        exit(-1);
+        assert(0);
     }
     if (!(row == 0 || row == 1)) {
         printf("Fatal: row or col out of range\n");
-        exit(-1);
+        assert(0);
     }
     // 1 + gamma_1
     if (gamma_id == 0 || gamma_id == 1) {
@@ -396,7 +423,8 @@ Complex<_FloatType> get_scale(int gamma_id, int row) {
 
     // error handling
     printf("gamma_id = %d, row = %d,some parameter out of range\n", gamma_id, row);
-    exit(-1);
+    assert(0);
+    return {0, 0};
 }
 
 }
