@@ -2,8 +2,6 @@
 // Created by wjc on 24-10-21.
 //
 #pragma once
-
-#include <cuda/std/__functional/binder1st.h>
 #include <cuda_runtime.h>
 
 #include <cstdint>
