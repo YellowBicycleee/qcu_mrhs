@@ -1,7 +1,7 @@
 //
 // Created by wjc on 24-10-24.
 //
-#include <openmpi/mpi.h>
+#include <mpi.h>
 #include "qcu_helper.h"
 #include "check_error/check_mpi.h"
 #include "communication/communicator.h"
