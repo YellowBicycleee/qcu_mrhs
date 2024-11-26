@@ -31,7 +31,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 {
     // clang-format on
     int half_vol = config::lattice_volume() / 2;
-    int warp_num_per_block = WARP_PER_BLOCK;
+    // int warp_num_per_block = WARP_PER_BLOCK;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.lattDesc);
     const qcu::QcuProcDesc& proc_desc = *(dslash_param.procDesc);
@@ -54,9 +54,13 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     printf("SIMT dslash Beginning\n");
     qcu::device::wilson_dslash_su_n_mrhs<Float, 64, BlockShape>
         <<<grid_size, block_size, 0, dslash_param.stream1>>>
-        (static_cast<Float*>(dslash_param.fermionOut_MRHS), static_cast<Float*>(dslash_param.fermionIn_MRHS),
-            static_cast<Float*>(dslash_param.gauge), latt_desc, multiprocess,
-            dslash_param.parity, dslash_param.daggerFlag, dslash_param.nColor, dslash_param.mInput);
+        (   static_cast<Float*>(dslash_param.fermionOut_MRHS),
+            static_cast<Float*>(dslash_param.fermionIn_MRHS),
+            static_cast<Float*>(dslash_param.gauge),
+            latt_desc, multiprocess,
+            dslash_param.parity, dslash_param.daggerFlag,
+            dslash_param.nColor, dslash_param.mInput);
+    CHECK_CUDA(cudaDeviceSynchronize());
 }
 
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
