@@ -52,7 +52,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     dim3 block_size(8, 8, 1);
 
     printf("SIMT dslash Beginning\n");
-    qcu::device::wilson_dslash_su_n_mrhs<Float, 64, BlockShape>
+    qcu::device::wilson_dslash_su_n_mrhs<Float, BlockShape>
         <<<grid_size, block_size, 0, dslash_param.stream1>>>
         (   static_cast<Float*>(dslash_param.fermionOut_MRHS),
             static_cast<Float*>(dslash_param.fermionIn_MRHS),

@@ -275,19 +275,20 @@ public:
         }
     }
 
-    static QCU_DEVICE Complex<FloatType> get_reconstruct_scale (int gamma_id, int row) {
+    static QCU_DEVICE Complex<FloatType> get_reconstruct_scale (int gamma_id, int row, int dir) {
+        FloatType sign = (dir == BWD) ? 1 : -1;
         switch (gamma_id) {
             case X_DIM: {
-                return Gamma1<FloatType>::get_reconstruct_scale(row);
+                return Gamma1<FloatType>::get_reconstruct_scale(row) * sign;
             } break;
             case Y_DIM: {
-                return Gamma2<FloatType>::get_reconstruct_scale(row);
+                return Gamma2<FloatType>::get_reconstruct_scale(row) * sign;
             } break;
             case Z_DIM: {
-                return Gamma3<FloatType>::get_reconstruct_scale(row);
+                return Gamma3<FloatType>::get_reconstruct_scale(row) * sign;
             } break;
             case T_DIM: {
-                return Gamma4<FloatType>::get_reconstruct_scale(row);
+                return Gamma4<FloatType>::get_reconstruct_scale(row) * sign;
             } break;
             default: {
                 printf("Fatal: Wrong gamma_id\n");
@@ -297,19 +298,20 @@ public:
         }
     }
 
-    static QCU_DEVICE Complex<FloatType> get_projection_scale (int gamma_id, int row) {
+    static QCU_DEVICE Complex<FloatType> get_projection_scale (int gamma_id, int row, int dir) {
+        FloatType sign = (dir == BWD) ? 1 : -1;
         switch (gamma_id) {
             case X_DIM: {
-                return Gamma1<FloatType>::get_projection_scale(row);
+                return Gamma1<FloatType>::get_projection_scale(row) * sign;
             }
             case Y_DIM: {
-                return Gamma2<FloatType>::get_projection_scale(row);
+                return Gamma2<FloatType>::get_projection_scale(row) * sign;
             }
             case Z_DIM: {
-                return Gamma3<FloatType>::get_projection_scale(row);
+                return Gamma3<FloatType>::get_projection_scale(row) * sign;
             }
             case T_DIM: {
-                return Gamma4<FloatType>::get_projection_scale(row);
+                return Gamma4<FloatType>::get_projection_scale(row) * sign;
             }
             default: {
                 printf("Fatal: Wrong gamma_id\n");

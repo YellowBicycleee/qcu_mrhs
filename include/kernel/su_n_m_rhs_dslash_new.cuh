@@ -28,7 +28,6 @@ namespace device {
 */
 template <
     typename FloatType_ = double,
-    int BlockSize_ = 128,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
     bool _use_tensor_core = false,
@@ -50,7 +49,6 @@ void single_point_wilson_dslash(
     __shared__ Float2 smem_A[Stages][BlockShape_::kMK]; // smem A size = BlockShape_::kMK
     __shared__ Float2 smem_B1[Stages][BlockShape_::kKN]; // smem B size = BlockShape_::kKN
     __shared__ Float2 smem_B2[Stages][BlockShape_::kKN];
-    // C size = _BLK_M * _BLK_N in register and Res size is _BLK_N * _BLK_N * 2 in register
 
     // ldg_A and ldg_B are used to load A and B from global memory
     Complex ldg_A[1]; // BlockShape_::kMK / BlockSize_
@@ -101,7 +99,7 @@ void single_point_wilson_dslash(
                         latt_desc.Z(), latt_desc.T(), n_color, m_rhs));
 
                 // set dagger, BE CAREFUL: it is possible to be wrong here
-                if (dir == FWD) { // fwd default: dagger
+                if (dir == FWD) {
                     glb_A = reinterpret_cast<Float2 *>(coord.getGaugeAddr(
                         gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color));
                 }
@@ -137,9 +135,8 @@ void single_point_wilson_dslash(
                         mat1_pos = 0;
                         mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
                         // get scale
-                        scale = kernel::Gamma<FloatType_>::get_projection_scale(dim, mat1_pos);
-                        if (dir == FWD && !dagger_flag) { scale = -scale; }
-                        else if (dir == BWD && dagger_flag) { scale = -scale; }
+                        scale = kernel::Gamma<FloatType_>::get_projection_scale(dim, mat1_pos, dir);
+                        if (dagger_flag) { scale = -scale; }
                     }
                     gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
                         reinterpret_cast<FloatType_*>(glb_B + mat1_pos * fermion_site_length),
@@ -152,9 +149,8 @@ void single_point_wilson_dslash(
                         mat1_pos = 1;
                         mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
                         // get scale
-                        scale = kernel::Gamma<FloatType_>::get_projection_scale(dim, mat1_pos);
-                        if (dir == FWD && !dagger_flag) { scale = -scale; }
-                        else if (dir == BWD && dagger_flag) { scale = -scale; }
+                        scale = kernel::Gamma<FloatType_>::get_projection_scale(dim, mat1_pos, dir);
+                        if (dagger_flag) { scale = -scale; }
                     }
 
                     gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
@@ -180,9 +176,9 @@ void single_point_wilson_dslash(
                     if (row < n_color && col < m_rhs) {
                         for (mat1_pos = 0; mat1_pos < 2; ++mat1_pos) {
                             mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
-                            scale = kernel::Gamma<FloatType_>::get_reconstruct_scale(dim, mat1_pos);
+                            scale = kernel::Gamma<FloatType_>::get_reconstruct_scale(dim, mat1_pos, dir);
 
-                            if ((dir == FWD && !dagger_flag) || (dir == BWD && dagger_flag)) { scale = -scale; }
+                            if (dagger_flag) { scale = -scale; }
 
                             res[mat1_pos][0] += temp_res[mat1_pos][0];
                             res[mat2_pos][0] += scale * temp_res[mat1_pos][0]; // scale calculated from 1 + gamma, so need to add '-'
@@ -213,7 +209,6 @@ void single_point_wilson_dslash(
 // 1 - parity is the parity of the point of fermion in
 template <
     typename FloatType_ = double,
-    int BlockSize_ = 128,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
     bool _use_tensor_core = false
@@ -236,7 +231,7 @@ void wilson_dslash_su_n_mrhs(
     int half_vol = latt_desc.half_lattice_volume();
 
     for (int i = block_id; i < half_vol; i += grid_size) {
-        single_point_wilson_dslash<FloatType_, BlockSize_, BlockShape_, WarpShape_>(
+        single_point_wilson_dslash<FloatType_, BlockShape_, WarpShape_>(
             out, in, gauge, latt_desc, multiprocess, parity, dagger_flag, n_color, m_rhs, i);
     }
 }
