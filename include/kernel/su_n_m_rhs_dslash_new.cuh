@@ -61,12 +61,13 @@ void single_point_wilson_dslash(
     Complex res[4][1];
 
     int half_Lx = (latt_desc.X() >> 1);
+    Point coord {coord_1dim % half_Lx
+        , coord_1dim % (latt_desc.Y() * half_Lx) / half_Lx
+        , coord_1dim % (latt_desc.Z() * latt_desc.Y() * half_Lx) / (latt_desc.Y() * half_Lx)
+        , coord_1dim / (latt_desc.Z() * latt_desc.Y() * half_Lx)
+        , parity
+    };
 
-    Point coord { coord_1dim / (latt_desc.Z() * latt_desc.Y() * half_Lx)
-                , coord_1dim % (latt_desc.Z() * latt_desc.Y() * half_Lx) / (latt_desc.Y() * half_Lx)
-                , coord_1dim % (latt_desc.Y() * half_Lx) / half_Lx
-                , coord_1dim % half_Lx
-                , parity};
     Point move_coord;
 
     int32_t mat1_pos; // will be 0 or 1, use this to set mat1 position
@@ -83,6 +84,9 @@ void single_point_wilson_dslash(
             int row = loop_blk_m * BlockShape_::kM;// + threadIdx.y;
             int col = loop_blk_n * BlockShape_::kN;// + threadIdx.x;
 
+            for (int i = 0; i < Ns; ++i) {
+                res[i][0] = 0;
+            }
             // even some points are out of range, we still need to calculate them,
             // otherwise, deadlock will happen
             for (int dim_dir = 0; dim_dir < Nd * DIRECTIONS; dim_dir++) {
@@ -161,64 +165,36 @@ void single_point_wilson_dslash(
                             (smem_B2[0], reinterpret_cast<Float2_t<FloatType_>*>(ldg_B2));
                     __syncthreads();
 
-                    // DEBUG
-                    // if (blockIdx.z == 0  && threadIdx.x == 0 && threadIdx.y == 0 && dim == T_DIM && dir == BWD) {
-                    //     printf("mat_1_pos = %d, mat_2_pos = %d, scale = (%lf %lf)\n", mat1_pos, mat2_pos, scale.real(), scale.imag());
-                    //     for (int i = 0; i < BlockShape_::kK; ++i) {
-                    //         for (int j = 0; j < BlockShape_::kN; ++j) {
-                    //             printf("[%e %e]", smem_B1[0][i * BlockShape_::kN + j].x, smem_B1[0][i * BlockShape_::kN + j].y);
-                    //         }
-                    //         printf("\n");
-                    //     }
-                    //     printf("====================================\n");
-                    //     for (int i = 0; i < BlockShape_::kK; ++i) {
-                    //         for (int j = 0; j < BlockShape_::kN; ++j) {
-                    //             printf("[%e %e]", smem_B2[0][i * BlockShape_::kN + j].x, smem_B2[0][i * BlockShape_::kN + j].y);
-                    //         }
-                    //         printf("\n");
-                    //     }
-                    // }
-
-
-
                     // gemm, MMA
                     temp_res[0][0] = 0;
                     temp_res[1][0] = 0;
                     for (int kk = 0; kk < BlockShape_::kK; ++kk) {
-                        // Float2 a  = smem_A[0][threadIdx.y * BlockShape_::kK + kk];
                         Float2 a  = smem_A[0][threadIdx.y * BlockShape_::kK + kk];
                         Float2 b1 = smem_B1[0][kk * BlockShape_::kN + threadIdx.x];
                         Float2 b2 = smem_B2[0][kk * BlockShape_::kN + threadIdx.x];
                         temp_res[0][0] += Complex(a) * Complex(b1);
                         temp_res[1][0] += Complex(a) * Complex(b2);
-                        // __syncthreads();
                     }
                     __syncthreads();
                     // add to res
                     if (row < n_color && col < m_rhs) {
-                        for (int i = 0; i < Ns; ++i) {
-                            res[i][0] = 0;
-                        }
                         for (mat1_pos = 0; mat1_pos < 2; ++mat1_pos) {
                             mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
                             scale = kernel::Gamma<FloatType_>::get_reconstruct_scale(dim, mat1_pos);
 
+                            if ((dir == FWD && !dagger_flag) || (dir == BWD && dagger_flag)) { scale = -scale; }
+
                             res[mat1_pos][0] += temp_res[mat1_pos][0];
-                            res[mat2_pos][0] += scale * temp_res[mat1_pos][0];
+                            res[mat2_pos][0] += scale * temp_res[mat1_pos][0]; // scale calculated from 1 + gamma, so need to add '-'
                         }
                     }
-
-
-
                 } // end main loop for
-
             }
 
             // store res to global memory
-            Float2* glb_out =
-                reinterpret_cast<Float2_t<FloatType_> *> (
+            Float2* glb_out = reinterpret_cast<Float2 *> (
                     coord.getGatheredColorSpinorAddr(out, half_Lx, latt_desc.Y(),
-                    latt_desc.Z(), latt_desc.T(), n_color, m_rhs));
+                        latt_desc.Z(), latt_desc.T(), n_color, m_rhs));
 
             // store global memory
 #pragma unroll
