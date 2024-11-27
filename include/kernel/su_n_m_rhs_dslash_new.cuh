@@ -100,16 +100,10 @@ void single_point_wilson_dslash(
                 if (dir == FWD) { // fwd default: dagger
                     glb_A = reinterpret_cast<Float2 *>(coord.getGaugeAddr(
                         gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color));
-                    // if (!dagger_flag) {
-                    //     scale = -scale;
-                    // }
                 }
                 else { // bwd default: not dagger
                     glb_A = reinterpret_cast<Float2 *>(move_coord.getGaugeAddr(
                         gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color));
-                    // if (dagger_flag) {
-                    //     scale = -scale;
-                    // }
                 }
 
                 // main loop
@@ -168,22 +162,22 @@ void single_point_wilson_dslash(
                     __syncthreads();
 
                     // DEBUG
-                    if (blockIdx.z == 0  && threadIdx.x == 0 && threadIdx.y == 0 && dim == Y_DIM && dir == BWD) {
-                        printf("mat_1_pos = %d, mat_2_pos = %d, scale = (%lf %lf)\n", mat1_pos, mat2_pos, scale.real(), scale.imag());
-                        for (int i = 0; i < BlockShape_::kK; ++i) {
-                            for (int j = 0; j < BlockShape_::kN; ++j) {
-                                printf("[%e %e]", smem_B1[0][i * BlockShape_::kN + j].x, smem_B1[0][i * BlockShape_::kN + j].y);
-                            }
-                            printf("\n");
-                        }
-                        printf("====================================\n");
-                        for (int i = 0; i < BlockShape_::kK; ++i) {
-                            for (int j = 0; j < BlockShape_::kN; ++j) {
-                                printf("[%e %e]", smem_B2[0][i * BlockShape_::kN + j].x, smem_B2[0][i * BlockShape_::kN + j].y);
-                            }
-                            printf("\n");
-                        }
-                    }
+                    // if (blockIdx.z == 0  && threadIdx.x == 0 && threadIdx.y == 0 && dim == T_DIM && dir == BWD) {
+                    //     printf("mat_1_pos = %d, mat_2_pos = %d, scale = (%lf %lf)\n", mat1_pos, mat2_pos, scale.real(), scale.imag());
+                    //     for (int i = 0; i < BlockShape_::kK; ++i) {
+                    //         for (int j = 0; j < BlockShape_::kN; ++j) {
+                    //             printf("[%e %e]", smem_B1[0][i * BlockShape_::kN + j].x, smem_B1[0][i * BlockShape_::kN + j].y);
+                    //         }
+                    //         printf("\n");
+                    //     }
+                    //     printf("====================================\n");
+                    //     for (int i = 0; i < BlockShape_::kK; ++i) {
+                    //         for (int j = 0; j < BlockShape_::kN; ++j) {
+                    //             printf("[%e %e]", smem_B2[0][i * BlockShape_::kN + j].x, smem_B2[0][i * BlockShape_::kN + j].y);
+                    //         }
+                    //         printf("\n");
+                    //     }
+                    // }
 
 
 
