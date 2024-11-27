@@ -141,6 +141,7 @@ void single_point_wilson_dslash(
                         // get scale
                         scale = kernel::Gamma<FloatType_>::get_projection_scale(dim, mat1_pos);
                         if (dir == FWD && !dagger_flag) { scale = -scale; }
+                        else if (dir == BWD && dagger_flag) { scale = -scale; }
                     }
                     gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
                         reinterpret_cast<FloatType_*>(glb_B + mat1_pos * fermion_site_length),
@@ -155,6 +156,7 @@ void single_point_wilson_dslash(
                         // get scale
                         scale = kernel::Gamma<FloatType_>::get_projection_scale(dim, mat1_pos);
                         if (dir == FWD && !dagger_flag) { scale = -scale; }
+                        else if (dir == BWD && dagger_flag) { scale = -scale; }
                     }
 
                     gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
@@ -166,7 +168,7 @@ void single_point_wilson_dslash(
                     __syncthreads();
 
                     // DEBUG
-                    if (blockIdx.z == 0  && threadIdx.x == 0 && threadIdx.y == 0 && dim == X_DIM && dir == FWD) {
+                    if (blockIdx.z == 0  && threadIdx.x == 0 && threadIdx.y == 0 && dim == Y_DIM && dir == BWD) {
                         printf("mat_1_pos = %d, mat_2_pos = %d, scale = (%lf %lf)\n", mat1_pos, mat2_pos, scale.real(), scale.imag());
                         for (int i = 0; i < BlockShape_::kK; ++i) {
                             for (int j = 0; j < BlockShape_::kN; ++j) {
