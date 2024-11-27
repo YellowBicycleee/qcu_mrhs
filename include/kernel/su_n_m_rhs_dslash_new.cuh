@@ -100,16 +100,16 @@ void single_point_wilson_dslash(
                 if (dir == FWD) { // fwd default: dagger
                     glb_A = reinterpret_cast<Float2 *>(coord.getGaugeAddr(
                         gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color));
-                    if (!dagger_flag) {
-                        scale = -scale;
-                    }
+                    // if (!dagger_flag) {
+                    //     scale = -scale;
+                    // }
                 }
                 else { // bwd default: not dagger
                     glb_A = reinterpret_cast<Float2 *>(move_coord.getGaugeAddr(
                         gauge, dim, half_Lx, latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color));
-                    if (dagger_flag) {
-                        scale = -scale;
-                    }
+                    // if (dagger_flag) {
+                    //     scale = -scale;
+                    // }
                 }
 
                 // main loop
@@ -140,6 +140,7 @@ void single_point_wilson_dslash(
                         mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
                         // get scale
                         scale = kernel::Gamma<FloatType_>::get_projection_scale(dim, mat1_pos);
+                        if (dir == FWD && !dagger_flag) { scale = -scale; }
                     }
                     gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
                         reinterpret_cast<FloatType_*>(glb_B + mat1_pos * fermion_site_length),
@@ -152,8 +153,10 @@ void single_point_wilson_dslash(
                         mat1_pos = 1;
                         mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
                         // get scale
-                        scale = kernel::Gamma<FloatType_>::get_projection_scale(dir, mat1_pos);
+                        scale = kernel::Gamma<FloatType_>::get_projection_scale(dim, mat1_pos);
+                        if (dir == FWD && !dagger_flag) { scale = -scale; }
                     }
+
                     gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
                         reinterpret_cast<FloatType_*>(glb_B + mat1_pos * fermion_site_length),
                         reinterpret_cast<FloatType_*>(glb_B + mat2_pos * fermion_site_length),
@@ -161,15 +164,38 @@ void single_point_wilson_dslash(
                     gemm::sts_direct<Float2, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_>
                             (smem_B2[0], reinterpret_cast<Float2_t<FloatType_>*>(ldg_B2));
                     __syncthreads();
+
+                    // DEBUG
+                    if (blockIdx.z == 0  && threadIdx.x == 0 && threadIdx.y == 0 && dim == X_DIM && dir == FWD) {
+                        printf("mat_1_pos = %d, mat_2_pos = %d, scale = (%lf %lf)\n", mat1_pos, mat2_pos, scale.real(), scale.imag());
+                        for (int i = 0; i < BlockShape_::kK; ++i) {
+                            for (int j = 0; j < BlockShape_::kN; ++j) {
+                                printf("[%e %e]", smem_B1[0][i * BlockShape_::kN + j].x, smem_B1[0][i * BlockShape_::kN + j].y);
+                            }
+                            printf("\n");
+                        }
+                        printf("====================================\n");
+                        for (int i = 0; i < BlockShape_::kK; ++i) {
+                            for (int j = 0; j < BlockShape_::kN; ++j) {
+                                printf("[%e %e]", smem_B2[0][i * BlockShape_::kN + j].x, smem_B2[0][i * BlockShape_::kN + j].y);
+                            }
+                            printf("\n");
+                        }
+                    }
+
+
+
                     // gemm, MMA
                     temp_res[0][0] = 0;
                     temp_res[1][0] = 0;
                     for (int kk = 0; kk < BlockShape_::kK; ++kk) {
+                        // Float2 a  = smem_A[0][threadIdx.y * BlockShape_::kK + kk];
                         Float2 a  = smem_A[0][threadIdx.y * BlockShape_::kK + kk];
                         Float2 b1 = smem_B1[0][kk * BlockShape_::kN + threadIdx.x];
                         Float2 b2 = smem_B2[0][kk * BlockShape_::kN + threadIdx.x];
                         temp_res[0][0] += Complex(a) * Complex(b1);
                         temp_res[1][0] += Complex(a) * Complex(b2);
+                        // __syncthreads();
                     }
                     __syncthreads();
                     // add to res
@@ -185,6 +211,7 @@ void single_point_wilson_dslash(
                             res[mat2_pos][0] += scale * temp_res[mat1_pos][0];
                         }
                     }
+
 
 
                 } // end main loop for
