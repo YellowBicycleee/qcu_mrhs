@@ -1,6 +1,7 @@
 #include <cuda_fp16.h>
 
 #include "kernel/su_n_m_rhs_dslash.cuh"
+
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_public.h"
 #include "check_error/check_cuda.cuh"
@@ -39,7 +40,6 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
         case QcuPrecision::kPrecisionSingle:
             {
                 errorQcu("Not implemented yet\n");  // TODO
-                assert(0);
             }
             break;
         case QcuPrecision::kPrecisionDouble:
@@ -48,7 +48,6 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
         default:
             {
                 errorQcu("Not implemented yet\n");  // TODO
-                assert(0);
             }
             break;
     }

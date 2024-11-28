@@ -6,6 +6,7 @@
 #include "qcu_base/qcu_alloc.h"
 #include "qcu_config/qcu_config.h"
 #include "qcu_public.h"
+#include "cuda_utils.cuh"
 
 #include "qcu_base/qcu_base.h"
 /** how to impl dslash
@@ -24,6 +25,9 @@
  */
 
 namespace qcu::developing {
+// template <typename Float, typename CudaArch = qcu::arch>
+// inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param);
+
 template <typename Float>
 inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 {

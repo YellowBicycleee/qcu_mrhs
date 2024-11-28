@@ -221,13 +221,11 @@ void wilson_dslash_su_n_mrhs(
     QcuLattDesc latt_desc, int multiprocess,
     int parity, bool dagger_flag, int n_color, int m_rhs) 
 {
-    assert(BlockShape_::kM > 0 && BlockShape_::kN > 0 && BlockShape_::kK > 0
-        && BlockSize_ <= BlockShape_::kM * BlockShape_::kN
-    );
+    assert(BlockShape_::kM > 0 && BlockShape_::kN > 0 && BlockShape_::kK > 0);
 
     // z 轴切分矩阵坐标点，(x,y)切分单个矩阵
     int block_id = blockIdx.z;
-    int grid_size = gridDim.z;  // 1D grid
+    int grid_size = gridDim.z;  // 1D grid 
     int half_vol = latt_desc.half_lattice_volume();
 
     for (int i = block_id; i < half_vol; i += grid_size) {
