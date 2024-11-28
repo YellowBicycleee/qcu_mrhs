@@ -81,7 +81,10 @@ template <typename Tp_,
 QCU_DEVICE void sts_direct (Tp_* smem, Tp_* reg) {
     int row = threadIdx.y;
     int col = threadIdx.x ;
-    smem[row * BlockShape_::kN + col] = * reg; // reduce bank conflict
+    if (row < BlockShape_::kM && col < BlockShape_::kN) {
+        smem[row * BlockShape_::kN + col] = * reg;
+    }
+    // smem[row * BlockShape_::kN + col] = * reg;
     // __syncthreads();
 }
 
@@ -94,7 +97,10 @@ template <typename Float_,
 QCU_DEVICE void sts_transpose (Float_* smem, Float_* reg) {
     int row = threadIdx.y;
     int col = threadIdx.x;
-    smem[col * BlockShape_::kM + row] = * reg; // reduce bank conflict
+    if (row < BlockShape_::kM && col < BlockShape_::kN) {
+        smem[col * BlockShape_::kM + row] = * reg;
+    }
+    // smem[col * BlockShape_::kM + row] = * reg; // reduce bank conflict
     // __syncthreads();
 }
 

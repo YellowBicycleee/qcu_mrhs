@@ -23,21 +23,17 @@
  * Policy2: MPI + NCCL
  */
 
-namespace qcu {
-namespace developing {
-// clang-format off
+namespace qcu::developing {
 template <typename Float>
 inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 {
-    // clang-format on
     int half_vol = config::lattice_volume() / 2;
-    // int warp_num_per_block = WARP_PER_BLOCK;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.lattDesc);
     const qcu::QcuProcDesc& proc_desc = *(dslash_param.procDesc);
 
     using BlockShape = gemm::GemmShape<8, 8, 8>;
-
+    // using BlockShape = gemm::GemmShape<8, 4, 4>;
     int multiprocess = 0;
     for (int i = 0; i < Nd; ++i) {
         if (proc_desc.data[i] > 0) {
@@ -45,11 +41,11 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
         }
     }
 
-    // dim3 block_size(WARP_SIZE, warp_num_per_block);
-    // dim3 grid_size(half_vol);
+    int blk_x = BlockShape::kM;
+    int blk_y = BlockShape::kN;
 
     dim3 grid_size(1, 1, min(half_vol, 65535));
-    dim3 block_size(8, 8, 1);
+    dim3 block_size(blk_x, blk_y, 1);
 
     printf("SIMT dslash Beginning\n");
     qcu::device::wilson_dslash_su_n_mrhs<Float, BlockShape>
@@ -87,7 +83,6 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
             break;
     }
     CHECK_CUDA(cudaStreamSynchronize(dslash_param->stream1));
-    // clang-format on
 }
 void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
     errorQcu("Not implemented yet\n");  // TODO
@@ -106,4 +101,3 @@ double WilsonDslash::flops() {
 }
 
 }
-}  // namespace qcu
