@@ -72,12 +72,12 @@ void single_point_wilson_dslash(
     int32_t mat2_pos; // will be 2 or 3, use this to set mat2 position     temp_mat = mat1 + scale * mat2
 
     int32_t blocks_m = div_ceil(n_color, BlockShape_::kM);
-    int32_t blocks_n = div_ceil(2 * m_rhs, BlockShape_::kN);
+    int32_t blocks_n = div_ceil(m_rhs, BlockShape_::kN);
 
     Complex scale; // when read B, use B1 + scale B2
 
-    for (int loop_blk_m = 0; loop_blk_m < blocks_m; ++loop_blk_m) {
-        for (int loop_blk_n = 0; loop_blk_n < blocks_n; ++loop_blk_n) {
+    for (int loop_blk_m = blockIdx.y; loop_blk_m < blocks_m; loop_blk_m += gridDim.y) {
+        for (int loop_blk_n = blockIdx.x; loop_blk_n < blocks_n; loop_blk_n += gridDim.x) {
 
             int row = loop_blk_m * BlockShape_::kM;// + threadIdx.y;
             int col = loop_blk_n * BlockShape_::kN;// + threadIdx.x;

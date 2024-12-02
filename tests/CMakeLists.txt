@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 # include (../cmake/FindCUDA.cmake)
 
-set(CMAKE_CUDA_ARCHITECTURES 86)    # for 3090
+set(CMAKE_CUDA_ARCHITECTURES 89)    # for 4060 laptop
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 17)
 

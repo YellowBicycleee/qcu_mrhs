@@ -37,7 +37,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     const qcu::QcuProcDesc& proc_desc = *(dslash_param.procDesc);
 
     using BlockShape = gemm::GemmShape<8, 8, 8>;
-    // using BlockShape = gemm::GemmShape<8, 4, 4>;
+    // using BlockShape = gemm::GemmShape<16, 16, 16>;
     int multiprocess = 0;
     for (int i = 0; i < Nd; ++i) {
         if (proc_desc.data[i] > 0) {
@@ -48,7 +48,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     int blk_x = BlockShape::kM;
     int blk_y = BlockShape::kN;
 
-    dim3 grid_size(1, 1, min(half_vol, 65535));
+    dim3 grid_size(div_ceil(dslash_param.nColor, blk_x), div_ceil(dslash_param.mInput, blk_y), min(half_vol, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
     printf("SIMT dslash Beginning\n");
@@ -61,6 +61,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
             dslash_param.parity, dslash_param.daggerFlag,
             dslash_param.nColor, dslash_param.mInput);
     CHECK_CUDA(cudaDeviceSynchronize());
+    printf("SIMT dslash Ending, config = grid(%d, %d, %d), block(%d, %d, %d)\n", grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z);
 }
 
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
@@ -71,10 +72,7 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
             { ApplyWilsonDslash_Mrhs<half>(*dslash_param); }
             break;
         case QcuPrecision::kPrecisionSingle:
-            {
-                errorQcu("Not implemented yet\n");  // TODO
-                assert(0);
-            }
+            { ApplyWilsonDslash_Mrhs<float>(*dslash_param); }
             break;
         case QcuPrecision::kPrecisionDouble:
             { ApplyWilsonDslash_Mrhs<double>(*dslash_param);}
