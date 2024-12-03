@@ -37,4 +37,43 @@ template <
 >
 using GemmShapeTranspose = GemmShape<Shape::kN, Shape::kM, Shape::kK>;
 
+/// @brief namespace for Matrix Major
+namespace matrix_major {
+
+/**
+ * @brief Matrix Major
+ * @tparam transpose_flag_ true for row major, false for col major
+ */
+template <bool transpose_flag_> // transpose for row major, non-transpose for col major
+struct MatrixMajor {
+    static constexpr bool if_transpose = transpose_flag_; 
+};
+
+/// @brief Row Major
+using MatrixRowMajor = MatrixMajor<true>;
+/// @brief Col Major
+using MatrixColMajor = MatrixMajor<false>;
+
+/// @brief Matrix Major transpose
+template <typename MatrixMajor_>
+using MatrixMajorTranspose = MatrixMajor<!MatrixMajor_::if_transpose>;
+}
+
+/**
+ * @brief namespace for Mma Type
+ *  SimtOp version donnot use tensor core
+ *  TensorOp version use tensor core
+ */
+namespace mma_type {
+
+template <bool use_tensor_core_flag>
+struct MmaType {
+    static constexpr bool use_tensor_core = use_tensor_core_flag;
+};
+/// @brief SimtOp version donnot use tensor core
+using GemmSimtOp = MmaType<false>;
+/// @brief TensorOp version use tensor core
+using GemmTensorOp = MmaType<true>;
+}
+
 }
