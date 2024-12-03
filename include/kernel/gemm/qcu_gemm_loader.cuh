@@ -80,7 +80,7 @@ template <typename Tp_,
 >
 QCU_DEVICE void sts_direct (Tp_* smem, Tp_* reg) {
     int row = threadIdx.y;
-    int col = threadIdx.x ;
+    int col = threadIdx.x;
     if (row < BlockShape_::kM && col < BlockShape_::kN) {
         smem[row * BlockShape_::kN + col] = * reg;
     }
