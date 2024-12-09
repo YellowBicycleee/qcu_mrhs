@@ -27,6 +27,7 @@ void stg (Tp_* glb, int M, int N, int start_m, int start_n, Tp_* reg) {
 
 // new function
 template <typename Tp_,
+    typename MatShape_ = MatShape<16, 8>,
     typename BlockShape_ = GemmShape<16, 16, 8>,
     typename WarpShape_ = GemmShape<8, 8, 4>,
     int WarpRow_ = 4,
@@ -38,7 +39,8 @@ void ldg (Tp_* glb, int M, int N, int start_m, int start_n, Tp_* reg) {
     int m = start_m + threadIdx.y;
     int n = start_n + threadIdx.x;
 
-    if (m < M && n < N) {
+    // if (m < M && n < N) {
+    if (m < M && n < N && threadIdx.y < MatShape_::kM && threadIdx.x < MatShape_::kN) {
         *reg = glb[m * N + n];
     }
     else { // padding
@@ -96,6 +98,7 @@ QCU_DEVICE void sts_direct (Tp_* smem, Tp_* reg) {
 }
 
 template <typename Float_,
+    typename MatShape_ = MatShape<16, 8>,
     typename BlockShape_ = GemmShape<16, 16, 8>,
     typename WarpShape_ = GemmShape<8, 8, 4>,
     int WarpRow_ = 4,
@@ -104,8 +107,8 @@ template <typename Float_,
 QCU_DEVICE void sts_transpose (Float_* smem, Float_* reg) {
     int row = threadIdx.y;
     int col = threadIdx.x;
-    if (row < BlockShape_::kM && col < BlockShape_::kN) {
-        smem[col * BlockShape_::kM + row] = * reg;
+    if (row < MatShape_::kM && col < MatShape_::kN) {
+        smem[col * MatShape_::kM + row] = * reg;
     }
     // smem[col * BlockShape_::kM + row] = * reg; // reduce bank conflict
     // __syncthreads();

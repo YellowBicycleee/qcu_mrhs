@@ -88,6 +88,7 @@ void single_point_wilson_dslash(
             for (int i = 0; i < Ns; ++i) {
                 res[i][0] = 0;
             }
+
             // even some points are out of range, we still need to calculate them,
             // otherwise, deadlock will happen
             for (int dim_dir = 0; dim_dir < Nd * DIRECTIONS; dim_dir++) {
@@ -113,14 +114,16 @@ void single_point_wilson_dslash(
 
                 // main loop
                 for (int k = 0; k < n_color; k += BlockShape_::kK) {
-                    // load A from global memory to register, then store to smem
+
+                    /// load Gauge
+                    /// load A from global memory to register, then store to smem
                     if (dir == FWD) { // global memory is row-major, col-major in smem
-                        gemm::ldg<Float2, BlockShape_, WarpShape_>
+                        gemm::ldg<Float2, GaugeMatShape, BlockShape_, WarpShape_>
                             ( glb_A, n_color, n_color, row, k, reinterpret_cast<Float2*>(ldg_A));
                         gemm::sts_direct<Float2, gemm::GemmShape<BlockShape_::kM, BlockShape_::kK, 0>, WarpShape_>
                             (smem_A[0], reinterpret_cast<Float2*>(ldg_A));
                     } else {        // global memory is col-major, col-major in smem
-                        gemm::ldg<Float2, gemm::GemmShapeTranspose<BlockShape_>, WarpShape_>
+                        gemm::ldg<Float2, gemm::MatShapeTranspose<GaugeMatShape>, BlockShape_, WarpShape_>
                             (glb_A, n_color, n_color, k, row, reinterpret_cast<Float2*>(ldg_A));
 
                         // dagger
@@ -128,12 +131,13 @@ void single_point_wilson_dslash(
                             ldg_A[i] = ldg_A[i].conj();
                         }
 
-                        gemm::sts_transpose<Float2, gemm::GemmShape<BlockShape_::kM, BlockShape_::kK, 0>,WarpShape_>
+                        gemm::sts_transpose<Float2, GaugeMatShape, BlockShape_, WarpShape_>
                             (smem_A[0], reinterpret_cast<Float2*>(ldg_A));
                     }
                     __syncthreads();
 
-                    // load B from global memory to register, need combine 2 of 4 in global memory to 2 in smem
+                    /// load Fermion
+                    /// load B from global memory to register, need combine 2 of 4 in global memory to 2 in smem
                     if (row < n_color && col < m_rhs) {
                         mat1_pos = 0;
                         mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(dim, mat1_pos);
