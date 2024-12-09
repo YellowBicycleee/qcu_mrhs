@@ -2,7 +2,7 @@
 
 #include "qcu_helper.h"
 #include "qcu_public.h"
-
+#include "desc/qcu_desc.h"
 // even odd preconditioned Coord
 class Point {
 public:
@@ -57,10 +57,18 @@ public:
             return *this;
         }
     }
+
+    QCU_DEVICE Point move(int dir, int dim, qcu::QcuLattDesc &half_desc) const {
+        return move(dir, dim, half_desc.X(), half_desc.Y(), half_desc.Z(), half_desc.T());
+    }
     // be careful : there is Float instead of Float2
     template <typename Float>
     QCU_DEVICE Float* getGaugeAddr (Float* base, int dim, int half_Lx, int Ly, int Lz, int Lt, int n_color) const {
         return base + 2 * ((dim * 2 + parity_) * half_Lx * Ly * Lz * Lt + get_1d_idx(half_Lx, Ly, Lz)) * n_color * n_color;
+    }
+    template <typename Float>
+    QCU_DEVICE Float* getGaugeAddr (Float* base, int dim, qcu::QcuLattDesc &half_desc, int n_color) const {
+        return getGaugeAddr(base, dim, half_desc.X(), half_desc.Y(), half_desc.Z(), half_desc.T(), n_color);
     }
 
     template <typename Float>
@@ -68,6 +76,12 @@ public:
                                                     int n_color, int m_input) const
     {
         return base_pc + 2 * (get_1d_idx(half_Lx, Ly, Lz) * m_input * Ns * n_color);
+    }
+    template <typename Float>
+    QCU_DEVICE Float* getGatheredColorSpinorAddr (  Float* base_pc, qcu::QcuLattDesc &half_desc,
+                                                    int n_color, int m_input) const
+    {
+        return getGatheredColorSpinorAddr(base_pc, half_desc.X(), half_desc.Y(), half_desc.Z(), half_desc.T(), n_color, m_input);
     }
 
     QCU_DEVICE int get_1d_idx (int half_Lx, int Ly, int Lz) const {
