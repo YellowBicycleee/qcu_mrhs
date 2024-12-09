@@ -34,3 +34,7 @@ Then compile qcu_mrhs. Assume you are in `qcu_mrhs` directory.
     cmake .. -DCMAKE_CUDA_COMPILER=xxx # (xxx is your path)
     make -j 12
     ```
+   
+## 4. Developing
+    At the beginning of developing, I used `clang-format`. But recently,
+I decided to stop using `clang-format`, referencing to `cutlass`.
