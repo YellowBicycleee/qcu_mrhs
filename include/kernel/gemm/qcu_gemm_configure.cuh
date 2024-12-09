@@ -9,6 +9,31 @@ template <
   /// Rows of matrix product
   int M = 1,
   /// Columns of matrix product
+  int N = 1
+>
+struct MatShape {
+  static int constexpr kM = M;
+  static int constexpr kN = N;
+
+  static int constexpr kMN = M * N;
+
+  QCU_DEVICE static int atM () { return kM; }
+  QCU_DEVICE static int atN () { return kN; }
+};
+
+/// Type alias of the transpose of a GemmShape
+template <
+  /// concept: GemmShape
+  typename Shape
+>
+using MatShapeTranspose = MatShape<Shape::kN, Shape::kM>;
+
+
+/// Shape of a matrix multiply-add operation
+template <
+  /// Rows of matrix product
+  int M = 1,
+  /// Columns of matrix product
   int N = 1,
   /// Inner dimension of matrix product
   int K = 1
