@@ -58,8 +58,7 @@ void single_point_wilson_dslash(
 
     // ldg_A and ldg_B are used to load A and B from global memory
     Complex ldg_A[1]; // BlockShape_::kMK / BlockSize_
-    Complex ldg_B1[1]; // BlockShape_::kKN / BlockSize_
-    Complex ldg_B2[1]; // BlockShape_::kKN / BlockSize_
+    Complex ldg_B[1]; // BlockShape_::kKN / BlockSize_
 
     Complex temp_res[2][1]; // BlockShape_::kMN / BlockSize_
     Complex res[4][1];
@@ -150,9 +149,9 @@ void single_point_wilson_dslash(
                         gemm::ldg_fermion<FloatType_, FermionMatShape, BlockShape_, WarpShape_> (
                             reinterpret_cast<FloatType_*>(glb_B + mat1_pos * fermion_site_length),
                             reinterpret_cast<FloatType_*>(glb_B + mat2_pos * fermion_site_length),
-                            n_color, m_rhs, scale, k, col, reinterpret_cast<Float2_t<FloatType_> *>(ldg_B1));
+                            n_color, m_rhs, scale, k, col, reinterpret_cast<Float2_t<FloatType_> *>(ldg_B));
                         gemm::sts_direct<Float2, FermionMatShape, BlockShape_, WarpShape_>
-                                (&smem_B[0][pos * B_Shape], reinterpret_cast<Float2*>(ldg_B1));
+                                (&smem_B[0][pos * B_Shape], reinterpret_cast<Float2*>(ldg_B));
                     }
 
                     __syncthreads();
