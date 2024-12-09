@@ -45,7 +45,7 @@ void single_point_wilson_dslash(
     FloatType_ kappa = 0, bool mat = false)
 {
     using GaugeMatShape = gemm::MatShape<BlockShape_::kM, BlockShape_::kK>;
-    using FermionShape = gemm::MatShape<BlockShape_::kK, BlockShape_::kN>;
+    using FermionMatShape = gemm::MatShape<BlockShape_::kK, BlockShape_::kN>;
 
     const int fermion_site_length = n_color * m_rhs;
     // used for ping pong
@@ -141,11 +141,11 @@ void single_point_wilson_dslash(
                         scale = kernel::Gamma<FloatType_>::get_projection_scale(dim, mat1_pos, dir);
                         if (dagger_flag) { scale = -scale; }
                     }
-                    gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
+                    gemm::ldg_fermion<FloatType_, FermionMatShape, BlockShape_, WarpShape_> (
                         reinterpret_cast<FloatType_*>(glb_B + mat1_pos * fermion_site_length),
                         reinterpret_cast<FloatType_*>(glb_B + mat2_pos * fermion_site_length),
                         n_color, m_rhs, scale, k, col, reinterpret_cast<Float2_t<FloatType_> *>(ldg_B1));
-                    gemm::sts_direct<Float2, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_>
+                    gemm::sts_direct<Float2, FermionMatShape, BlockShape_, WarpShape_>
                             (smem_B1[0], reinterpret_cast<Float2*>(ldg_B1));
 
                     if (row < n_color && col < m_rhs) {
@@ -156,11 +156,11 @@ void single_point_wilson_dslash(
                         if (dagger_flag) { scale = -scale; }
                     }
 
-                    gemm::ldg_fermion<FloatType_, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
+                    gemm::ldg_fermion<FloatType_, FermionMatShape, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_> (
                         reinterpret_cast<FloatType_*>(glb_B + mat1_pos * fermion_site_length),
                         reinterpret_cast<FloatType_*>(glb_B + mat2_pos * fermion_site_length),
                         n_color, m_rhs, scale, k, col, reinterpret_cast<Float2*>(ldg_B2));
-                    gemm::sts_direct<Float2, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_>
+                    gemm::sts_direct<Float2, FermionMatShape, gemm::GemmShape<BlockShape_::kK, BlockShape_::kN, 0>, WarpShape_>
                             (smem_B2[0], reinterpret_cast<Float2_t<FloatType_>*>(ldg_B2));
                     __syncthreads();
 
@@ -198,7 +198,7 @@ void single_point_wilson_dslash(
             // store global memory
 #pragma unroll
             for (int i = 0; i < Nd; ++i) {
-                gemm::stg<Float2, FermionShape, BlockShape_, WarpShape_> (
+                gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
                     reinterpret_cast<Float2*>(res[i]));

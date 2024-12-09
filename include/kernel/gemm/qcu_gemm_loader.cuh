@@ -48,6 +48,7 @@ void ldg (Tp_* glb, int M, int N, int start_m, int start_n, Tp_* reg) {
 
 
 template <typename Float_,
+    typename MatShape_ = MatShape<16, 8>,
     typename BlockShape_ = GemmShape<16, 16, 8>,
     typename WarpShape_ = GemmShape<8, 8, 4>,
     int WarpRow_ = 4,
@@ -64,7 +65,8 @@ void ldg_fermion (Float_* glb1, Float_* glb2, int M, int N,
     Complex<Float_> temp1;
     Complex<Float_> temp2;
 
-    if (m < M && n < N) {
+    // if (m < M && n < N) {
+    if (m < M && n < N && threadIdx.y < MatShape_::kM && threadIdx.x < MatShape_::kN) {
         temp1 = reinterpret_cast<Float2_t<Float_>*>(glb1) [m * N + n];
         temp2 = reinterpret_cast<Float2_t<Float_>*>(glb2) [m * N + n];
         Complex<Float_> temp = temp1 + scale * temp2;
@@ -77,6 +79,7 @@ void ldg_fermion (Float_* glb1, Float_* glb2, int M, int N,
 }
 
 template <typename Tp_,
+    typename MatShape_ = MatShape<16, 8>,
     typename BlockShape_ = GemmShape<16, 16, 8>, // K is not used
     typename WarpShape_ = GemmShape<8, 8, 4>,
     int WarpRow_ = 4,
@@ -85,8 +88,8 @@ template <typename Tp_,
 QCU_DEVICE void sts_direct (Tp_* smem, Tp_* reg) {
     int row = threadIdx.y;
     int col = threadIdx.x;
-    if (row < BlockShape_::kM && col < BlockShape_::kN) {
-        smem[row * BlockShape_::kN + col] = * reg;
+    if (row < MatShape_::kM && col < MatShape_::kN) {
+        smem[row * MatShape_::kN + col] = * reg;
     }
     // smem[row * BlockShape_::kN + col] = * reg;
     // __syncthreads();
