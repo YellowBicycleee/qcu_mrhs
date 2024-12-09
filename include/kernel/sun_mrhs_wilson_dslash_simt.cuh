@@ -44,6 +44,9 @@ void single_point_wilson_dslash(
     bool dagger_flag, int n_color, int m_rhs, int coord_1dim, 
     FloatType_ kappa = 0, bool mat = false)
 {
+    using GaugeMatShape = gemm::MatShape<BlockShape_::kM, BlockShape_::kK>;
+    using FermionShape = gemm::MatShape<BlockShape_::kK, BlockShape_::kN>;
+
     const int fermion_site_length = n_color * m_rhs;
     // used for ping pong
     __shared__ Float2 smem_A[Stages][BlockShape_::kMK]; // smem A size = BlockShape_::kMK
@@ -195,7 +198,7 @@ void single_point_wilson_dslash(
             // store global memory
 #pragma unroll
             for (int i = 0; i < Nd; ++i) {
-                gemm::stg<Float2, BlockShape_, WarpShape_> (
+                gemm::stg<Float2, FermionShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
                     reinterpret_cast<Float2*>(res[i]));

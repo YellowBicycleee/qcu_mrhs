@@ -5,6 +5,7 @@ namespace qcu::gemm {
 
 // new function
 template <typename Tp_,
+    typename MatShape_ = MatShape<16, 8>,
     typename BlockShape_ = GemmShape<16, 16, 8>,
     typename WarpShape_ = GemmShape<8, 8, 4>,
     int WarpRow_ = 4,
@@ -16,7 +17,10 @@ void stg (Tp_* glb, int M, int N, int start_m, int start_n, Tp_* reg) {
     int m = start_m + threadIdx.y;
     int n = start_n + threadIdx.x;
 
-    if (m < M && n < N) {
+    // if (m < M && n < N) {
+    //     glb[m * N + n] = *reg;
+    // } // else do nothing
+    if (m < M && n < N && threadIdx.y < MatShape_::kM && threadIdx.x < MatShape_::kN) {
         glb[m * N + n] = *reg;
     } // else do nothing
 }
