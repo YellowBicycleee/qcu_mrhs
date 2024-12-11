@@ -2,6 +2,7 @@
 
 #include "check_error/check_cuda.cuh"
 #include "kernel/sun_mrhs_wilson_dslash_simt.cuh"
+#include "kernel/sun_mrhs_wilson_dslash_ghost_simt.cuh"
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_base/qcu_alloc.h"
 #include "qcu_config/qcu_config.h"

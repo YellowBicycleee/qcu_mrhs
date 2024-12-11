@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cuda_utils.cuh>
+
+#include "desc/qcu_desc.h"
 #include "qcu_helper.h"
 #include "qcu_public.h"
-#include "desc/qcu_desc.h"
 // even odd preconditioned Coord
 class Point {
 public:
@@ -93,6 +95,13 @@ public:
     QCU_DEVICE int Z() const { return dims[Z_DIM]; }
     QCU_DEVICE int T() const { return dims[T_DIM]; }
     QCU_DEVICE int Parity() const { return parity_; }
+    QCU_DEVICE int& at(int dim) {
+        if (dim < 0 || dim >= Nd) {
+            fprintf(stdout, "Error: dim is out of range\n");
+            cuda_abort();
+        }
+        return dims[dim];
+    }
 
 private:
     int dims[Nd];

@@ -1,8 +1,10 @@
 #pragma once
 
-#include "qcu_public.h"
+#include <cassert>
+
 #include "qcu.h"
 #include "qcu_helper.h"
+#include "qcu_public.h"
 
 namespace qcu {
 
@@ -24,7 +26,21 @@ struct QcuLattDesc {
                 * param->lattice_size[Z_DIM] * param->lattice_size[T_DIM]
         )  
     {}
-    
+
+    QCU_HOST_DEVICE int& at(int dim) {
+        assert(dim >= 0 && dim < Nd);
+        return data[dim];
+    }
+    QCU_HOST_DEVICE int at(int dim) const {
+        assert(dim >= 0 && dim < Nd);
+        return data[dim];
+    }
+
+    QCU_HOST_DEVICE int& atX() { return data[X_DIM]; }
+    QCU_HOST_DEVICE int& atY() { return data[Y_DIM]; }
+    QCU_HOST_DEVICE int& atZ() { return data[Z_DIM]; }
+    QCU_HOST_DEVICE int& atT() { return data[T_DIM]; }
+
     QCU_HOST_DEVICE int X() const { return data[X_DIM]; }
     QCU_HOST_DEVICE int Y() const { return data[Y_DIM]; }
     QCU_HOST_DEVICE int Z() const { return data[Z_DIM]; }
