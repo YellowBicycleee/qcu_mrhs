@@ -7,3 +7,5 @@ cmake-build-debug
 build-debug
 .idea
 submodule/
+.cache
+.clangd
