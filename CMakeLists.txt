@@ -4,14 +4,16 @@ find_package(MPI REQUIRED)
 find_package(CUDA REQUIRED)
 # set(CMAKE_CUDA_COMPILER "${CUDA_TOOLKIT_ROOT_DIR}/bin/nvcc")
 include_directories(/usr/lib/x86_64-linux-gnu/openmpi/include)  
-set(CMAKE_CUDA_ARCHITECTURES 89)    # for 4060 laptop
+set(CMAKE_CUDA_ARCHITECTURES 70)    # for 4060 laptop
 # set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CUDA_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -G")
 #set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -g -G") # -G 表示生成GPU调试信息，-O0 禁止优化以便于调试
 # set(CMAKE_BUILD_TYPE Debug) # 设定默认构建类型为Debug
 
-
+set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*")
 
 add_subdirectory(external/qcu_io)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/qcu_base QCU_BASE)
@@ -43,12 +45,11 @@ target_include_directories(qcu
 
 target_link_directories(qcu PUBLIC ${PROJECT_BINARY_DIR}/external/qcu_io)
 target_link_libraries(qcu
-    qcu_io
+	qcu_io
 	cudart
 	cudadevrt
     cublas
 	${MPI_LIBRARIES}
-	# nccl
 )
 
 

@@ -60,7 +60,6 @@ void mat_Qcu(int daggerFlag) {
 }
 
 void finalizeQcu() {
-    // check_qcu_ptr();
     delete qcu_ptr;
     qcu_ptr = nullptr;
     qcu::config::destroy_streams();
@@ -71,23 +70,16 @@ void qcuInvert(int max_iteration, double max_precison) {
     qcu_ptr->solve_fermions(max_iteration, max_precison);
 }
 
-// 奇偶预处理接口
+// even-odd precondition interface
 void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision) {
     check_qcu_ptr();
     assert(prec_gauge != non_prec_gauge);
-
-    Latt_Desc total_latt_desc;
-    Latt_Desc local_latt_desc;
-    MPI_Desc mpi_desc;
-
-    const qcu::QcuLattDesc* qcu_lattice_desc = qcu::config::get_lattice_desc_ptr();
-    const qcu::QcuProcDesc* qcu_process_desc = qcu::config::get_process_desc_ptr();
+    qcu::FourDimDesc total_latt_desc = qcu::config::get_latt_desc();
+    qcu::FourDimDesc mpi_desc = qcu::config::get_mpi_desc();
+    qcu::FourDimDesc local_latt_desc;
 
 #pragma unroll
     for (int i = X_DIM; i < Nd; ++i) {
-        total_latt_desc.data[i] = qcu_lattice_desc->data[i];
-        mpi_desc.data[i] = qcu_process_desc->data[i];
-
         local_latt_desc.data[i] = total_latt_desc.data[i] / mpi_desc.data[i];
     }
 
@@ -109,22 +101,17 @@ void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision
         errorQcu("UNDEFINED precision");
     }
 }
+
 void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int precision) {
     check_qcu_ptr();
     assert(prec_gauge != non_prec_gauge);
 
-    Latt_Desc total_latt_desc;
-    Latt_Desc local_latt_desc;
-    MPI_Desc mpi_desc;
+    qcu::FourDimDesc total_latt_desc = qcu::config::get_latt_desc();
+    qcu::FourDimDesc mpi_desc = qcu::config::get_mpi_desc();
 
-    const qcu::QcuLattDesc* qcu_lattice_desc = qcu::config::get_lattice_desc_ptr();
-    const qcu::QcuProcDesc* qcu_process_desc = qcu::config::get_process_desc_ptr();
-
+    qcu::FourDimDesc local_latt_desc;
 #pragma unroll
     for (int i = X_DIM; i < Nd; ++i) {
-        total_latt_desc.data[i] = qcu_lattice_desc->data[i];
-        mpi_desc.data[i] = qcu_process_desc->data[i];
-
         local_latt_desc.data[i] = total_latt_desc.data[i] / mpi_desc.data[i];
     }
 
@@ -135,16 +122,16 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
         preconditioner.reverse(static_cast<Complex<double> *>(non_prec_gauge), static_cast<Complex<double> *>(prec_gauge),
                            local_latt_desc, site_vec_len);
     } else if (precision == QcuPrecision::kPrecisionSingle) {
-    qcu::GaugeEOPreconditioner<float> preconditioner;
-    preconditioner.reverse(static_cast<Complex<float> *>(non_prec_gauge), static_cast<Complex<float> *>(prec_gauge),
+        qcu::GaugeEOPreconditioner<float> preconditioner;
+        preconditioner.reverse(static_cast<Complex<float> *>(non_prec_gauge), static_cast<Complex<float> *>(prec_gauge),
                            local_latt_desc, site_vec_len);
     } else if (precision == QcuPrecision::kPrecisionHalf) {
         qcu::GaugeEOPreconditioner<half> preconditioner;
         preconditioner.reverse(static_cast<Complex<half> *>(non_prec_gauge), static_cast<Complex<half> *>(prec_gauge),
                            local_latt_desc, site_vec_len);
     } else {
-    errorQcu("UNDEFINED precision");
-  }
+        errorQcu("UNDEFINED precision");
+    }
 }
 
 void read_gauge_from_file (void* gauge, const char* file_path_prefix) {

@@ -9,3 +9,5 @@ build-debug
 submodule/
 .cache
 .clangd
+compile_commands.json
+*.lua
