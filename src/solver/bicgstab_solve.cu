@@ -30,7 +30,7 @@ static inline void fused_x_sub_Doe_Deo_x (
     std::shared_ptr<qcu::Dslash> dslash,
     std::shared_ptr<qcu::DslashParam> param)
 {
-    const int vol = qcu::config::lattice_volume();
+    const int vol = qcu::config::lattice_volume_local();
     const int m_input = param->m_input;
     const int n_color = param->n_color;
     const int single_vec_len = Nd * n_color;

@@ -48,7 +48,7 @@ void colorSpinorScatter(void* __restrict__ global_dst_array, void* __restrict__ 
     using DstFloat2 = typename qcu::Float2Wrapper<DstFloat>::Float2;
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
     int block_size = 256;
-    int grid_size = (qcu::config::lattice_volume() / 2 + block_size - 1) / block_size;
+    int grid_size = (qcu::config::lattice_volume_local() / 2 + block_size - 1) / block_size;
 
     device::color_spinor_scatter_kernel<DstFloat2, SrcFloat2>
         <<<grid_size, block_size, 0, stream>>>(static_cast<DstFloat2**>(global_dst_array), static_cast<SrcFloat2*>(global_src_ptr),
@@ -65,7 +65,7 @@ void colorSpinorGather(void* __restrict__ global_dst_ptr, void* __restrict__ glo
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
     int block_size = 256;
     // int grid_size = (Lx * Ly * Lz * Lt / 2 + block_size - 1) / block_size;
-    int grid_size = (qcu::config::lattice_volume() / 2 + block_size - 1) / block_size;
+    int grid_size = (qcu::config::lattice_volume_local() / 2 + block_size - 1) / block_size;
 
     // printf("DEBUG file %s, line %d, global_src_array = %p, global_dst_ptr = %p\n", __FILE__, __LINE__,global_src_array, global_dst_ptr);
     device::color_spinor_gather_kernel<DstFloat2, SrcFloat2>

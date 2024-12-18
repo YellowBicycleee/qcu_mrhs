@@ -7,27 +7,71 @@
 #include <mpi.h>
 
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 #include "check_error/check_cuda.cuh"
 #include "desc/qcu_desc.h"
 #include "qcu_config/qcu_config.h"
-#include "qcu_helper.h"
+
 namespace qcu::config {
 
-constexpr int kQcuCudaStreamNum = 9; // 4 dim * 2 dir (0 ~ 7) + 1 central stream (8)
-static cudaStream_t stream_pack[kQcuCudaStreamNum] = {nullptr};
+constexpr int kQcuCudaStreamNum = 9;  // 4 dim * 2 dir (0 ~ 7) + 1 central stream (8)
+static std::vector<cudaStream_t> stream_pack;
 static qcu::QcuLattDesc lattice_desc; // record the lattice size in single process (rather than total lattice)
 static qcu::QcuProcDesc process_desc;
 static qcu::FourDimCoordinate mpi_coord {-1, -1, -1, -1};
-static int mpi_rank = 0;
 
-int32_t lattice_volume() {
-    return lattice_desc.lattice_volume();
-}
+// assume: single thread setting
+class QcuConfig {
+public:
+    QcuConfig(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt)
+        : latt_vol_total(Lx * Ly * Lz * Lt)
+        , latt_vol_local((Lx * Ly * Lz * Lt) / (Gx * Gy * Gz * Gt))
+        , mpi_comm_size(Gx * Gy * Gz * Gt)
+        , latt_desc(Lx, Ly, Lz, Lt)
+        , latt_desc_local(Lx / Gx, Ly / Gy, Lz / Gz, Lt / Gt)
+        , mpi_desc(Gx, Gy, Gz, Gt)
+    {
+        if (Gx > 1) { mpi_separated_mask |= (1 << X_DIM); }
+        if (Gy > 1) { mpi_separated_mask |= (1 << Y_DIM); }
+        if (Gz > 1) { mpi_separated_mask |= (1 << Z_DIM); }
+        if (Gt > 1) { mpi_separated_mask |= (1 << T_DIM); }
 
-int32_t whole_lattice_volume() {
-    return lattice_desc.lattice_volume() * process_desc.process_volume();
-}
+        // setting mpi parameters
+        CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &mpi_comm_rank));
+        mpi_coord = qcu::FourDimCoordinate{
+            mpi_comm_rank % Gx,
+            (mpi_comm_rank / Gx) % Gy,
+            (mpi_comm_rank / Gx / Gy) % Gz,
+            mpi_comm_rank / Gx / Gy / Gz};
+    }
+
+    [[nodiscard]] int get_lattice_vol_total () const { return latt_vol_total;   }
+    [[nodiscard]] int get_lattice_vol_local () const { return latt_vol_local;   }
+    [[nodiscard]] int get_mpi_comm_size () const { return mpi_comm_size; }
+    [[nodiscard]] int get_mpi_comm_rank () const { return mpi_comm_rank; }
+    [[nodiscard]] unsigned int get_mpi_separated_mask () const { return mpi_separated_mask; }
+    [[nodiscard]] qcu::FourDimDesc get_latt_desc () const { return latt_desc; }
+    [[nodiscard]] qcu::FourDimDesc get_latt_desc_local () const { return latt_desc; }
+    [[nodiscard]] qcu::FourDimDesc get_mpi_desc () const { return mpi_desc; }
+    [[nodiscard]] qcu::FourDimCoordinate get_mpi_coord() const { return mpi_coord; }
+
+private:
+    int latt_vol_total;
+    int latt_vol_local;
+    int mpi_comm_size;
+    int mpi_comm_rank;
+    unsigned int mpi_separated_mask = 0;
+    qcu::FourDimDesc latt_desc;
+    qcu::FourDimDesc latt_desc_local;
+    qcu::FourDimDesc mpi_desc;
+    qcu::FourDimCoordinate mpi_coord{-1, -1, -1, -1};
+};
+
+std::shared_ptr<QcuConfig> qcu_configuration(nullptr);
+
+
 
 bool set_config(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt){
     int mpi_comm_size;
@@ -37,13 +81,18 @@ bool set_config(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt){
     lattice_desc = qcu::QcuLattDesc(Lx, Ly, Lz, Lt);
     process_desc = qcu::QcuProcDesc(Gx, Gy, Gz, Gt);
 
-    CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank));
-    mpi_coord.data[X_DIM] = mpi_rank % Gx;
-    mpi_coord.data[Y_DIM] = (mpi_rank / Gx) % Gy;
-    mpi_coord.data[Z_DIM] = (mpi_rank / Gx / Gy) % Gz;
-    mpi_coord.data[T_DIM] = mpi_rank / Gx / Gy / Gz;
-
+    qcu_configuration = std::make_shared<QcuConfig>(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt);
     return true;
+}
+
+int lattice_volume_local() {
+    if (qcu_configuration) { return qcu_configuration->get_lattice_vol_local(); }
+    else { errorQcu("Get parameters before configured\n"); }
+}
+
+int lattice_volume_total() {
+    if (qcu_configuration) { return qcu_configuration->get_lattice_vol_total(); }
+    else { errorQcu("Get parameters before configured\n"); }
 }
 
 qcu::QcuLattDesc* get_lattice_desc_ptr() {
@@ -70,7 +119,7 @@ qcu::FourDimDesc get_latt_desc() {
 }
 
 int get_mpi_rank() {
-    return mpi_rank;
+    return qcu_configuration->get_mpi_comm_rank();
 }
 
 // cuda stream functions
@@ -78,18 +127,20 @@ constexpr int get_qcu_stream_num() noexcept {
     return kQcuCudaStreamNum;
 }
 
-constexpr cudaStream_t* get_qcu_stream_ptr() noexcept {
+std::vector<cudaStream_t>& get_qcu_streams() noexcept {
     return stream_pack;
 }
 
 cudaStream_t get_qcu_default_stream() noexcept {
-    return stream_pack[0];
+    return stream_pack[kQcuCudaStreamNum - 1];
 }
 
 void init_streams() {
 #pragma unroll
     for (int i = 0; i < kQcuCudaStreamNum; ++i) {
-        CHECK_CUDA(cudaStreamCreate(&stream_pack[i]));
+        cudaStream_t stream;
+        CHECK_CUDA(cudaStreamCreate(&stream));
+        stream_pack.push_back(stream);
     }
 }
 
@@ -98,6 +149,7 @@ void destroy_streams() {
     for (int i = 0; i < kQcuCudaStreamNum; ++i) {
         CHECK_CUDA(cudaStreamDestroy(stream_pack[i]));
     }
+    stream_pack.clear();
 }
 
 }

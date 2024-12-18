@@ -17,7 +17,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 {
 
 // #ifdef QCU_ARCH_WMMA_SM80_ENABLED
-    int half_vol = config::lattice_volume() / 2;
+    int half_vol = config::lattice_volume_local() / 2;
     int warp_num_per_block = WARP_PER_BLOCK;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);

@@ -20,7 +20,7 @@
 namespace qcu {
 
 void Qcu::allocateMemory() {
-    int vol = qcu::config::lattice_volume();
+    int vol = qcu::config::lattice_volume_local();
     int colorSpinorMrhs_size = vol * Ns * n_colors_ * m_input_;  // even and odd
     int gauge_size = Nd * vol * n_colors_ * n_colors_;   // even and odd
 
@@ -133,7 +133,7 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
     // real op
     int mv_flops = (8 * n_colors_ - 2) * n_colors_; // (8 * in.Ncolor() - 2) * in.Ncolor();
     int num_mv = Ns / 2;
-    double num_op = static_cast<double>(qcu::config::lattice_volume()) / 2 * m_input_ * (
+    double num_op = static_cast<double>(qcu::config::lattice_volume_local()) / 2 * m_input_ * (
         2 * Nd * Ns * n_colors_ +
         2 * Nd * num_mv * mv_flops +
         (2 * Nd - 1) * Ns * n_colors_
@@ -151,7 +151,7 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
         int gemm_flops = wmma_m * wmma_n * (8 * wmma_k - 2);
 
         real_num_op = /*Lx * Ly * Lz * Lt*/
-            static_cast<double>(qcu::config::lattice_volume()) / 2 * 8 * warp_line * warp_col *(
+            static_cast<double>(qcu::config::lattice_volume_local()) / 2 * 8 * warp_line * warp_col *(
             // combination
             double(2 * wmma_m * wmma_k * 2) + // 2个矩阵
             // gemm
@@ -257,7 +257,7 @@ void Qcu::mat_qcu (bool dagger_flag) {
 void Qcu::load_gauge(void* gauge, QcuPrecision floatPrecision) {
     gauge_external_ = gauge;
 
-    int volume = qcu::config::lattice_volume();
+    int volume = qcu::config::lattice_volume_local();
     int complex_vector_length = Nd * volume * n_colors_ * n_colors_;
     
     assert(floatPrecision == kPrecisionDouble || floatPrecision == kPrecisionSingle ||
@@ -278,7 +278,7 @@ void Qcu::push_back_fermion(void* fermionOut, void* fermionIn) {
 
 
 void Qcu::solve_fermions(int max_iteration, double max_precision) {
-    const int vol = qcu::config::lattice_volume();
+    const int vol = qcu::config::lattice_volume_local();
     const int colorSpinor_len = Ns * n_colors_;
 
     if (m_input_ != fermion_in_vec_.size()) {
@@ -391,7 +391,7 @@ void Qcu::read_gauge_from_file (const char* file_path, void* data_ptr) {
     qcu::io::GaugeReader<double> reader(config::get_mpi_rank(), mpi_desc);
     reader.read(file_path, dims, gauge);
 
-    size_t gauge_length = config::lattice_volume() * Nd * n_colors_ * n_colors_;
+    size_t gauge_length = config::lattice_volume_local() * Nd * n_colors_ * n_colors_;
 
     Complex<double>* unpreconditioned = nullptr;
     CHECK_CUDA(cudaMalloc(&unpreconditioned, sizeof(Complex<double>) * gauge_length));

@@ -32,7 +32,7 @@ namespace qcu::developing {
 template <typename Float>
 inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 {
-    int half_vol = config::lattice_volume() / 2;
+    int half_vol = config::lattice_volume_local() / 2;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
     const qcu::QcuProcDesc& proc_desc = *(dslash_param.proc_desc);
