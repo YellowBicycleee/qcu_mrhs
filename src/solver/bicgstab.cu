@@ -6,12 +6,12 @@
 namespace qcu::solver {
 
 // 申请临时空间
-template <QcuPrecision OutputPrecision,
-          QcuPrecision IteratePrecision>
+template <
+    QcuPrecision OutputPrecision,
+    QcuPrecision IteratePrecision
+>
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
-  if (bufferAllocated_) {
-    return true;
-  }
+    if (bufferAllocated_) { return true; }
 
   const int Lx  = param_.lattDesc->X();
   const int Ly  = param_.lattDesc->Y();
@@ -181,7 +181,7 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
     static_cast<Complex<OutputFloat>*>(output_prec_kappa), // a = output_prec_kappa
     static_cast<Complex<OutputFloat>*>(new_even_b),        // y = new_even_b = D_{oe} b_{e}
     single_vec_len * vol / 2,
-    param->mInput,
+    param->m_input,
     param->stream1
   );
   interior_operator_.output_xpay(output_xpay_arg);

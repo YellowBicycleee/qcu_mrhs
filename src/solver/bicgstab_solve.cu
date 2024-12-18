@@ -31,23 +31,23 @@ static inline void fused_x_sub_Doe_Deo_x (
     std::shared_ptr<qcu::DslashParam> param)
 {
     const int vol = qcu::config::lattice_volume();
-    const int mInput = param->mInput;
-    const int nColor = param->nColor;
-    const int single_vec_len = Nd * nColor;
+    const int m_input = param->m_input;
+    const int n_color = param->n_color;
+    const int single_vec_len = Nd * n_color;
 
     cudaStream_t stream1 = param->stream1;
     cudaStream_t stream2 = param->stream2;
     // temp = Deo in
-    param->fermionOut_MRHS = temp;
-    param->fermionIn_MRHS = input;
+    param->fermion_out_MRHS = temp;
+    param->fermion_in_MRHS = input;
     param->parity = EVEN_PARITY;
     dslash->apply(param);
     CHECK_CUDA(cudaStreamSynchronize(stream1));
     CHECK_CUDA(cudaStreamSynchronize(stream2));
 
     // out = Doe temp
-    param->fermionOut_MRHS = output;
-    param->fermionIn_MRHS = temp;
+    param->fermion_out_MRHS = output;
+    param->fermion_in_MRHS = temp;
     param->parity = ODD_PARITY;
 
     dslash->apply(param);
@@ -61,7 +61,7 @@ static inline void fused_x_sub_Doe_Deo_x (
             static_cast<Complex<_Float>*>(a),       // Complex<_Float>* a,
             static_cast<Complex<_Float>*>(output),  // Complex<_Float>* y,
             single_vec_len * vol / 2,               // int single_vec_len,
-            mInput,                                 // int inc_idx,
+            m_input,                                 // int inc_idx,
             stream1                                 // cudaStream_t stream = nullptr
         };
     qcu::qcu_blas::Complex_xsay<_Float> xsay_op;

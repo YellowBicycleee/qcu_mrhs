@@ -8,62 +8,69 @@ namespace qcu {
 
 // clang-format off
 struct DslashParam {
-    bool daggerFlag;
-    QcuPrecision precision;
-    int nColor;
-    int mInput;
+    bool dagger_flag;
+    QcuPrecision dslash_precision;
+    int n_color;
+    int m_input;
     int parity;
     double kappa;
 
-    void* __restrict__ fermionIn_MRHS;
-    void* __restrict__ fermionOut_MRHS;
+    void* __restrict__ fermion_in_MRHS;
+    void* __restrict__ fermion_out_MRHS;
     void* __restrict__ gauge;
-    const QcuLattDesc* __restrict__ lattDesc;
-    const QcuProcDesc* __restrict__ procDesc;
+    const QcuLattDesc* __restrict__ latt_desc;
+    const QcuProcDesc* __restrict__ proc_desc;
     cudaStream_t stream1;
     cudaStream_t stream2;
 
-    DslashParam(bool p_daggerFlag,
-                QcuPrecision p_precision,
-                int p_nColor, 
-                int p_mInput, 
-                int p_parity,
-                double p_kappa, 
-                void* p_fermionIn_MRHS,
-                void* p_fermionOut_MRHS,
-                void* p_gauge, 
-                const QcuLattDesc* p_lattDesc,
-                const QcuProcDesc* p_procDesc,
-                cudaStream_t p_stream1 = NULL,
-                cudaStream_t p_stream2 = NULL)
-        : daggerFlag(p_daggerFlag),
-          precision(p_precision),
-          nColor(p_nColor),
-          mInput(p_mInput),
-          parity(p_parity),
-          kappa(p_kappa),
-          fermionIn_MRHS(p_fermionIn_MRHS),
-          fermionOut_MRHS(p_fermionOut_MRHS),
-          gauge(p_gauge),
-          procDesc(p_procDesc),
-          lattDesc(p_lattDesc) , 
-          stream1(p_stream1),
-          stream2(p_stream2) {}
+    DslashParam(
+        bool dagger_flag_,
+        QcuPrecision dslash_precision_,
+        int n_color_,
+        int m_input_,
+        int parity_,
+        double kappa_,
+        void* fermion_in_MRHS_,
+        void* fermion_out_MRHS_,
+        void* gauge_,
+        const QcuLattDesc* latt_desc_,
+        const QcuProcDesc* proc_desc_,
+        cudaStream_t stream1_ = NULL,
+        cudaStream_t stream2_ = NULL)
+
+        : dagger_flag(dagger_flag_),
+        dslash_precision(dslash_precision_),
+        n_color(n_color_),
+        m_input(m_input_),
+        parity(parity_),
+        kappa(kappa_),
+        fermion_in_MRHS(fermion_in_MRHS_),
+        fermion_out_MRHS(fermion_out_MRHS_),
+        gauge(gauge_),
+        proc_desc(proc_desc_),
+        latt_desc(latt_desc_),
+        stream1(stream1_),
+        stream2(stream2_) {}
 };
 
 class Dslash {
-protected:
-    bool if_metric_ = false;
-    double operations_ = 0.0;
-    double time_ = 0.0;
-
-    virtual void pre_apply(const std::shared_ptr<DslashParam>) = 0;
-    virtual void post_apply(const std::shared_ptr<DslashParam>) = 0;
 public:
-    Dslash(bool if_matric = false) : if_metric_(if_matric) {}
+    Dslash() : operations_cur_(0), time_utilization_cur(0) {}
     virtual ~Dslash() noexcept = default;
     virtual void apply(const std::shared_ptr<DslashParam> dslash_param) = 0;
     virtual double flops() = 0;
+
+protected:
+    inline static double operations_total_ = 0.0;
+    inline static double time_utilization_total_ = 0.0;
+
+    double operations_cur_;
+    double time_utilization_cur;
+private:
+    cudaEvent_t cuda_event_;
+    void pre_apply(const std::shared_ptr<DslashParam>);
+    void post_apply(const std::shared_ptr<DslashParam>);
+
 };
 
 }  // namespace qcu

@@ -17,9 +17,9 @@ static void check_qcu_ptr() {
     }
 }
 
-void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int inputFloatPrecision,
-                  int dslashFloatPrecision) {
-
+void initGridSize(
+    QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int inputFloatPrecision, int dslashFloatPrecision)
+{
     int Lx = param->lattice_size[X_DIM];
     int Ly = param->lattice_size[Y_DIM];
     int Lz = param->lattice_size[Z_DIM];
@@ -30,8 +30,10 @@ void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int in
     int Gt = grid->grid_size[T_DIM];
 
     qcu::config::set_config(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt);
-    qcu_ptr = new qcu::Qcu(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt, (QcuPrecision)inputFloatPrecision,
-                         (QcuPrecision)dslashFloatPrecision, n_color, m_rhs);
+    qcu_ptr = new qcu::Qcu(
+        Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt,
+        (QcuPrecision)inputFloatPrecision,
+        (QcuPrecision)dslashFloatPrecision, n_color, m_rhs);
     qcu::config::init_streams();
 }
 
@@ -119,16 +121,16 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
 
     if (precision == QcuPrecision::kPrecisionDouble) {
         qcu::GaugeEOPreconditioner<double> preconditioner;
-        preconditioner.reverse(static_cast<Complex<double> *>(non_prec_gauge), static_cast<Complex<double> *>(prec_gauge),
-                           local_latt_desc, site_vec_len);
+        preconditioner.reverse(static_cast<Complex<double> *>(non_prec_gauge),
+            static_cast<Complex<double> *>(prec_gauge), local_latt_desc, site_vec_len);
     } else if (precision == QcuPrecision::kPrecisionSingle) {
         qcu::GaugeEOPreconditioner<float> preconditioner;
-        preconditioner.reverse(static_cast<Complex<float> *>(non_prec_gauge), static_cast<Complex<float> *>(prec_gauge),
-                           local_latt_desc, site_vec_len);
+        preconditioner.reverse(static_cast<Complex<float> *>(non_prec_gauge),
+            static_cast<Complex<float> *>(prec_gauge), local_latt_desc, site_vec_len);
     } else if (precision == QcuPrecision::kPrecisionHalf) {
         qcu::GaugeEOPreconditioner<half> preconditioner;
-        preconditioner.reverse(static_cast<Complex<half> *>(non_prec_gauge), static_cast<Complex<half> *>(prec_gauge),
-                           local_latt_desc, site_vec_len);
+        preconditioner.reverse(static_cast<Complex<half> *>(non_prec_gauge),
+            static_cast<Complex<half> *>(prec_gauge), local_latt_desc, site_vec_len);
     } else {
         errorQcu("UNDEFINED precision");
     }

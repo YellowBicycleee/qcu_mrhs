@@ -34,8 +34,8 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 {
     int half_vol = config::lattice_volume() / 2;
 
-    const qcu::QcuLattDesc& latt_desc = *(dslash_param.lattDesc);
-    const qcu::QcuProcDesc& proc_desc = *(dslash_param.procDesc);
+    const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
+    const qcu::QcuProcDesc& proc_desc = *(dslash_param.proc_desc);
 
     using BlockShape = gemm::GemmShape<8, 8, 8>;
     // using BlockShape = gemm::GemmShape<16, 16, 16>;
@@ -49,18 +49,18 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     int blk_x = BlockShape::kM;
     int blk_y = BlockShape::kN;
 
-    dim3 grid_size(div_ceil(dslash_param.nColor, blk_x), div_ceil(dslash_param.mInput, blk_y), min(half_vol, 65535));
+    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), min(half_vol, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
     printf("SIMT dslash Beginning\n");
     qcu::device::wilson_dslash_su_n_mrhs<Float, BlockShape>
         <<<grid_size, block_size, 0, dslash_param.stream1>>>
-        (   static_cast<Float*>(dslash_param.fermionOut_MRHS),
-            static_cast<Float*>(dslash_param.fermionIn_MRHS),
+        (   static_cast<Float*>(dslash_param.fermion_out_MRHS),
+            static_cast<Float*>(dslash_param.fermion_in_MRHS),
             static_cast<Float*>(dslash_param.gauge),
             latt_desc, multiprocess,
-            dslash_param.parity, dslash_param.daggerFlag,
-            dslash_param.nColor, dslash_param.mInput);
+            dslash_param.parity, dslash_param.dagger_flag,
+            dslash_param.n_color, dslash_param.m_input);
     CHECK_CUDA(cudaDeviceSynchronize());
     printf("SIMT dslash Ending, config = grid(%d, %d, %d), block(%d, %d, %d)\n", grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z);
 }
@@ -68,7 +68,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
 
     // clang-format off
-    switch (dslash_param->precision) {
+    switch (dslash_param->dslash_precision) {
         case QcuPrecision::kPrecisionHalf:
             { ApplyWilsonDslash_Mrhs<half>(*dslash_param); }
             break;
@@ -96,11 +96,6 @@ void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
 // TODO : calc flops
 double WilsonDslash::flops() {
     errorQcu("Not implemented yet\n");  // TODO
-    if (if_metric_) {
-        return operations_ / time_;
-    } else {
-        return 0;
-    }
 }
 
 }
