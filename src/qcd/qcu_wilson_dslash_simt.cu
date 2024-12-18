@@ -80,7 +80,7 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
             break;
         default:
             {
-                errorQcu("Not implemented yet\n");  // TODO
+                errorQcu("Not implemented yet\n");
                 assert(0);
             }
             break;
@@ -95,7 +95,8 @@ void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
 }
 // TODO : calc flops
 double WilsonDslash::flops() {
-    errorQcu("Not implemented yet\n");  // TODO
+    assert(time_utilization_cur_ > 0);
+    return operations_cur_ / time_utilization_cur_;
 }
 
 }

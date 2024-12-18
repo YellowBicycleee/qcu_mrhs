@@ -23,5 +23,5 @@ inline void check_cublas (cublasStatus_t stat, const char* file, int line) {
     abort();
   }
 }
-constexpr int maxThreadsPerBlock = MAX_THREADS_PER_BLOCK;
+constexpr int maxThreadsPerBlock = kMaxThreadsPerBlock;
 constexpr int maxGridSize        = {2147483647};

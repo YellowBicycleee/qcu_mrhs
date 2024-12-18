@@ -67,7 +67,7 @@ void single_point_wilson_dslash(
 
         // clear L[1, 2, 3, 4] (real and imag part)
         #pragma unroll
-        for (int i = threadIdx.x; i < WMMA_M * WMMA_N; i += WARP_SIZE) {
+        for (int i = threadIdx.x; i < WMMA_M * WMMA_N; i += kWarpSize) {
             int local_i = i / WMMA_N;
             int local_j = i & (WMMA_N - 1);
             smem_L[IDX3D(0, local_i, local_j, WMMA_M, WMMA_N)] = 0;  // L1 real
@@ -130,7 +130,7 @@ __global__ void wilson_dslash_su_n_mrhs(Float* __restrict__ out,
                                         Float* __restrict__ gauge,
                                         int Lx, int Ly, int Lz, int Lt, int g_x, int g_y, int g_z, int g_t, int parity,
                                         bool dagger_flag, int n_color, int m_rhs) {
-    // block切分使用2D，dim3(WARP_SIZE, WARP_NUMBER)
+    // block切分使用2D，dim3(kWarpSize, WARP_NUMBER)
     int block_id = blockIdx.x;
     int grid_size = gridDim.x;  // 1D grid
     int vol = Lx * Ly * Lz * Lt / 2;
@@ -152,7 +152,7 @@ __global__ void wilson_dslash_su_n_mrhs(Float* __restrict__ out,
                                        WMMA_K * WMMA_N +         /* T1                         wmma_k * wmma_n */
                                  6 * (WMMA_M * WMMA_N)           /* R1, R2, L1, L2, L3, L4     wmma_m * wmma_n */
                                 );
-    __shared__ Float smem[WARP_PER_BLOCK * smem_float_elems_per_warp];  // smem数量从外部统一指定
+    __shared__ Float smem[kWarpPerBlock * smem_float_elems_per_warp];  // smem数量从外部统一指定
 
     // clang-format off
     for (int i = block_id; i < vol; i += grid_size) {

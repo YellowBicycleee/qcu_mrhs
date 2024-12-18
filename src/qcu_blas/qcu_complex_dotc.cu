@@ -28,7 +28,7 @@ void ComplexDotc<OutputFloat, InputFloat>::operator()(DotcArgument arg) {
   int block_round1                 = blocks_per_grid;
 
   // 1 个 warp打底，不然会出现 warp divergence
-  int thread_round2 = std::min( div_ceil(block_round1, WARP_SIZE) * WARP_SIZE, 
+  int thread_round2 = std::min( div_ceil(block_round1, kWarpSize) * kWarpSize, 
                             maxThreadsPerBlock);
   int block_round2  = 1;
 

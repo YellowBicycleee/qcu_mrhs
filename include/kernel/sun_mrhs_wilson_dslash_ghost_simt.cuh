@@ -6,6 +6,7 @@
 
 #include "qcu_helper.h"
 #include "qcu_utils.h"
+
 namespace qcu::device {
 template <
     typename FloatType_ = double,
@@ -17,7 +18,7 @@ template <
 >
 QCU_DEVICE
 void single_point_wilson_dslash_t_forward_ghost_pack(
-    FloatType_* __restrict__ out,
+    FloatType_* __restrict__ temp_out,
     FloatType_* __restrict__ in,
     FloatType_* __restrict__ gauge,
     QcuLattDesc latt_desc, int ghost_dim , int parity,
@@ -42,8 +43,8 @@ void single_point_wilson_dslash_t_forward_ghost_pack(
     // ldg_A and ldg_B are used to load A and B from global memory
     Complex ldg_A[1];
     Complex ldg_B[1];
-    // store temp_res into register, then stg to global memory
-    Complex temp_res[2][1];
+
+    Complex temp_res[2][1]; // store temp_res into register, then stg to global memory
 
     // 4-dim lattice desc
     QcuLattDesc latt_half_desc{latt_desc.X() >> 1, latt_desc.Y(), latt_desc.Z(), latt_desc.T()};
@@ -68,8 +69,8 @@ void single_point_wilson_dslash_t_forward_ghost_pack(
     // send to forward
     if (dir == BWD) {  coord.at(ghost_dim) = latt_half_desc.at(ghost_dim) - 1; }
 
-    int32_t mat1_pos; // will be 0 or 1, use this to set mat1 position
-    int32_t mat2_pos; // will be 2 or 3, use this to set mat2 position     temp_mat = mat1 + scale * mat2
+    int32_t mat1_pos;
+    int32_t mat2_pos;
 
     int32_t blocks_m = div_ceil(n_color, BlockShape_::kM);
     int32_t blocks_n = div_ceil(m_rhs, BlockShape_::kN);
@@ -90,7 +91,6 @@ void single_point_wilson_dslash_t_forward_ghost_pack(
             // main loop
             for (int k = 0; k < n_color; k += BlockShape_::kK) {
                 /// load Gauge
-                // global memory is col-major, col-major in smem
                 gemm::ldg<Float2, gemm::MatShapeTranspose<GaugeMatShape>, BlockShape_, WarpShape_>
                     (glb_A, n_color, n_color, k, row, reinterpret_cast<Float2*>(ldg_A));
                 // dagger
@@ -99,7 +99,6 @@ void single_point_wilson_dslash_t_forward_ghost_pack(
                 __syncthreads();
 
                 /// load Fermion
-                /// load B from global memory to register, need combine 2 of 4 in global memory to 2 in smem
                 #pragma unroll
                 for (int pos = 0; pos < 2; ++pos) {
                     if (row < n_color && col < m_rhs) {
@@ -134,7 +133,7 @@ void single_point_wilson_dslash_t_forward_ghost_pack(
 
             // store res to global memory
             // the address calculated from hyperplane coord
-            Float2* glb_out = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredColorSpinorAddr(out, sub_space_half_desc, n_color, m_rhs));
+            Float2* glb_out = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredColorSpinorAddr(temp_out, sub_space_half_desc, n_color, m_rhs));
 
             // epilogue, store into global memory
             #pragma unroll

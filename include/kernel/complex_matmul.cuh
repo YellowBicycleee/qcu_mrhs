@@ -25,7 +25,7 @@ __device__ __forceinline__ void load_complex_fermion_mat_T1_from_global_to_smem 
 
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;    
 
-    for (int idx = threadIdx.x; idx < smem_k * smem_n; idx += WARP_SIZE) {
+    for (int idx = threadIdx.x; idx < smem_k * smem_n; idx += kWarpSize) {
         // smem is always row-major
         int smem_i = idx / smem_n;
         int smem_j = idx % smem_n;
@@ -133,7 +133,7 @@ __device__ __forceinline__ void load_complex_fermion_mat_T2_from_global_to_smem(
     // Float: smem_T_imag      smem_k * smem_n-----(2 * smem_k * smem_n - 1)
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
     
-    for (int idx = threadIdx.x; idx < smem_k * smem_n; idx += WARP_SIZE) {
+    for (int idx = threadIdx.x; idx < smem_k * smem_n; idx += kWarpSize) {
         // smem is always row-major
         int smem_i = idx / smem_n;
         int smem_j = idx % smem_n;
@@ -238,7 +238,7 @@ __device__ __forceinline__ void load_complex_gauge_mat_from_global_to_smem (
 ) {
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
 
-    for (int idx = threadIdx.x; idx < smem_m * smem_k; idx += WARP_SIZE) {
+    for (int idx = threadIdx.x; idx < smem_m * smem_k; idx += kWarpSize) {
         // smem is always row-major
         int smem_i = idx / smem_k;
         // int smem_j = idx % smem_k;
@@ -294,7 +294,7 @@ __device__ __forceinline__ void calc_L_from_R1(Float* __restrict__ smem_L, const
 
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
 
-    for (int idx = threadIdx.x; idx < smem_m * smem_n; idx += WARP_SIZE) {
+    for (int idx = threadIdx.x; idx < smem_m * smem_n; idx += kWarpSize) {
         int smem_i = idx / smem_n;
         // int smem_j = idx % smem_n;
         int smem_j = idx & (smem_n - 1);
@@ -371,7 +371,7 @@ __device__ __forceinline__ void calc_L_from_R2(Float* __restrict__ smem_L, const
 
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
 
-    for (int idx = threadIdx.x; idx < smem_m * smem_n; idx += WARP_SIZE) {
+    for (int idx = threadIdx.x; idx < smem_m * smem_n; idx += kWarpSize) {
         int smem_i = idx / smem_n;
         // int smem_j = idx % smem_n;
         int smem_j = idx & (smem_n - 1);
@@ -482,7 +482,7 @@ __device__ __forceinline__ void warp_store_complex_from_smem_to_global(Float* __
 
 ) {
     using Float2 = typename qcu::Float2Wrapper<Float>::Float2;
-    for (int i = threadIdx.x; i < smem_m * smem_n; i += WARP_SIZE) {
+    for (int i = threadIdx.x; i < smem_m * smem_n; i += kWarpSize) {
         int local_i = i / smem_n;
         // int local_j = threadIdx.x % smem_n;
         int local_j = i & (smem_n - 1);

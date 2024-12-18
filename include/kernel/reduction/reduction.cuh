@@ -16,7 +16,7 @@ namespace reduction {
 // template <template <typename> class ReductionOp, 
 //           typename Float>
 // __device__ __forceinline__ Float warpReduce(Float val) {
-//     for (int mask = WARP_SIZE / 2; mask > 0; mask >>= 1) {
+//     for (int mask = kWarpSize / 2; mask > 0; mask >>= 1) {
 //         val = ReductionOp<Float>()(val, __shfl_xor_sync(0xffffffff, val, mask));
 //     }
 //     return val;
@@ -28,7 +28,7 @@ __device__ __forceinline__ T ComplexWarpReduce (T* smem, int lane_id) {
     T temp;
     ReductionOp <T> op;
     __syncwarp();
-    for (int mask = WARP_SIZE / 2; mask > 0; mask >>= 1) {
+    for (int mask = kWarpSize / 2; mask > 0; mask >>= 1) {
         temp = smem[lane_id ^ mask];
         // __syncwarp();
         val = op(val, temp);
@@ -44,14 +44,14 @@ __device__ __forceinline__ T ComplexWarpReduce (T* smem, int lane_id) {
 template <template <typename> class ReductionOp, typename T>
 __device__ __forceinline__ void blockReduce(T val, T* smem) {
     int tid = threadIdx.x;
-    int warp_id = tid / WARP_SIZE;
-    int lane_id = tid & (WARP_SIZE - 1);
+    int warp_id = tid / kWarpSize;
+    int lane_id = tid & (kWarpSize - 1);
     
-    int warp_nums = (blockDim.x + WARP_SIZE - 1) / WARP_SIZE;  // 向上进1，以防分配的线程数量小于32导致warp nums为0
+    int warp_nums = (blockDim.x + kWarpSize - 1) / kWarpSize;  // 向上进1，以防分配的线程数量小于32导致warp nums为0
 
     smem[tid] = val;
     __syncwarp();
-    val = ComplexWarpReduce<ReductionOp, T>(smem + WARP_SIZE * warp_id, lane_id);
+    val = ComplexWarpReduce<ReductionOp, T>(smem + kWarpSize * warp_id, lane_id);
         
     __syncthreads();
     if (lane_id == 0) {
@@ -98,7 +98,7 @@ __global__ void stride_ComplexNorm_step1_kernel (   OutputFloat*        tmpBuffe
     int global_id     = blockIdx.x * blockDim.x + threadIdx.x;
     int total_threads = gridDim.x * blockDim.x;
 
-    __shared__ OutputFloat stride_norm_smem [MAX_THREADS_PER_BLOCK];
+    __shared__ OutputFloat stride_norm_smem [kMaxThreadsPerBlock];
 
     OutputFloat thread_res = 0; // 记录单个线程的结果，OutputType一般为double或者float
     Complex<OutputFloat> tmp;
@@ -137,7 +137,7 @@ __global__ void stride_ComplexInnerProd_step1_kernel (  OutputFloat*  tmpBuffer,
     int global_id = blockIdx.x * blockDim.x + threadIdx.x;
     int total_threads = gridDim.x * blockDim.x;
 
-    __shared__ Complex<OutputFloat> stride_norm_smem [MAX_THREADS_PER_BLOCK];
+    __shared__ Complex<OutputFloat> stride_norm_smem [kMaxThreadsPerBlock];
 
     Complex<OutputFloat> thread_res = Complex<OutputFloat> (0, 0);
     Complex<OutputFloat> operand1;
@@ -180,7 +180,7 @@ __global__ void reduceSumStep2_kernel (T* output,
                                        int pos_in_rhs,
                                        int tmp_vec_length) 
 {
-    __shared__ T smem [MAX_THREADS_PER_BLOCK];
+    __shared__ T smem [kMaxThreadsPerBlock];
 
     int global_id    = blockIdx.x * blockDim.x + threadIdx.x;
     int total_thread = gridDim.x  * blockDim.x;

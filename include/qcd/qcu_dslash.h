@@ -35,8 +35,8 @@ struct DslashParam {
         void* gauge_,
         const QcuLattDesc* latt_desc_,
         const QcuProcDesc* proc_desc_,
-        cudaStream_t stream1_ = NULL,
-        cudaStream_t stream2_ = NULL)
+        cudaStream_t stream1_ = nullptr,
+        cudaStream_t stream2_ = nullptr)
 
         : dagger_flag(dagger_flag_),
         dslash_precision(dslash_precision_),
@@ -55,7 +55,7 @@ struct DslashParam {
 
 class Dslash {
 public:
-    Dslash() : operations_cur_(0), time_utilization_cur(0) {}
+    Dslash() : operations_cur_(0), time_utilization_cur_(0) {}
     virtual ~Dslash() noexcept = default;
     virtual void apply(const std::shared_ptr<DslashParam> dslash_param) = 0;
     virtual double flops() = 0;
@@ -65,7 +65,7 @@ protected:
     inline static double time_utilization_total_ = 0.0;
 
     double operations_cur_;
-    double time_utilization_cur;
+    double time_utilization_cur_;
 private:
     cudaEvent_t cuda_event_;
     void pre_apply(const std::shared_ptr<DslashParam>);

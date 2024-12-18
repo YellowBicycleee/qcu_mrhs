@@ -18,11 +18,11 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 
 // #ifdef QCU_ARCH_WMMA_SM80_ENABLED
     int half_vol = config::lattice_volume_local() / 2;
-    int warp_num_per_block = WARP_PER_BLOCK;
+    int warp_num_per_block = kWarpPerBlock;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
     const qcu::QcuProcDesc& proc_desc = *(dslash_param.proc_desc);
-    dim3 block_size(WARP_SIZE, warp_num_per_block);
+    dim3 block_size(kWarpSize, warp_num_per_block);
     dim3 grid_size(half_vol);
     qcu::device::wilson_dslash_su_n_mrhs<Float> <<<grid_size, block_size, 0, dslash_param.stream1>>>(
         static_cast<Float*>(dslash_param.fermion_out_MRHS),

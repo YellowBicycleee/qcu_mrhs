@@ -6,9 +6,7 @@
 #include <lattice_desc.h>
 #include <mpi.h>
 
-#include <cstdint>
 #include <memory>
-#include <vector>
 
 #include "check_error/check_cuda.cuh"
 #include "desc/qcu_desc.h"
@@ -52,9 +50,9 @@ public:
     [[nodiscard]] int get_mpi_comm_size () const { return mpi_comm_size; }
     [[nodiscard]] int get_mpi_comm_rank () const { return mpi_comm_rank; }
     [[nodiscard]] unsigned int get_mpi_separated_mask () const { return mpi_separated_mask; }
-    [[nodiscard]] qcu::FourDimDesc get_latt_desc () const { return latt_desc; }
-    [[nodiscard]] qcu::FourDimDesc get_latt_desc_local () const { return latt_desc; }
-    [[nodiscard]] qcu::FourDimDesc get_mpi_desc () const { return mpi_desc; }
+    [[nodiscard]] qcu::QcuLattDesc get_latt_desc () const { return latt_desc; }
+    [[nodiscard]] qcu::QcuLattDesc get_latt_desc_local () const { return latt_desc; }
+    [[nodiscard]] qcu::QcuProcDesc get_mpi_desc () const { return mpi_desc; }
     [[nodiscard]] qcu::FourDimCoordinate get_mpi_coord() const { return mpi_coord; }
 
 private:
@@ -63,9 +61,9 @@ private:
     int mpi_comm_size;
     int mpi_comm_rank;
     unsigned int mpi_separated_mask = 0;
-    qcu::FourDimDesc latt_desc;
-    qcu::FourDimDesc latt_desc_local;
-    qcu::FourDimDesc mpi_desc;
+    qcu::QcuLattDesc latt_desc;
+    qcu::QcuLattDesc latt_desc_local;
+    qcu::QcuProcDesc mpi_desc;
     qcu::FourDimCoordinate mpi_coord{-1, -1, -1, -1};
 };
 
