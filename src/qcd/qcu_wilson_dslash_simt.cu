@@ -2,7 +2,7 @@
 
 #include "check_error/check_cuda.cuh"
 #include "kernel/sun_mrhs_wilson_dslash_simt.cuh"
-#include "kernel/sun_mrhs_wilson_dslash_ghost_simt.cuh"
+#include "kernel/sun_mrhs_wilson_dslash_pack_simt.cuh"
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_base/qcu_alloc.h"
 #include "qcu_config/qcu_config.h"
@@ -25,9 +25,7 @@
  * Policy2: MPI + NCCL
  */
 
-namespace qcu::developing {
-// template <typename Float, typename CudaArch = qcu::arch>
-// inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param);
+namespace qcu::simt {
 
 template <typename Float>
 inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
@@ -35,16 +33,10 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     int half_vol = config::lattice_volume_local() / 2;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
-    const qcu::QcuProcDesc& proc_desc = *(dslash_param.proc_desc);
 
     using BlockShape = gemm::GemmShape<8, 8, 8>;
     // using BlockShape = gemm::GemmShape<16, 16, 16>;
-    int multiprocess = 0;
-    for (int i = 0; i < Nd; ++i) {
-        if (proc_desc.data[i] > 0) {
-            multiprocess |= (1 << i);
-        }
-    }
+    unsigned int multiprocess_mask = config::get_mpi_separated_mask();
 
     int blk_x = BlockShape::kM;
     int blk_y = BlockShape::kN;
@@ -58,7 +50,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
         (   static_cast<Float*>(dslash_param.fermion_out_MRHS),
             static_cast<Float*>(dslash_param.fermion_in_MRHS),
             static_cast<Float*>(dslash_param.gauge),
-            latt_desc, multiprocess,
+            latt_desc, multiprocess_mask,
             dslash_param.parity, dslash_param.dagger_flag,
             dslash_param.n_color, dslash_param.m_input);
     CHECK_CUDA(cudaDeviceSynchronize());
@@ -66,8 +58,17 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 }
 
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
+    int m_input = dslash_param->m_input;
+    int n_color = dslash_param->n_color;
+    int half_vol = config::lattice_volume_local() / 2;
+    double num_operations = static_cast<double>(half_vol * m_input * (
+        2 * Nd * Ns * n_color   // project
+        + 2 * Nd * Ns / 2 * (8 * n_color  - 2) * n_color  // GEMV
+        + (2 * Nd - 1) * Ns * n_color  // reconstruct
+    ));
+    operations_cur_ += num_operations;
+    operations_total_ += num_operations;
 
-    // clang-format off
     switch (dslash_param->dslash_precision) {
         case QcuPrecision::kPrecisionHalf:
             { ApplyWilsonDslash_Mrhs<half>(*dslash_param); }
@@ -88,10 +89,25 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
     CHECK_CUDA(cudaStreamSynchronize(dslash_param->stream1));
 }
 void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
-    errorQcu("Not implemented yet\n");  // TODO
+
+    for (int i = 0; i < Nd; ++i) {
+        if (dslash_param->proc_desc->at(i) > 1) {
+            if (i == X_DIM) {
+                errorQcu("Not implemented yet\n");  // TODO
+            }
+            apply_ghost_pack(*dslash_param, i);
+        }
+    }
 }
 void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
-    errorQcu("Not implemented yet\n");  // TODO
+    for (int i = 0; i < Nd; ++i) {
+        if (dslash_param->proc_desc->at(i) > 1) {
+            if (i == X_DIM) {
+                errorQcu("Not implemented yet\n");  // TODO
+            }
+            apply_ghost_pack(*dslash_param, i);
+        }
+    }
 }
 // TODO : calc flops
 double WilsonDslash::flops() {

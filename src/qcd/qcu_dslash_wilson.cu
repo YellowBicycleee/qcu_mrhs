@@ -16,7 +16,6 @@ template <typename Float>
 inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 {
 
-// #ifdef QCU_ARCH_WMMA_SM80_ENABLED
     int half_vol = config::lattice_volume_local() / 2;
     int warp_num_per_block = kWarpPerBlock;
 
@@ -35,27 +34,46 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
 
-    // clang-format off
+    int m_input = dslash_param->m_input;
+    int n_color = dslash_param->n_color;
+    int half_vol = config::lattice_volume_local() / 2;
+    double num_operations = static_cast<double>(half_vol * m_input * (
+        2 * Nd * Ns * n_color   // project
+        + 2 * Nd * Ns / 2 * (8 * n_color  - 2) * n_color  // GEMV
+        + (2 * Nd - 1) * Ns * n_color  // reconstruct
+    ));
+    operations_cur_ = num_operations;
+    operations_total_ += num_operations;
+
     switch (dslash_param->dslash_precision) {
         case QcuPrecision::kPrecisionHalf:
-            { ApplyWilsonDslash_Mrhs<half>(*dslash_param); }
+            {
+                ApplyWilsonDslash_Mrhs<half>(*dslash_param);
+            }
             break;
+
         case QcuPrecision::kPrecisionSingle:
             {
                 errorQcu("Not implemented yet\n");  // TODO
             }
             break;
         case QcuPrecision::kPrecisionDouble:
-            { ApplyWilsonDslash_Mrhs<double>(*dslash_param);}
+            {
+                ApplyWilsonDslash_Mrhs<double>(*dslash_param);
+            }
             break;
+
         default:
             {
-                errorQcu("Not implemented yet\n");  // TODO
+                errorQcu("Wrong Precision\n");  // TODO
             }
             break;
     }
     CHECK_CUDA(cudaStreamSynchronize(dslash_param->stream1));
-    // clang-format on
+
+
+
+
 }
 void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
     errorQcu("Not implemented yet\n");  // TODO

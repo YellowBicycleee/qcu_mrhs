@@ -95,7 +95,7 @@ void Qcu::get_dslash(DslashType dslashType, double mass) {
 
     switch (dslashType) {
         case DslashType::kDslashWilson:
-            dslash_ = std::make_shared<qcu::developing::WilsonDslash>(); // new WilsonDslash(dslash_param_);
+            dslash_ = std::make_shared<qcu::simt::WilsonDslash>(); // new WilsonDslash(dslash_param_);
             break;
 
         default: {
@@ -129,39 +129,8 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
         d_lookup_table_in_, underlying_args_.out_float_precision, *qcu::config::get_lattice_desc_ptr(),
         n_colors_, m_input_, NULL), 0, "gather");
     CHECK_CUDA(cudaDeviceSynchronize());
-
-    // real op
-    int mv_flops = (8 * n_colors_ - 2) * n_colors_; // (8 * in.Ncolor() - 2) * in.Ncolor();
-    int num_mv = Ns / 2;
-    double num_op = static_cast<double>(qcu::config::lattice_volume_local()) / 2 * m_input_ * (
-        2 * Nd * Ns * n_colors_ +
-        2 * Nd * num_mv * mv_flops +
-        (2 * Nd - 1) * Ns * n_colors_
-    );
-
-    [[maybe_unused]] double real_num_op = 0;
-    {
-        using namespace device;
-        int wmma_m = 8;
-        int wmma_n = 8;
-        int wmma_k = 4;
-        int warp_line = div_ceil(n_colors_, wmma_m);
-        int warp_col = div_ceil(m_input_, wmma_n);
-        
-        int gemm_flops = wmma_m * wmma_n * (8 * wmma_k - 2);
-
-        real_num_op = /*Lx * Ly * Lz * Lt*/
-            static_cast<double>(qcu::config::lattice_volume_local()) / 2 * 8 * warp_line * warp_col *(
-            // combination
-            double(2 * wmma_m * wmma_k * 2) + // 2个矩阵
-            // gemm
-            double(2 * gemm_flops) +        // 2个gemm
-            // add
-            double(4 * wmma_m * wmma_n * 2)  // 4个add
-        );
-    }
     
-    TIMER_EVENT(dslash_->apply(dslash_param_), num_op, "wilson dslash");
+    TIMER_EVENT(dslash_->apply(dslash_param_), dslash_->operations(), "wilson dslash");
     TIMER_EVENT(
         colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision, fermion_out_mrhs_,
             underlying_args_.compute_float_precision, *config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL), 0, "scatter");
@@ -184,7 +153,7 @@ void Qcu::mat_qcu (bool dagger_flag) {
     dslash_param_->fermion_in_MRHS = fermion_in_mrhs_;
     dslash_param_->fermion_out_MRHS = fermion_out_mrhs_;
 
-    Complex host_kappa = Complex<OutputFloat>(kappa_, 0);
+    Complex<OutputFloat> host_kappa = Complex<OutputFloat>(kappa_, 0);
     CHECK_CUDA(cudaMalloc(&device_kappa_, sizeof(Complex<OutputFloat>) ));
     CHECK_CUDA(cudaMemcpy(device_kappa_, &host_kappa, sizeof(Complex<OutputFloat>), cudaMemcpyHostToDevice));
 

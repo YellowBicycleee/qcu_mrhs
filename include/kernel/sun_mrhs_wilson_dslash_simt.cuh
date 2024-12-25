@@ -40,7 +40,7 @@ void single_point_wilson_dslash(
     FloatType_* __restrict__ out,
     FloatType_* __restrict__ in,
     FloatType_* __restrict__ gauge,
-    QcuLattDesc latt_desc, int multiprocess , int parity,
+    QcuLattDesc latt_desc, unsigned int multiprocess , int parity,
     bool dagger_flag, int n_color, int m_rhs, int coord_1dim, 
     FloatType_ kappa = 0, bool mat = false)
 {
@@ -95,8 +95,18 @@ void single_point_wilson_dslash(
             // even some points are out of range, we still need to calculate them,
             // otherwise, deadlock will happen
             for (int dim_dir = 0; dim_dir < Nd * DIRECTIONS; dim_dir++) {
+
                 int dir = dim_dir & 1;  // same with '% DIRECTIONS'
                 int dim = dim_dir >> 1; // same with '/ DIRECTIONS'
+
+                // for boundary check
+                if (multiprocess & (1 << dim)) {
+                    if ((dir == FWD && coord.at(dim) == latt_half_desc.at(dim) - 1)
+                        || (dir == BWD && coord.at(dim) == 0)
+                    ){
+                        continue;
+                    }
+                }
 
                 move_coord = coord.move(dir, dim, latt_half_desc);
 
@@ -187,7 +197,7 @@ void single_point_wilson_dslash(
 
             // store global memory
 #pragma unroll
-            for (int i = 0; i < Nd; ++i) {
+            for (int i = 0; i < Ns; ++i) {
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -211,7 +221,7 @@ void wilson_dslash_su_n_mrhs(
     FloatType_* __restrict__ out,
     FloatType_* __restrict__ in,
     FloatType_* __restrict__ gauge,
-    QcuLattDesc latt_desc, int multiprocess,
+    QcuLattDesc latt_desc, unsigned int multiprocess,
     int parity, bool dagger_flag, int n_color, int m_rhs) 
 {
     assert(BlockShape_::kM > 0 && BlockShape_::kN > 0 && BlockShape_::kK > 0);
