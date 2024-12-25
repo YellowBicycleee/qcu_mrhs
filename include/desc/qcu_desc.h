@@ -52,6 +52,15 @@ struct QcuProcDesc {  // process description, how many process in each dimension
             , grid->grid_size[Z_DIM], grid->grid_size[T_DIM] }
     {}
 
+    QCU_HOST_DEVICE int& at(int dim) {
+        assert(dim >= 0 && dim < Nd);
+        return data[dim];
+    }
+    QCU_HOST_DEVICE int at(int dim) const {
+        assert(dim >= 0 && dim < Nd);
+        return data[dim];
+    }
+
     QCU_HOST_DEVICE int X() const { return data[X_DIM]; }
     QCU_HOST_DEVICE int Y() const { return data[Y_DIM]; }
     QCU_HOST_DEVICE int Z() const { return data[Z_DIM]; }
