@@ -9,7 +9,7 @@
 
 namespace qcu {
 namespace config {
-
+unsigned int get_mpi_separated_mask ();
 bool set_config(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt);
 int lattice_volume_local();
 int lattice_volume_total();
