@@ -21,7 +21,7 @@ private:
 
 };
 
-namespace developing {
+namespace simt {
 
 class WilsonDslash : public Dslash {
 public:
@@ -37,6 +37,8 @@ private:
     void pre_apply(const std::shared_ptr<DslashParam>);
 
     void post_apply(const std::shared_ptr<DslashParam>);
+    void apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim);
+    void apply_ghost_pack(DslashParam& dslash_param, int ghost_dim);
 };
 
 }
