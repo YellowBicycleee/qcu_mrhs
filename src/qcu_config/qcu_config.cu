@@ -70,6 +70,10 @@ private:
 std::shared_ptr<QcuConfig> qcu_configuration(nullptr);
 
 
+unsigned int get_mpi_separated_mask () {
+    if (qcu_configuration) { return qcu_configuration->get_mpi_separated_mask(); }
+    else { errorQcu("Get parameters before configured\n"); }
+}
 
 bool set_config(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt){
     int mpi_comm_size;
