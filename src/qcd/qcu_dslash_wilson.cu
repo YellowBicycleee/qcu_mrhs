@@ -1,8 +1,9 @@
 #include <cuda_fp16.h>
 
-// #ifdef QCU_ARCH_WMMA_SM80_ENABLED
+// #define ENABLE_TENSOR_CORE_COMPILE
+#ifdef ENABLE_TENSOR_CORE_COMPILE
 #include "kernel/su_n_m_rhs_dslash.cuh"
-// #endif // QCU_ARCH_WMMA_SM80_ENABLED
+#endif // ENABLE_TENSOR_CORE_COMPILE
 
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_public.h"
@@ -16,6 +17,7 @@ template <typename Float>
 inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 {
 
+#ifdef ENABLE_TENSOR_CORE_COMPILE
     int half_vol = config::lattice_volume_local() / 2;
     int warp_num_per_block = kWarpPerBlock;
 
@@ -30,6 +32,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
         latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T(),
         proc_desc.X(), proc_desc.Y(), proc_desc.Z(), proc_desc.T(),
         dslash_param.parity, dslash_param.dagger_flag, dslash_param.n_color, dslash_param.m_input);
+#endif // ENABLE_TENSOR_CORE_COMPILE
 }
 
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
