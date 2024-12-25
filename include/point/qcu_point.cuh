@@ -97,7 +97,7 @@ public:
     QCU_DEVICE int Parity() const { return parity_; }
     QCU_DEVICE int& at(int dim) {
         if (dim < 0 || dim >= Nd) {
-            fprintf(stdout, "Error: dim is out of range\n");
+            printf("Error: dim is out of range\n");
             cuda_abort();
         }
         return dims[dim];
