@@ -4,7 +4,8 @@ project(QCU LANGUAGES C CXX CUDA) # project name = ${PROJECT_NAME}
 find_package(MPI REQUIRED)
 find_package(CUDA REQUIRED)
 
-include_directories(/usr/lib/x86_64-linux-gnu/openmpi/include)  
+# include_directories(/usr/lib/x86_64-linux-gnu/openmpi/include)  
+include_directories(${MPI_INCLUDE_PATH})
 set(CMAKE_CUDA_ARCHITECTURES 89)    # for 4060 laptop
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 17)
@@ -37,6 +38,7 @@ target_include_directories(qcu
     PUBLIC
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/external/qcu_io/include
+    ${MPI_INCLUDE_PATH}
     /usr/local/cuda/bin/../targets/x86_64-linux/include
 )
 
@@ -49,5 +51,5 @@ target_link_libraries(qcu
 	${MPI_LIBRARIES}
 )
 
-
+message("MPI_INCLUDE_PATH: ${MPI_INCLUDE_PATH}")
 add_subdirectory(tests)
