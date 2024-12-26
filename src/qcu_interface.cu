@@ -99,7 +99,7 @@ void Qcu::get_dslash(DslashType dslashType, double mass) {
                         default_dagger_flag, underlying_args_.compute_float_precision, n_colors_, m_input_,
                         QCU_PARITY::EVEN_PARITY, kappa_, fermion_in_mrhs_, fermion_out_mrhs_,
                         gauge, &(underlying_args_.lattice_desc_ptr), &(underlying_args_.process_desc_ptr),
-                        fermion_ghost_ptr
+                        nullptr, nullptr, fermion_ghost_ptr
                     );
 
     switch (dslashType) {
