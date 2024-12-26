@@ -26,7 +26,7 @@ inline void apply_sun_mrhs_dslash_forward_ghost_pack ( DslashParam& dslash_param
     int blk_y = BlockShape::kN;
 
     void* unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim);
-    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), min(num_threads, 65535));
+    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
     printf("SIMT dslash pack Beginning\n");
@@ -53,7 +53,7 @@ inline void apply_sun_mrhs_dslash_backward_ghost_pack ( DslashParam& dslash_para
     int blk_y = BlockShape::kN;
 
     void* unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim);
-    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), min(num_threads, 65535));
+    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
     printf("SIMT dslash pack Beginning\n");
@@ -124,9 +124,9 @@ void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) 
     int n_color = dslash_param.n_color;
     int half_vol = config::lattice_volume_local() / 2;
     double num_operations = static_cast<double>(half_vol * m_input * (
-        2 * Nd * Ns * n_color   // project
-        + 2 * Nd * Ns / 2 * (8 * n_color  - 2) * n_color  // GEMV
-        + (2 * Nd - 1) * Ns * n_color  // reconstruct
+        2.0 * Nd * Ns * n_color   // project
+        + 2.0 * Nd * Ns / 2 * (8.0 * n_color  - 2.0) * n_color  // GEMV
+        + (2.0 * Nd - 1.0) * Ns * n_color  // reconstruct
     ));
     operations_cur_ += num_operations;
     operations_total_ += num_operations;

@@ -23,7 +23,7 @@ inline void apply_sun_mrhs_dslash_forward_ghost_pack ( DslashParam& dslash_param
     int blk_y = BlockShape::kN;
 
     void* pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(2 * ghost_dim + FWD);
-    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), min(num_threads, 65535));
+    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
     printf("SIMT dslash pack Beginning\n");
@@ -48,7 +48,7 @@ inline void apply_sun_mrhs_dslash_backward_ghost_pack ( DslashParam& dslash_para
     int blk_y = BlockShape::kN;
 
     void* pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(2 * ghost_dim + BWD);
-    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), min(num_threads, 65535));
+    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
     printf("SIMT dslash pack Beginning\n");

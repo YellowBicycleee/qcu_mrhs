@@ -41,7 +41,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     int blk_x = BlockShape::kM;
     int blk_y = BlockShape::kN;
 
-    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), min(half_vol, 65535));
+    dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(half_vol, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
     printf("SIMT dslash Beginning\n");
