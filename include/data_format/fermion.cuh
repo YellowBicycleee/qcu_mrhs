@@ -66,9 +66,17 @@ struct FermionGhost {
 
                 ghost_len[i] = total_length / latt_desc_local.at(i);
             } else {
+                // forward and backward
+                ghost_pack_cell.push_back(nullptr);
                 ghost_pack_cell.push_back(nullptr);
                 ghost_unpack_cell.push_back(nullptr);
-                ghost_len[i] = total_length / latt_desc_local.at(i);
+                ghost_unpack_cell.push_back(nullptr);
+                // host forward and backward
+                host_ghost_pack_cell.push_back(nullptr);
+                host_ghost_pack_cell.push_back(nullptr);
+                host_ghost_unpack_cell.push_back(nullptr);
+                host_ghost_unpack_cell.push_back(nullptr);
+                ghost_len[i] = 0;
             }
         }
         assert(Ndim_ * 2 == ghost_pack_cell.size() && Ndim_ * 2 == ghost_unpack_cell.size());
