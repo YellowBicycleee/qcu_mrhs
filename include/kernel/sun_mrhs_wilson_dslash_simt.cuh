@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <cub/block/block_load.cuh>
 #include <kernel/precondition/eo_precondition.cuh>
 
 #include "base/datatype/qcu_complex.cuh"
@@ -39,7 +38,7 @@ QCU_DEVICE
 void single_point_wilson_dslash(
     FloatType_* __restrict__ out,
     FloatType_* __restrict__ in,
-    FloatType_* __restrict__ gauge,
+    FloatType_* __restrict__ gauge, 
     QcuLattDesc latt_desc, unsigned int multiprocess , int parity,
     bool dagger_flag, int n_color, int m_rhs, int coord_1dim, 
     FloatType_ kappa = 0, bool mat = false)

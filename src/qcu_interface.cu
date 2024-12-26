@@ -6,6 +6,7 @@
 
 #include "../tests/public_complex_vector.h"
 #include "check_error/check_cuda.cuh"
+#include "data_format/fermion.cuh"
 #include "data_format/qcu_data_format_shift.cuh"
 #include "io/lqcd_read_write.h"
 #include "precondition/even_odd_precondition.h"
@@ -86,11 +87,19 @@ void Qcu::get_dslash(DslashType dslashType, double mass) {
     mass_ = mass;
     kappa_ = (1.0 / (2.0 * (4.0 + mass)));
 
+    std::shared_ptr<qcu::FermionGhost<Nd>> fermion_ghost_ptr 
+        = std::make_shared<qcu::FermionGhost<Nd>>(
+            underlying_args_.lattice_desc_ptr, 
+            config::get_mpi_separated_mask(),
+            n_colors_, 
+            m_input_, 
+            underlying_args_.compute_float_precision);
     dslash_param_ = std::make_shared<DslashParam>//new DslashParam
                     (
                         default_dagger_flag, underlying_args_.compute_float_precision, n_colors_, m_input_,
                         QCU_PARITY::EVEN_PARITY, kappa_, fermion_in_mrhs_, fermion_out_mrhs_,
-                        gauge, &(underlying_args_.lattice_desc_ptr), &(underlying_args_.process_desc_ptr)
+                        gauge, &(underlying_args_.lattice_desc_ptr), &(underlying_args_.process_desc_ptr),
+                        fermion_ghost_ptr
                     );
 
     switch (dslashType) {
