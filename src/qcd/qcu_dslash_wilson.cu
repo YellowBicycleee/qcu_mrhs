@@ -36,7 +36,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 }
 
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
-
+    assert(dslash_param->fermion_ghost != nullptr);
     int m_input = dslash_param->m_input;
     int n_color = dslash_param->n_color;
     int half_vol = config::lattice_volume_local() / 2;
