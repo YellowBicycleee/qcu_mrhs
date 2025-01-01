@@ -24,11 +24,11 @@ static qcu::FourDimCoordinate mpi_coord {-1, -1, -1, -1};
 class QcuConfig {
 public:
     QcuConfig(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt)
-        : latt_vol_total(Lx * Ly * Lz * Lt)
-        , latt_vol_local((Lx * Ly * Lz * Lt) / (Gx * Gy * Gz * Gt))
+        : latt_vol_total(Lx * Ly * Lz * Lt * Gx * Gy * Gz * Gt)
+        , latt_vol_local(Lx * Ly * Lz * Lt)
         , mpi_comm_size(Gx * Gy * Gz * Gt)
-        , latt_desc(Lx, Ly, Lz, Lt)
-        , latt_desc_local(Lx / Gx, Ly / Gy, Lz / Gz, Lt / Gt)
+        , latt_desc(Lx * Gx, Ly * Gy, Lz * Gz, Lt * Gt)
+        , latt_desc_local(Lx, Ly, Lz, Lt)
         , mpi_desc(Gx, Gy, Gz, Gt)
     {
         if (Gx > 1) { mpi_separated_mask |= (1 << X_DIM); }

@@ -30,7 +30,7 @@ public:
         Arguments() : output(nullptr), input(nullptr) {}
 
         QCU_HOST_DEVICE
-        Arguments(_Tp_Output* output_, _Tp_Input* input) 
+        Arguments(_Tp_Output* output_, _Tp_Input* input_) 
             : output(output_), input(input_)
         {}
     };
