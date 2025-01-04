@@ -104,34 +104,34 @@ struct FermionGhost {
         }
     }
 
-    void* get_pack_buf_at(int dim) {
-        if (dim >= 0 && dim <= Ndim_) {
-            return ghost_pack_cell[dim];
+    void* get_pack_buf_at(int dim, int dir) {
+        if (dim >= 0 && dim <= Ndim_ && (dir == BWD || dir == FWD)) {
+            return ghost_pack_cell[dim * 2 + dir];
         }
         else {
             throw std::runtime_error("Dim out of range");
         }
     }
-    void* get_unpack_buf_at(int dim) {
-        if (dim >= 0 && dim <= Ndim_) {
-            return ghost_unpack_cell[dim];
+    void* get_unpack_buf_at(int dim, int dir) {
+        if (dim >= 0 && dim <= Ndim_ && (dir == BWD || dir == FWD)) {
+            return ghost_unpack_cell[dim * 2 + dir];
         }
         else {
             throw std::runtime_error("Dim out of range");
         }
     }
 
-    void* get_host_pack_buf_at(int dim) {
+    void* get_host_pack_buf_at(int dim, int dir) {
         if (dim >= 0 && dim <= Ndim_) {
-            return host_ghost_pack_cell[dim];
+            return host_ghost_pack_cell[dim * 2 + dir];
         }
         else {
             throw std::runtime_error("Dim out of range");
         }
     }
-    void* get_host_unpack_buf_at(int dim) {
+    void* get_host_unpack_buf_at(int dim, int dir) {
         if (dim >= 0 && dim <= Ndim_) {
-            return host_ghost_unpack_cell[dim];
+            return host_ghost_unpack_cell[dim * 2 + dir];
         }
         else {
             throw std::runtime_error("Dim out of range");
