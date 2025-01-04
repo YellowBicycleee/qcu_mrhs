@@ -105,7 +105,7 @@ void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
             if (i == X_DIM) {
                 errorQcu("Not implemented yet\n");  // TODO
             }
-            apply_ghost_pack(*dslash_param, i);
+            apply_ghost_unpack(*dslash_param, i);
         }
     }
 }
