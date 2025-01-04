@@ -22,7 +22,7 @@ inline void apply_sun_mrhs_dslash_forward_ghost_pack ( DslashParam& dslash_param
     int blk_x = BlockShape::kM;
     int blk_y = BlockShape::kN;
 
-    void* pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(2 * ghost_dim + FWD);
+    void* pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, FWD);
     dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
@@ -47,7 +47,7 @@ inline void apply_sun_mrhs_dslash_backward_ghost_pack ( DslashParam& dslash_para
     int blk_x = BlockShape::kM;
     int blk_y = BlockShape::kN;
 
-    void* pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(2 * ghost_dim + BWD);
+    void* pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, BWD);
     dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
@@ -73,7 +73,7 @@ void WilsonDslash::apply_ghost_pack(DslashParam& dslash_param, int ghost_dim) {
         }
         break;
         case QcuPrecision::kPrecisionDouble: {
-            apply_sun_mrhs_dslash_forward_ghost_pack<double>(dslash_param, ghost_dim);            apply_sun_mrhs_dslash_backward_ghost_pack<half>(dslash_param, ghost_dim);
+            apply_sun_mrhs_dslash_forward_ghost_pack<double>(dslash_param, ghost_dim);
             apply_sun_mrhs_dslash_backward_ghost_pack<double>(dslash_param, ghost_dim);
         }
         break;
@@ -115,8 +115,8 @@ void WilsonDslash::apply_ghost_pack(DslashParam& dslash_param, int ghost_dim) {
     };
     const int byte_size = dslash_param.fermion_ghost->ghost_len[ghost_dim] * type_size;
 
-    void* device_pack_buf_fwd = dslash_param.fermion_ghost->get_pack_buf_at(2 * ghost_dim + FWD);
-    void* host_pack_buf_fwd = dslash_param.fermion_ghost->get_host_pack_buf_at(2 * ghost_dim + BWD);
+    void* device_pack_buf_fwd = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, FWD);
+    void* host_pack_buf_fwd = dslash_param.fermion_ghost->get_host_pack_buf_at(ghost_dim, FWD);
     cudaMemcpy(host_pack_buf_fwd, device_pack_buf_fwd, byte_size, cudaMemcpyDeviceToHost);
     MPI_Send(
         host_pack_buf_fwd,
@@ -126,8 +126,8 @@ void WilsonDslash::apply_ghost_pack(DslashParam& dslash_param, int ghost_dim) {
         BWD,
         MPI_COMM_WORLD);
 
-    void* device_pack_buf_bwd = dslash_param.fermion_ghost->get_pack_buf_at(2 * ghost_dim + BWD);
-    void* host_pack_buf_bwd = dslash_param.fermion_ghost->get_host_pack_buf_at(2 * ghost_dim + BWD);
+    void* device_pack_buf_bwd = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, BWD);
+    void* host_pack_buf_bwd = dslash_param.fermion_ghost->get_host_pack_buf_at(ghost_dim, BWD);
     cudaMemcpy(host_pack_buf_bwd, device_pack_buf_bwd, byte_size, cudaMemcpyDeviceToHost);
     MPI_Send(
         host_pack_buf_bwd,

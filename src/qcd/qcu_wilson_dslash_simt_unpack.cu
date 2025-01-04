@@ -14,7 +14,7 @@
 namespace qcu::simt {
 
 template <typename Float_>
-inline void apply_sun_mrhs_dslash_forward_ghost_pack ( DslashParam& dslash_param, int ghost_dim) {
+inline void apply_sun_mrhs_dslash_forward_ghost_unpack ( DslashParam& dslash_param, int ghost_dim) {
     using BlockShape = gemm::GemmShape<8, 8, 8>;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
@@ -25,7 +25,7 @@ inline void apply_sun_mrhs_dslash_forward_ghost_pack ( DslashParam& dslash_param
     int blk_x = BlockShape::kM;
     int blk_y = BlockShape::kN;
 
-    void* unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim);
+    void* unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, FWD);
     dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
@@ -41,7 +41,7 @@ inline void apply_sun_mrhs_dslash_forward_ghost_pack ( DslashParam& dslash_param
 }
 
 template <typename Float_>
-inline void apply_sun_mrhs_dslash_backward_ghost_pack ( DslashParam& dslash_param, int ghost_dim) {
+inline void apply_sun_mrhs_dslash_backward_ghost_unpack ( DslashParam& dslash_param, int ghost_dim) {
     using BlockShape = gemm::GemmShape<8, 8, 8>;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
@@ -52,7 +52,7 @@ inline void apply_sun_mrhs_dslash_backward_ghost_pack ( DslashParam& dslash_para
     int blk_x = BlockShape::kM;
     int blk_y = BlockShape::kN;
 
-    void* unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim);
+    void* unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, BWD);
     dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
@@ -96,8 +96,8 @@ void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) 
     };
     const int byte_size = dslash_param.fermion_ghost->ghost_len[ghost_dim] * type_size;
 
-    void* device_unpack_buf_fwd = dslash_param.fermion_ghost->get_unpack_buf_at(2 * ghost_dim + FWD);
-    void* host_unpack_buf_fwd = dslash_param.fermion_ghost->get_host_unpack_buf_at(2 * ghost_dim + BWD);
+    void* device_unpack_buf_fwd = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, FWD);
+    void* host_unpack_buf_fwd = dslash_param.fermion_ghost->get_host_unpack_buf_at(ghost_dim, FWD);
     MPI_Recv(
         host_unpack_buf_fwd,
         byte_size,
@@ -108,8 +108,8 @@ void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) 
         MPI_STATUS_IGNORE);
     cudaMemcpy(device_unpack_buf_fwd, host_unpack_buf_fwd, byte_size, cudaMemcpyHostToDevice);
 
-    void* device_unpack_buf_bwd = dslash_param.fermion_ghost->get_unpack_buf_at(2 * ghost_dim + BWD);
-    void* host_unpack_buf_bwd = dslash_param.fermion_ghost->get_host_unpack_buf_at(2 * ghost_dim + BWD);
+    void* device_unpack_buf_bwd = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, BWD);
+    void* host_unpack_buf_bwd = dslash_param.fermion_ghost->get_host_unpack_buf_at(ghost_dim, BWD);
     MPI_Recv(
         host_unpack_buf_bwd,
         byte_size,
@@ -133,18 +133,18 @@ void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) 
 
     switch (dslash_param.dslash_precision) {
         case QcuPrecision::kPrecisionHalf: {
-            apply_sun_mrhs_dslash_forward_ghost_pack<half>(dslash_param, ghost_dim);
-            apply_sun_mrhs_dslash_backward_ghost_pack<half>(dslash_param, ghost_dim);
+            apply_sun_mrhs_dslash_forward_ghost_unpack<half>(dslash_param, ghost_dim);
+            apply_sun_mrhs_dslash_backward_ghost_unpack<half>(dslash_param, ghost_dim);
         }
         break;
         case QcuPrecision::kPrecisionSingle: {
-            apply_sun_mrhs_dslash_forward_ghost_pack<float>(dslash_param, ghost_dim);
-            apply_sun_mrhs_dslash_backward_ghost_pack<float>(dslash_param, ghost_dim);
+            apply_sun_mrhs_dslash_forward_ghost_unpack<float>(dslash_param, ghost_dim);
+            apply_sun_mrhs_dslash_backward_ghost_unpack<float>(dslash_param, ghost_dim);
         }
         break;
         case QcuPrecision::kPrecisionDouble: {
-            apply_sun_mrhs_dslash_forward_ghost_pack<double>(dslash_param, ghost_dim);            apply_sun_mrhs_dslash_backward_ghost_pack<half>(dslash_param, ghost_dim);
-            apply_sun_mrhs_dslash_backward_ghost_pack<double>(dslash_param, ghost_dim);
+            apply_sun_mrhs_dslash_forward_ghost_unpack<double>(dslash_param, ghost_dim);
+            apply_sun_mrhs_dslash_backward_ghost_unpack<double>(dslash_param, ghost_dim);
         }
         break;
         default:
