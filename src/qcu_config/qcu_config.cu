@@ -80,7 +80,7 @@ bool set_config(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt){
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &mpi_comm_size));
     assert(mpi_comm_size == Gx * Gy * Gz * Gt);
 
-    // lattice_desc = qcu::QcuLattDesc(Lx, Ly, Lz, Lt);
+    lattice_desc = qcu::QcuLattDesc(Lx, Ly, Lz, Lt);
     process_desc = qcu::QcuProcDesc(Gx, Gy, Gz, Gt);
 
     qcu_configuration = std::make_shared<QcuConfig>(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt);
