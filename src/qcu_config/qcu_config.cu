@@ -18,7 +18,7 @@ constexpr int kQcuCudaStreamNum = 9;  // 4 dim * 2 dir (0 ~ 7) + 1 central strea
 static std::vector<cudaStream_t> stream_pack;
 static qcu::QcuLattDesc lattice_desc; // record the lattice size in single process (rather than total lattice)
 static qcu::QcuProcDesc process_desc;
-static qcu::FourDimCoordinate mpi_coord {-1, -1, -1, -1};
+// static qcu::FourDimCoordinate mpi_coord {-1, -1, -1, -1};
 
 // assume: single thread setting
 class QcuConfig {
@@ -80,7 +80,7 @@ bool set_config(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt){
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &mpi_comm_size));
     assert(mpi_comm_size == Gx * Gy * Gz * Gt);
 
-    lattice_desc = qcu::QcuLattDesc(Lx, Ly, Lz, Lt);
+    // lattice_desc = qcu::QcuLattDesc(Lx, Ly, Lz, Lt);
     process_desc = qcu::QcuProcDesc(Gx, Gy, Gz, Gt);
 
     qcu_configuration = std::make_shared<QcuConfig>(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt);
@@ -106,7 +106,8 @@ qcu::QcuProcDesc* get_process_desc_ptr() {
 }
 
 qcu::FourDimCoordinate get_mpi_coord() {
-    return mpi_coord;
+    assert(qcu_configuration != nullptr);
+    return qcu_configuration->get_mpi_coord();
 }
 
 qcu::FourDimDesc get_mpi_desc() {
