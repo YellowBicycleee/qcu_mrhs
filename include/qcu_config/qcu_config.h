@@ -3,12 +3,15 @@
 #include <vector>
 
 #include <cuda_runtime.h>
-
+#include <mpi.h>
 #include "desc/qcu_desc.h"
 #include "lattice_desc.h"
 
 namespace qcu {
 namespace config {
+MPI_Request& get_mpi_request_pack(int dim, int dir);
+MPI_Request& get_mpi_request_unpack(int dim, int dir);
+
 unsigned int get_mpi_separated_mask ();
 bool set_config(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt);
 int lattice_volume_local();

@@ -18,6 +18,17 @@ constexpr int kQcuCudaStreamNum = 9;  // 4 dim * 2 dir (0 ~ 7) + 1 central strea
 static std::vector<cudaStream_t> stream_pack;
 static qcu::QcuLattDesc lattice_desc; // record the lattice size in single process (rather than total lattice)
 static qcu::QcuProcDesc process_desc;
+
+static std::vector<MPI_Request> mpi_request_pack = std::vector<MPI_Request>(8);
+static std::vector<MPI_Request> mpi_request_unpack = std::vector<MPI_Request>(8);
+
+MPI_Request& get_mpi_request_pack(int dim, int dir) {
+    return mpi_request_pack[2 * dim + dir];
+}
+MPI_Request& get_mpi_request_unpack(int dim, int dir) {
+    return mpi_request_unpack[2 * dim + dir];
+}
+
 // static qcu::FourDimCoordinate mpi_coord {-1, -1, -1, -1};
 
 // assume: single thread setting
