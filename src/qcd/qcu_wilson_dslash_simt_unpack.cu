@@ -80,23 +80,26 @@ void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) 
     const int byte_size = dslash_param.fermion_ghost->ghost_len[ghost_dim] * type_size;
 
     void* device_unpack_buf_fwd = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, FWD);
-    void* host_unpack_buf_fwd = dslash_param.fermion_ghost->get_host_unpack_buf_at(ghost_dim, FWD);
-
-    CHECK_MPI(
-        MPI_Recv(host_unpack_buf_fwd, byte_size, MPI_BYTE, mpi_coord_forward.getIdx1D(mpi_desc),
-            FWD, MPI_COMM_WORLD, MPI_STATUS_IGNORE)
-    );
-
-    CHECK_CUDA(cudaMemcpy(device_unpack_buf_fwd, host_unpack_buf_fwd, byte_size, cudaMemcpyHostToDevice));
-
     void* device_unpack_buf_bwd = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, BWD);
+    void* host_unpack_buf_fwd = dslash_param.fermion_ghost->get_host_unpack_buf_at(ghost_dim, FWD);
     void* host_unpack_buf_bwd = dslash_param.fermion_ghost->get_host_unpack_buf_at(ghost_dim, BWD);
 
     CHECK_MPI(
-        MPI_Recv(host_unpack_buf_bwd, byte_size, MPI_BYTE, mpi_coord_backward.getIdx1D(mpi_desc),
-            BWD, MPI_COMM_WORLD, MPI_STATUS_IGNORE)
+        MPI_Irecv(host_unpack_buf_fwd, byte_size, MPI_BYTE, mpi_coord_forward.getIdx1D(mpi_desc),
+            FWD, MPI_COMM_WORLD, &config::get_mpi_request_unpack(ghost_dim, FWD))
     );
-        cudaMemcpy(device_unpack_buf_bwd, host_unpack_buf_bwd, byte_size, cudaMemcpyHostToDevice);
+
+    CHECK_MPI(
+        MPI_Irecv(host_unpack_buf_bwd, byte_size, MPI_BYTE, mpi_coord_backward.getIdx1D(mpi_desc),
+            BWD, MPI_COMM_WORLD, &config::get_mpi_request_unpack(ghost_dim, BWD))
+    );
+
+    CHECK_MPI(MPI_Wait(&config::get_mpi_request_pack(ghost_dim, FWD), MPI_STATUS_IGNORE));
+    CHECK_MPI(MPI_Wait(&config::get_mpi_request_pack(ghost_dim, BWD), MPI_STATUS_IGNORE));
+    CHECK_MPI(MPI_Wait(&config::get_mpi_request_unpack(ghost_dim, FWD), MPI_STATUS_IGNORE));
+    CHECK_MPI(MPI_Wait(&config::get_mpi_request_unpack(ghost_dim, BWD), MPI_STATUS_IGNORE));
+    CHECK_CUDA(cudaMemcpy(device_unpack_buf_fwd, host_unpack_buf_fwd, byte_size, cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(device_unpack_buf_bwd, host_unpack_buf_bwd, byte_size, cudaMemcpyHostToDevice));
 
     const int m_input = dslash_param.m_input;
     const int n_color = dslash_param.n_color;

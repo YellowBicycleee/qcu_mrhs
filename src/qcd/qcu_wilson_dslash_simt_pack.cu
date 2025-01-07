@@ -94,12 +94,23 @@ void WilsonDslash::apply_ghost_pack(DslashParam& dslash_param, int ghost_dim) {
     void* host_pack_buf_fwd = dslash_param.fermion_ghost->get_host_pack_buf_at(ghost_dim, FWD);
 
     CHECK_CUDA(cudaMemcpy(host_pack_buf_fwd, device_pack_buf_fwd, byte_size, cudaMemcpyDeviceToHost));
-    CHECK_MPI(MPI_Send(host_pack_buf_fwd, byte_size, MPI_BYTE, mpi_coord_forward.getIdx1D(mpi_desc), BWD, MPI_COMM_WORLD));
+    // CHECK_MPI(MPI_Send(host_pack_buf_fwd, byte_size, MPI_BYTE, mpi_coord_forward.getIdx1D(mpi_desc), BWD, MPI_COMM_WORLD));
+
+    CHECK_MPI(
+        MPI_Isend(host_pack_buf_fwd, byte_size, MPI_BYTE, mpi_coord_forward.getIdx1D(mpi_desc),
+            BWD, MPI_COMM_WORLD, &config::get_mpi_request_pack(ghost_dim, FWD))
+    );
+
 
     void* device_pack_buf_bwd = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, BWD);
     void* host_pack_buf_bwd = dslash_param.fermion_ghost->get_host_pack_buf_at(ghost_dim, BWD);
     CHECK_CUDA(cudaMemcpy(host_pack_buf_bwd, device_pack_buf_bwd, byte_size, cudaMemcpyDeviceToHost));
-    CHECK_MPI(MPI_Send(host_pack_buf_bwd, byte_size, MPI_BYTE, mpi_coord_backward.getIdx1D(mpi_desc), FWD, MPI_COMM_WORLD));
+    // CHECK_MPI(MPI_Send(host_pack_buf_bwd, byte_size, MPI_BYTE, mpi_coord_backward.getIdx1D(mpi_desc), FWD, MPI_COMM_WORLD));
+
+    CHECK_MPI(
+        MPI_Isend(host_pack_buf_bwd, byte_size, MPI_BYTE, mpi_coord_backward.getIdx1D(mpi_desc),
+            FWD, MPI_COMM_WORLD, &config::get_mpi_request_pack(ghost_dim, BWD))
+        );
 }
 /*
 template <typename Float_>
