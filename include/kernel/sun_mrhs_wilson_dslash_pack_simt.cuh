@@ -143,8 +143,8 @@ void single_point_wilson_dslash_forward_ghost_pack(
             Float2* glb_out = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredColorSpinorAddr(temp_out, sub_space_half_desc, n_color, m_rhs));
 
             // epilogue, store into global memory
-            #pragma unroll
-            for (int i = 0; i < Nd / 2; ++i) {
+#pragma unroll
+            for (int i = 0; i < Ns / 2; ++i) {
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -170,37 +170,25 @@ void single_point_wilson_dslash_backward_ghost_pack(
     QcuLattDesc latt_desc, int ghost_dim , int parity,
     bool dagger_flag, int n_color, int m_rhs, int coord_1dim)
 {
-    using GaugeMatShape = gemm::MatShape<BlockShape_::kM, BlockShape_::kK>;
     using FermionMatShape = gemm::MatShape<BlockShape_::kK, BlockShape_::kN>;
-    constexpr int A_Shape = GaugeMatShape::kMN;
-    constexpr int B_Shape = FermionMatShape::kMN;
-    constexpr int dir = FWD; // send to forward, but from unpack process, it is from backward
 
+    constexpr int dir = FWD; // send to forward, but from unpack process, it is from backward
     if (ghost_dim < 0 || ghost_dim >= Nd) {
         printf("Error: ghost_dim is out of range\n");
         cuda_abort();
     }
 
     const int fermion_site_length = n_color * m_rhs;
-
-    __shared__ Float2 smem_A[Stages][A_Shape];
-    __shared__ Float2 smem_B[Stages][B_Shape * 2];
-
-    // ldg_A and ldg_B are used to load A and B from global memory
-    Complex ldg_A[1];
-    Complex ldg_B[1];
-
     Complex temp_res[2][1]; // store temp_res into register, then stg to global memory
 
-    // 4-dim lattice desc
-    QcuLattDesc latt_half_desc{latt_desc.X() >> 1, latt_desc.Y(), latt_desc.Z(), latt_desc.T()};
-    // 3-dim sub-space lattice desc
-    QcuLattDesc sub_space_half_desc {latt_half_desc};
+    QcuLattDesc latt_half_desc{latt_desc.X() >> 1, latt_desc.Y(), latt_desc.Z(), latt_desc.T()}; // 4-dim lattice desc
+    QcuLattDesc sub_space_half_desc {latt_half_desc}; // 3-dim sub-space lattice desc
     if (ghost_dim > 0 && ghost_dim < Nd) {
         sub_space_half_desc.at(ghost_dim) = 1; // a 3-dim desc hyperplane of 4 dim space
     }
     else {
         printf("X dim not implemented yet\n");
+        cuda_abort();
     }
 
     Point sub_latt_coord {
@@ -212,8 +200,7 @@ void single_point_wilson_dslash_backward_ghost_pack(
     };
 
     Point coord {sub_latt_coord};
-    // send to forward
-    if constexpr (dir == FWD) {  coord.at(ghost_dim) = 0; }
+    if constexpr (dir == FWD) {  coord.at(ghost_dim) = 0; } // send to backward
     else { printf("Direction Wrong\n"); cuda_abort(); }
 
     int32_t mat1_pos;
@@ -244,15 +231,27 @@ void single_point_wilson_dslash_backward_ghost_pack(
                 gemm::ldg_fermion<FloatType_, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<FloatType_*>(glb_B + mat1_pos * fermion_site_length),
                     reinterpret_cast<FloatType_*>(glb_B + mat2_pos * fermion_site_length),
-                    n_color, m_rhs, scale, row, col, reinterpret_cast<Float2_t<FloatType_> *>(ldg_B));
+                    n_color, m_rhs, scale, row, col, reinterpret_cast<Float2_t<FloatType_> *>(temp_res[pos]));
 
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + pos * n_color * m_rhs,
                     n_color, m_rhs, row, col,
                     reinterpret_cast<Float2*>(temp_res[pos]));
 
+                // debug
+                if (threadIdx.x == 0 && threadIdx.y == 0 && blockIdx.z == 0) {
+                    Float2* start_ptr = reinterpret_cast<Float2*>(glb_out);
+                    for (int i = 0; i < n_color; ++i) {
+                        for (int j = 0; j < m_rhs; ++j) {
+                            printf("(%e, %e) ",
+                                start_ptr[i * FermionMatShape::kN + j].x,
+                                start_ptr[i * FermionMatShape::kN + j].y);
+                        }
+                        printf("\n");
+                    }
+                }
+                // end debug
             }
-
         }
     }
 }
@@ -310,4 +309,4 @@ void wilson_dslash_sun_mrhs_forward_ghost_pack(
             temp_out, in, gauge, latt_desc, ghost_dim, parity, dagger_flag, n_color, m_rhs, idx);
     }
 } // function wilson_dslash_su_n_mrhs_ghost
-} // namespace qcu::device
+} // namespace qcu
