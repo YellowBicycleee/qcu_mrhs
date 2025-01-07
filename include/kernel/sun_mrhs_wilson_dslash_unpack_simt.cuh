@@ -4,8 +4,6 @@
 #include "qcu_utils.h"
 #include "kernel/gemm/qcu_gemm_configure.cuh"
 #include "kernel/gemm/qcu_gemm_loader.cuh"
-#include "kernel/gemm/qcu_gemm_threadblock_idx.cuh"
-#include "base/datatype/qcu_complex.cuh"
 #include "base/datatype/qcu_float2.cuh"
 #include "desc/qcu_desc.h"
 #include "cuda_utils.cuh"
@@ -55,8 +53,7 @@ void single_point_wilson_dslash_t_forward_ghost_unpack(
 
     // 4-dim lattice desc
     QcuLattDesc latt_half_desc{latt_desc.X() >> 1, latt_desc.Y(), latt_desc.Z(), latt_desc.T()};
-    // 3-dim sub-space lattice desc
-    QcuLattDesc sub_space_half_desc {latt_half_desc};
+    QcuLattDesc sub_space_half_desc {latt_half_desc}; // 3-dim sub-space lattice desc
     if (ghost_dim > 0 && ghost_dim < Nd) {
         sub_space_half_desc.at(ghost_dim) = 1; // a 3-dim desc hyperplane of 4 dim space
     }
@@ -73,8 +70,8 @@ void single_point_wilson_dslash_t_forward_ghost_unpack(
     };
 
     Point coord {sub_latt_coord};
-    // send to forward
-    if (dir == FWD) {  coord.at(ghost_dim) = latt_half_desc.at(ghost_dim) - 1; }
+
+    if (dir == FWD) {  coord.at(ghost_dim) = latt_half_desc.at(ghost_dim) - 1; } // recv from forward
     else { printf("Direction Wrong\n");  cuda_abort(); }
 
     int32_t mat1_pos;
@@ -108,16 +105,17 @@ void single_point_wilson_dslash_t_forward_ghost_unpack(
 
             // main loop
             for (int k = 0; k < n_color; k += BlockShape_::kK) {
-                /// load Gauge
+                // load Gauge
                 gemm::ldg<Float2, gemm::MatShapeTranspose<GaugeMatShape>, BlockShape_, WarpShape_>
                     (glb_A, n_color, n_color, k, row, reinterpret_cast<Float2*>(ldg_A));
                 // dagger
+#pragma unroll
                 for (int i = 0; i < sizeof(ldg_A) / sizeof(Complex); i++) { ldg_A[i] = ldg_A[i].conj(); }
                 gemm::sts_transpose<Float2, GaugeMatShape, BlockShape_, WarpShape_> (smem_A[0], reinterpret_cast<Float2*>(ldg_A));
                 __syncthreads();
 
-                /// load Fermion
-                #pragma unroll
+                // load Fermion
+#pragma unroll
                 for (int pos = 0; pos < 2; ++pos) {
                     if (row < n_color && col < m_rhs) {
                         mat1_pos = pos;
@@ -133,7 +131,6 @@ void single_point_wilson_dslash_t_forward_ghost_unpack(
                     gemm::sts_direct<Float2, FermionMatShape, BlockShape_, WarpShape_>
                             (&smem_B[0][pos * B_Shape], reinterpret_cast<Float2*>(ldg_B));
                 }
-
                 __syncthreads();
 
                 // gemm, MMA
@@ -190,19 +187,12 @@ void single_point_wilson_dslash_t_backward_ghost_unpack(
 {
     using GaugeMatShape = gemm::MatShape<BlockShape_::kM, BlockShape_::kK>;
     using FermionMatShape = gemm::MatShape<BlockShape_::kK, BlockShape_::kN>;
-    constexpr int A_Shape = GaugeMatShape::kMN;
-    constexpr int B_Shape = FermionMatShape::kMN;
     constexpr int dir = BWD; // send to forward, but from unpack process, it is from backward
 
     if (ghost_dim < 0 || ghost_dim >= Nd) {
         printf("Error: ghost_dim is out of range\n");
         cuda_abort();
     }
-
-    // const int fermion_site_length = n_color * m_rhs;
-
-    __shared__ Float2 smem_A[Stages][A_Shape];
-    __shared__ Float2 smem_B[Stages][B_Shape * 2];
 
     // ldg_A and ldg_B are used to load A and B from global memory
     Complex ldg_A[1];
@@ -211,15 +201,14 @@ void single_point_wilson_dslash_t_backward_ghost_unpack(
     Complex temp_res[2][1]; // store temp_res into register, then stg to global memory
     Complex res[4][1];
 
-    // 4-dim lattice desc
-    QcuLattDesc latt_half_desc{latt_desc.X() >> 1, latt_desc.Y(), latt_desc.Z(), latt_desc.T()};
-    // 3-dim sub-space lattice desc
-    QcuLattDesc sub_space_half_desc {latt_half_desc};
+    QcuLattDesc latt_half_desc{latt_desc.X() >> 1, latt_desc.Y(), latt_desc.Z(), latt_desc.T()}; // 4-dim lattice desc
+    QcuLattDesc sub_space_half_desc {latt_half_desc}; // 3-dim sub-space lattice desc
     if (ghost_dim > 0 && ghost_dim < Nd) {
         sub_space_half_desc.at(ghost_dim) = 1; // a 3-dim desc hyperplane of 4 dim space
     }
     else {
         printf("X dim not implemented yet\n");
+        cuda_abort();
     }
 
     Point sub_latt_coord {
@@ -231,10 +220,8 @@ void single_point_wilson_dslash_t_backward_ghost_unpack(
     };
 
     Point coord {sub_latt_coord};
-    // send to forward
-    if (dir == BWD) {  coord.at(ghost_dim) = latt_half_desc.at(ghost_dim) - 1; }
+    if (dir == BWD) {  coord.at(ghost_dim) = 0; } // recv from backward
     else { printf("Direction Wrong\n");  cuda_abort(); }
-
 
     int32_t blocks_m = div_ceil(n_color, BlockShape_::kM);
     int32_t blocks_n = div_ceil(m_rhs, BlockShape_::kN);
@@ -257,15 +244,13 @@ void single_point_wilson_dslash_t_backward_ghost_unpack(
                     reinterpret_cast<Float2*>(res[i]));
             }
 
-            // calculate start addr of global A and B
-            // FWD in pack, BWD in unpack
             Float2* glb_B = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredColorSpinorAddr(temp_in, sub_space_half_desc, n_color, m_rhs));
 
             for (int i = 0; i < Ns / 2; ++i) {
                 gemm::ldg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_B) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
-                    reinterpret_cast<Float2*>(res[i]));
+                    reinterpret_cast<Float2*>(temp_res[i]));
             }
 
             // add to res
