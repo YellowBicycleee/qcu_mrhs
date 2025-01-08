@@ -1,12 +1,14 @@
 #include <cuda_fp16.h>
 
 #include "check_error/check_cuda.cuh"
+#include "kernel/gemm/qcu_gemm_configure.cuh"
 #include "kernel/sun_mrhs_wilson_dslash_simt.cuh"
 #include "kernel/sun_mrhs_wilson_dslash_pack_simt.cuh"
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_base/qcu_alloc.h"
 #include "qcu_config/qcu_config.h"
 #include "qcu_public.h"
+#include "qcu_utils.h"
 #include "cuda_utils.cuh"
 
 #include "qcu_base/qcu_base.h"

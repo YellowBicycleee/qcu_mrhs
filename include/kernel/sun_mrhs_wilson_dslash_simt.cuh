@@ -10,7 +10,7 @@
 #include "kernel/gemm/qcu_gemm_configure.cuh"
 #include "kernel/gemm/qcu_gemm_loader.cuh"
 #include "kernel/qcu_gamma.cuh"
-#include "kernel/su_n_m_rhs_matmul.cuh"
+#include "qcu_utils.h"
 #include "point/qcu_point.cuh"
 #include "qcu_helper.h"
 namespace qcu {
