@@ -18,8 +18,9 @@ struct FermionGhost {
         qcu::QcuLattDesc const& latt_desc_local,
         unsigned int multiprogress_mask,
         int n_color, int m_rhs, QcuPrecision precision)
-    {
-        size_t total_length = latt_desc_local.lattice_volume() * Ns * n_color * m_rhs;
+    {   // lattice_volume() / 2 : even odd precondition
+        // Ns / 2 : projection
+        size_t total_length = latt_desc_local.lattice_volume() / 2 * Ns / 2 * n_color * m_rhs;
         size_t size_complex = 0;
         switch (precision) {
             case QcuPrecision::kPrecisionHalf:
@@ -143,7 +144,7 @@ struct FermionGhost {
     std::vector<void*> ghost_unpack_cell;
     std::vector<void*> host_ghost_pack_cell;
     std::vector<void*> host_ghost_unpack_cell;
-    std::array<size_t, Nd * 2> ghost_len;
+    std::array<size_t, Nd> ghost_len;
 };
 
 
