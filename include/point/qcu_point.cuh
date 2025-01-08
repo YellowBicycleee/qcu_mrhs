@@ -86,6 +86,19 @@ public:
         return getGatheredColorSpinorAddr(base_pc, half_desc.X(), half_desc.Y(), half_desc.Z(), half_desc.T(), n_color, m_input);
     }
 
+    // Ns / 2 * n_color * m_input
+    template <typename Float>
+    QCU_DEVICE Float* getGatheredHalfColorSpinorAddr (Float* base_pc, int half_Lx, int Ly, int Lz, int Lt,
+                                                    int n_color, int m_input) const {
+        return base_pc + 2 * (get_1d_idx(half_Lx, Ly, Lz) * m_input * Ns / 2 * n_color);
+    }
+    template <typename Float>
+    QCU_DEVICE Float* getGatheredHalfColorSpinorAddr (Float* base_pc, qcu::QcuLattDesc &half_desc,
+                                                    int n_color, int m_input) const {
+        return getGatheredHalfColorSpinorAddr(base_pc, half_desc.X(), half_desc.Y(), half_desc.Z(), half_desc.T(), n_color, m_input);
+    }
+
+
     QCU_DEVICE int get_1d_idx (int half_Lx, int Ly, int Lz) const {
         return IDX4D(T(), Z(), Y(), X(), Lz, Ly, half_Lx);
     }
