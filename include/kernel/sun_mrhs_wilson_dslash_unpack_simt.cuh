@@ -101,7 +101,7 @@ void single_point_wilson_dslash_t_forward_ghost_unpack(
             // calculate start addr of global A and B
             // FWD in pack, BWD in unpack
             Float2* glb_A = reinterpret_cast<Float2 *>(coord.getGaugeAddr(gauge, ghost_dim, latt_half_desc, n_color));
-            Float2* glb_B = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredColorSpinorAddr(temp_in, sub_space_half_desc, n_color, m_rhs));
+            Float2* glb_B = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredHalfColorSpinorAddr(temp_in, sub_space_half_desc, n_color, m_rhs));
 
             // main loop
             for (int k = 0; k < n_color; k += BlockShape_::kK) {
@@ -244,7 +244,7 @@ void single_point_wilson_dslash_t_backward_ghost_unpack(
                     reinterpret_cast<Float2*>(res[i]));
             }
 
-            Float2* glb_B = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredColorSpinorAddr(temp_in, sub_space_half_desc, n_color, m_rhs));
+            Float2* glb_B = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredHalfColorSpinorAddr(temp_in, sub_space_half_desc, n_color, m_rhs));
 
             for (int i = 0; i < Ns / 2; ++i) {
                 gemm::ldg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
