@@ -74,7 +74,10 @@ void single_point_wilson_dslash_forward_ghost_pack(
 
     Point coord {sub_latt_coord};
     // send to forward
-    if constexpr (dir == BWD) {  coord.at(ghost_dim) = latt_half_desc.at(ghost_dim) - 1; }
+    if constexpr (dir == BWD) {
+        coord.at(ghost_dim) = latt_half_desc.at(ghost_dim) - 1;
+        coord.setParity(1 - parity);
+    }
     else { printf("Direction Wrong\n"); cuda_abort(); }
     int32_t mat1_pos;
     int32_t mat2_pos;
@@ -150,6 +153,23 @@ void single_point_wilson_dslash_forward_ghost_pack(
                     n_color, m_rhs, row, col,
                     reinterpret_cast<Float2*>(temp_res[i]));
             }
+            // debug
+            int half_vol = latt_desc.half_lattice_volume() / latt_desc.at(ghost_dim);
+            if (threadIdx.x == 0 && threadIdx.y == 0 && coord_1dim == half_vol - 1) {
+                printf("IN CUDA KERNEL, PACKING, FWD\n");
+                Float2* start_ptr = reinterpret_cast<Float2*>(glb_out);
+                for (int i = 0; i < n_color * 2; ++i) {
+                    for (int j = 0; j < m_rhs; ++j) {
+                        printf("(%e, %e) ",
+                            start_ptr[i * m_rhs + j].x,
+                            start_ptr[i * m_rhs + j].y);
+                    }
+                    printf("\n");
+                }
+
+                printf("num191: (%e, %e)\n", reinterpret_cast<Float2*>(temp_out)[191].x, reinterpret_cast<Float2*>(temp_out)[191].y);
+            }
+            // end debug
         }
     }
 }
@@ -200,7 +220,10 @@ void single_point_wilson_dslash_backward_ghost_pack(
     };
 
     Point coord {sub_latt_coord};
-    if constexpr (dir == FWD) {  coord.at(ghost_dim) = 0; } // send to backward
+    if constexpr (dir == FWD) {
+        coord.at(ghost_dim) = 0;
+        coord.setParity(1 - parity);
+    } // send to backward
     else { printf("Direction Wrong\n"); cuda_abort(); }
 
     int32_t mat1_pos;
@@ -238,22 +261,22 @@ void single_point_wilson_dslash_backward_ghost_pack(
                     n_color, m_rhs, row, col,
                     reinterpret_cast<Float2*>(temp_res[pos]));
             }
-            // debug
-            int half_vol = latt_desc.half_lattice_volume() / latt_desc.at(ghost_dim);
-            if (threadIdx.x == 0 && threadIdx.y == 0 && coord_1dim == half_vol - 1) {
-                Float2* start_ptr = reinterpret_cast<Float2*>(glb_out);
-                for (int i = 0; i < n_color * 2; ++i) {
-                    for (int j = 0; j < m_rhs; ++j) {
-                        printf("(%e, %e) ",
-                            start_ptr[i * m_rhs + j].x,
-                            start_ptr[i * m_rhs + j].y);
-                    }
-                    printf("\n");
-                }
-
-                printf("num191: (%e, %e)\n", reinterpret_cast<Float2*>(temp_out)[191].x, reinterpret_cast<Float2*>(temp_out)[191].y);
-            }
-            // end debug
+            // // debug
+            // int half_vol = latt_desc.half_lattice_volume() / latt_desc.at(ghost_dim);
+            // if (threadIdx.x == 0 && threadIdx.y == 0 && coord_1dim == half_vol - 1) {
+            //     Float2* start_ptr = reinterpret_cast<Float2*>(glb_out);
+            //     for (int i = 0; i < n_color * 2; ++i) {
+            //         for (int j = 0; j < m_rhs; ++j) {
+            //             printf("(%e, %e) ",
+            //                 start_ptr[i * m_rhs + j].x,
+            //                 start_ptr[i * m_rhs + j].y);
+            //         }
+            //         printf("\n");
+            //     }
+            //
+            //     printf("num191: (%e, %e)\n", reinterpret_cast<Float2*>(temp_out)[191].x, reinterpret_cast<Float2*>(temp_out)[191].y);
+            // }
+            // // end debug
         }
     }
 }
