@@ -106,12 +106,13 @@ void single_point_wilson_dslash_t_forward_ghost_unpack(
             // main loop
             for (int k = 0; k < n_color; k += BlockShape_::kK) {
                 // load Gauge
-                gemm::ldg<Float2, gemm::MatShapeTranspose<GaugeMatShape>, BlockShape_, WarpShape_>
+                gemm::ldg<Float2, GaugeMatShape, BlockShape_, WarpShape_>
                     (glb_A, n_color, n_color, k, row, reinterpret_cast<Float2*>(ldg_A));
                 // dagger
 #pragma unroll
-                for (int i = 0; i < sizeof(ldg_A) / sizeof(Complex); i++) { ldg_A[i] = ldg_A[i].conj(); }
-                gemm::sts_transpose<Float2, GaugeMatShape, BlockShape_, WarpShape_> (smem_A[0], reinterpret_cast<Float2*>(ldg_A));
+                // for (int i = 0; i < sizeof(ldg_A) / sizeof(Complex); i++) { ldg_A[i] = ldg_A[i].conj(); }
+                // gemm::sts_transpose<Float2, GaugeMatShape, BlockShape_, WarpShape_> (smem_A[0], reinterpret_cast<Float2*>(ldg_A));
+                gemm::sts_direct<Float2, GaugeMatShape, BlockShape_, WarpShape_> (smem_A[0], reinterpret_cast<Float2*>(ldg_A));
                 __syncthreads();
 
                 // load Fermion
