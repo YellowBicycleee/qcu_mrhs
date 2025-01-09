@@ -115,6 +115,9 @@ public:
         }
         return dims[dim];
     }
+    QCU_DEVICE void setParity (int parity) {
+        parity_ = parity;
+    }
 
 private:
     int dims[Nd];
