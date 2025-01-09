@@ -129,7 +129,7 @@ void single_point_wilson_dslash(
                     if (dir == FWD) { // global memory is row-major, col-major in smem
                         gemm::ldg<Float2, GaugeMatShape, BlockShape_, WarpShape_>
                             ( glb_A, n_color, n_color, row, k, reinterpret_cast<Float2*>(ldg_A));
-                        gemm::sts_direct<Float2, gemm::GemmShape<BlockShape_::kM, BlockShape_::kK, 0>, WarpShape_>
+                        gemm::sts_direct<Float2, GaugeMatShape, BlockShape_, WarpShape_>
                             (smem_A[0], reinterpret_cast<Float2*>(ldg_A));
                     } else {        // global memory is col-major, col-major in smem
                         gemm::ldg<Float2, gemm::MatShapeTranspose<GaugeMatShape>, BlockShape_, WarpShape_>
