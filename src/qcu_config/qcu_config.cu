@@ -49,11 +49,17 @@ public:
 
         // setting mpi parameters
         CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &mpi_comm_rank));
+        // mpi use reverse coord
         mpi_coord = qcu::FourDimCoordinate{
-            mpi_comm_rank % Gx,
-            (mpi_comm_rank / Gx) % Gy,
-            (mpi_comm_rank / Gx / Gy) % Gz,
-            mpi_comm_rank / Gx / Gy / Gz};
+            mpi_comm_rank / (Gy * Gz * Gt),
+            (mpi_comm_rank / Gz / Gt) % Gy,
+            (mpi_comm_rank / Gt) % Gz,
+            mpi_comm_rank % Gt};
+        // mpi_coord = qcu::FourDimCoordinate{
+        //     mpi_comm_rank % Gx,
+        //     (mpi_comm_rank / Gx) % Gy,
+        //     (mpi_comm_rank / Gx / Gy) % Gz,
+        //     mpi_comm_rank / Gx / Gy / Gz};
     }
 
     [[nodiscard]] int get_lattice_vol_total () const { return latt_vol_total;   }
