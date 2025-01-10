@@ -94,10 +94,9 @@ void WilsonDslash::apply_ghost_pack(DslashParam& dslash_param, int ghost_dim) {
     void* host_pack_buf_fwd = dslash_param.fermion_ghost->get_host_pack_buf_at(ghost_dim, FWD);
 
     CHECK_CUDA(cudaMemcpy(host_pack_buf_fwd, device_pack_buf_fwd, byte_size, cudaMemcpyDeviceToHost));
-    // CHECK_MPI(MPI_Send(host_pack_buf_fwd, byte_size, MPI_BYTE, mpi_coord_forward.getIdx1D(mpi_desc), BWD, MPI_COMM_WORLD));
 
     CHECK_MPI(
-        MPI_Isend(host_pack_buf_fwd, byte_size, MPI_BYTE, mpi_coord_forward.getIdx1D(mpi_desc),
+        MPI_Isend(host_pack_buf_fwd, byte_size, MPI_BYTE, mpi_coord_forward.getReversedIdx1D(mpi_desc),
             BWD, MPI_COMM_WORLD, &config::get_mpi_request_pack(ghost_dim, FWD))
     );
 
@@ -105,60 +104,65 @@ void WilsonDslash::apply_ghost_pack(DslashParam& dslash_param, int ghost_dim) {
     void* device_pack_buf_bwd = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, BWD);
     void* host_pack_buf_bwd = dslash_param.fermion_ghost->get_host_pack_buf_at(ghost_dim, BWD);
     CHECK_CUDA(cudaMemcpy(host_pack_buf_bwd, device_pack_buf_bwd, byte_size, cudaMemcpyDeviceToHost));
-    // CHECK_MPI(MPI_Send(host_pack_buf_bwd, byte_size, MPI_BYTE, mpi_coord_backward.getIdx1D(mpi_desc), FWD, MPI_COMM_WORLD));
 
     CHECK_MPI(
-        MPI_Isend(host_pack_buf_bwd, byte_size, MPI_BYTE, mpi_coord_backward.getIdx1D(mpi_desc),
+        MPI_Isend(host_pack_buf_bwd, byte_size, MPI_BYTE, mpi_coord_backward.getReversedIdx1D(mpi_desc),
             FWD, MPI_COMM_WORLD, &config::get_mpi_request_pack(ghost_dim, BWD))
         );
 
     // DEBUG
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    int mpi_size;
-    CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &mpi_size));
-    for (int i = 0; i < mpi_size; ++i) {
-        if (config::get_mpi_rank() == 0) {
-            printf("pack begin =====================================\n");
-            printf("rank = %d, dim = %d, dir = %d FWD\n", i, ghost_dim, FWD);
-            printf("byte size = %d", byte_size);
-            qcu::Complex<double>* start_ptr;
-            const int m_input = dslash_param.m_input;
-            const int n_color = dslash_param.n_color;
-            printf("first point elements\n");
-            start_ptr = reinterpret_cast<qcu::Complex<double>*>(host_pack_buf_fwd);
-            for (int i = 0; i < 2; ++i) {
-                for (int j = 0; j < n_color; ++j) {
-                    for (int k = 0; k < m_input; ++k) {
-                        int pos = i * n_color * m_input + j * m_input + k;
-                        printf("(%e, %e)", start_ptr[pos].real(), start_ptr[pos].imag());
-                    }
-                    printf("\n");
-                }
-                printf("------------------------------------\n");
-            }
-            printf("=====================================\n");
-            const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
-            int half_vol = config::lattice_volume_local() / 2;
-            int num_threads = half_vol / latt_desc.at(ghost_dim);
-            printf("last point elements\n");
-            start_ptr = reinterpret_cast<qcu::Complex<double>*>(host_pack_buf_fwd) + (num_threads - 1) * 2 * n_color * m_input;
-            printf("start_ptr(%p) - host_pack_buf_fwd(%p) = %ld\n", start_ptr, host_pack_buf_fwd,
-                start_ptr - reinterpret_cast<qcu::Complex<double>*>(host_pack_buf_fwd));
-            for (int i = 0; i < 2; ++i) {
-                for (int j = 0; j < n_color; ++j) {
-                    for (int k = 0; k < m_input; ++k) {
-                        int pos = i * n_color * m_input + j * m_input + k;
-                        printf("(%e, %e)", start_ptr[pos].real(), start_ptr[pos].imag());
-                    }
-                    printf("\n");
-                }
-                printf("------------------------------------\n");
-            }
-            printf("pack end=====================================\n");
-        }
-        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    }
-    // END DEBUG
+    printf("mpirank : %d, dim %d, fwd = %d, bwd = %d\n",
+        config::get_mpi_rank(), ghost_dim,
+        mpi_coord_forward.getReversedIdx1D(mpi_desc),
+        mpi_coord_backward.getReversedIdx1D(mpi_desc));
+    // end DEBUG
+    // // DEBUG
+    // CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    // int mpi_size;
+    // CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &mpi_size));
+    // for (int i = 0; i < mpi_size; ++i) {
+    //     if (config::get_mpi_rank() == 0) {
+    //         printf("pack begin =====================================\n");
+    //         printf("rank = %d, dim = %d, dir = %d FWD\n", i, ghost_dim, FWD);
+    //         printf("byte size = %d", byte_size);
+    //         qcu::Complex<double>* start_ptr;
+    //         const int m_input = dslash_param.m_input;
+    //         const int n_color = dslash_param.n_color;
+    //         printf("first point elements\n");
+    //         start_ptr = reinterpret_cast<qcu::Complex<double>*>(host_pack_buf_fwd);
+    //         for (int i = 0; i < 2; ++i) {
+    //             for (int j = 0; j < n_color; ++j) {
+    //                 for (int k = 0; k < m_input; ++k) {
+    //                     int pos = i * n_color * m_input + j * m_input + k;
+    //                     printf("(%e, %e)", start_ptr[pos].real(), start_ptr[pos].imag());
+    //                 }
+    //                 printf("\n");
+    //             }
+    //             printf("------------------------------------\n");
+    //         }
+    //         printf("=====================================\n");
+    //         const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
+    //         int half_vol = config::lattice_volume_local() / 2;
+    //         int num_threads = half_vol / latt_desc.at(ghost_dim);
+    //         printf("last point elements\n");
+    //         start_ptr = reinterpret_cast<qcu::Complex<double>*>(host_pack_buf_fwd) + (num_threads - 1) * 2 * n_color * m_input;
+    //         printf("start_ptr(%p) - host_pack_buf_fwd(%p) = %ld\n", start_ptr, host_pack_buf_fwd,
+    //             start_ptr - reinterpret_cast<qcu::Complex<double>*>(host_pack_buf_fwd));
+    //         for (int i = 0; i < 2; ++i) {
+    //             for (int j = 0; j < n_color; ++j) {
+    //                 for (int k = 0; k < m_input; ++k) {
+    //                     int pos = i * n_color * m_input + j * m_input + k;
+    //                     printf("(%e, %e)", start_ptr[pos].real(), start_ptr[pos].imag());
+    //                 }
+    //                 printf("\n");
+    //             }
+    //             printf("------------------------------------\n");
+    //         }
+    //         printf("pack end=====================================\n");
+    //     }
+    //     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    // }
+    // // END DEBUG
 }
 /*
 template <typename Float_>
