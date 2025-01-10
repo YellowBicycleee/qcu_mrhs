@@ -153,23 +153,23 @@ void single_point_wilson_dslash_forward_ghost_pack(
                     n_color, m_rhs, row, col,
                     reinterpret_cast<Float2*>(temp_res[i]));
             }
-            // debug
-            int half_vol = latt_desc.half_lattice_volume() / latt_desc.at(ghost_dim);
-            if (threadIdx.x == 0 && threadIdx.y == 0 && coord_1dim == half_vol - 1) {
-                printf("IN CUDA KERNEL, PACKING, FWD\n");
-                Float2* start_ptr = reinterpret_cast<Float2*>(glb_out);
-                for (int i = 0; i < n_color * 2; ++i) {
-                    for (int j = 0; j < m_rhs; ++j) {
-                        printf("(%e, %e) ",
-                            start_ptr[i * m_rhs + j].x,
-                            start_ptr[i * m_rhs + j].y);
-                    }
-                    printf("\n");
-                }
-
-                printf("num191: (%e, %e)\n", reinterpret_cast<Float2*>(temp_out)[191].x, reinterpret_cast<Float2*>(temp_out)[191].y);
-            }
-            // end debug
+            // // debug
+            // int half_vol = latt_desc.half_lattice_volume() / latt_desc.at(ghost_dim);
+            // if (threadIdx.x == 0 && threadIdx.y == 0 && coord_1dim == half_vol - 1) {
+            //     printf("IN CUDA KERNEL, PACKING, FWD\n");
+            //     Float2* start_ptr = reinterpret_cast<Float2*>(glb_out);
+            //     for (int i = 0; i < n_color * 2; ++i) {
+            //         for (int j = 0; j < m_rhs; ++j) {
+            //             printf("(%e, %e) ",
+            //                 start_ptr[i * m_rhs + j].x,
+            //                 start_ptr[i * m_rhs + j].y);
+            //         }
+            //         printf("\n");
+            //     }
+            //
+            //     printf("num191: (%e, %e)\n", reinterpret_cast<Float2*>(temp_out)[191].x, reinterpret_cast<Float2*>(temp_out)[191].y);
+            // }
+            // // end debug
         }
     }
 }
