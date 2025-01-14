@@ -100,10 +100,17 @@ void single_point_wilson_dslash(
 
                 // for boundary check
                 if (multiprocess & (1 << dim)) {
-                    if ((dir == FWD && coord.at(dim) == latt_half_desc.at(dim) - 1)
-                        || (dir == BWD && coord.at(dim) == 0)
-                    ){
-                        continue;
+                    int cb = (coord.Y() + coord.Z() + coord.T()) % 2;
+                    if (dim == X_DIM) {
+                        if ((dir == FWD && coord.X() == latt_half_desc.X() - 1 && cb != parity) ||
+                            (dir == BWD && coord.X() == 0 && cb == parity)) {
+                            continue;
+                        }
+                    }
+                    else {
+                        if ((dir == FWD && coord.at(dim) == latt_half_desc.at(dim) - 1)
+                            || (dir == BWD && coord.at(dim) == 0))
+                        {   continue; }
                     }
                 }
 

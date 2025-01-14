@@ -94,34 +94,31 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
     post_apply(dslash_param);
 }
 void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
-    // DEBUG
-    printf("proc_desc[%d,%d,%d,%d]\n",
-        dslash_param->proc_desc->at(0),
-        dslash_param->proc_desc->at(1),
-        dslash_param->proc_desc->at(2),
-        dslash_param->proc_desc->at(3));
-
-    if (config::get_mpi_rank() == 0) {
-        printf("buffers: ");
-        printf("X_DIM, pack fwd: %p, bwd %p\n",
-            dslash_param->fermion_ghost->get_pack_buf_at(X_DIM, FWD),
-            dslash_param->fermion_ghost->get_pack_buf_at(X_DIM, BWD));
-        printf("Y_DIM, pack fwd: %p, bwd %p\n",
-            dslash_param->fermion_ghost->get_pack_buf_at(Y_DIM, FWD),
-            dslash_param->fermion_ghost->get_pack_buf_at(Y_DIM, BWD));
-        printf("Z_DIM, pack fwd: %p, bwd %p\n",
-            dslash_param->fermion_ghost->get_pack_buf_at(Z_DIM, FWD),
-            dslash_param->fermion_ghost->get_pack_buf_at(Z_DIM, BWD));
-        printf("T_DIM, pack fwd: %p, bwd %p\n",
-            dslash_param->fermion_ghost->get_pack_buf_at(T_DIM, FWD),
-            dslash_param->fermion_ghost->get_pack_buf_at(T_DIM, BWD));
-    }
-    // end debug
+    // // DEBUG
+    // printf("proc_desc[%d,%d,%d,%d]\n",
+    //     dslash_param->proc_desc->at(0),
+    //     dslash_param->proc_desc->at(1),
+    //     dslash_param->proc_desc->at(2),
+    //     dslash_param->proc_desc->at(3));
+    //
+    // if (config::get_mpi_rank() == 0) {
+    //     printf("buffers: ");
+    //     printf("X_DIM, pack fwd: %p, bwd %p\n",
+    //         dslash_param->fermion_ghost->get_pack_buf_at(X_DIM, FWD),
+    //         dslash_param->fermion_ghost->get_pack_buf_at(X_DIM, BWD));
+    //     printf("Y_DIM, pack fwd: %p, bwd %p\n",
+    //         dslash_param->fermion_ghost->get_pack_buf_at(Y_DIM, FWD),
+    //         dslash_param->fermion_ghost->get_pack_buf_at(Y_DIM, BWD));
+    //     printf("Z_DIM, pack fwd: %p, bwd %p\n",
+    //         dslash_param->fermion_ghost->get_pack_buf_at(Z_DIM, FWD),
+    //         dslash_param->fermion_ghost->get_pack_buf_at(Z_DIM, BWD));
+    //     printf("T_DIM, pack fwd: %p, bwd %p\n",
+    //         dslash_param->fermion_ghost->get_pack_buf_at(T_DIM, FWD),
+    //         dslash_param->fermion_ghost->get_pack_buf_at(T_DIM, BWD));
+    // }
+    // // end debug
     for (int i = 0; i < Nd; ++i) {
         if (dslash_param->proc_desc->at(i) > 1) {
-            if (i == X_DIM) {
-                errorQcu("Not implemented yet\n");  // TODO
-            }
             apply_ghost_pack(*dslash_param, i);
         }
     }
@@ -129,9 +126,6 @@ void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
 void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
     for (int i = 0; i < Nd; ++i) {
         if (dslash_param->proc_desc->at(i) > 1) {
-            if (i == X_DIM) {
-                errorQcu("Not implemented yet\n");  // TODO
-            }
             apply_ghost_unpack(*dslash_param, i);
         }
     }
