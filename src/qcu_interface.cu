@@ -301,6 +301,15 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
     else {
         gauge = fp16_gauge_;
     }
+
+    std::shared_ptr<qcu::FermionGhost<Nd>> fermion_ghost_ptr
+        = std::make_shared<qcu::FermionGhost<Nd>>(
+            underlying_args_.lattice_desc_ptr,
+            config::get_mpi_separated_mask(),
+            n_colors_,
+            m_input_,
+            underlying_args_.compute_float_precision);
+
     qcu::solver::BiCGStabParam param{
         .nColor         = n_colors_,
         .mInput         = m_input_,
@@ -311,7 +320,8 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
         .lattDesc       = &(underlying_args_.lattice_desc_ptr),
         .procDesc       = &(underlying_args_.process_desc_ptr),
         .stream1        = nullptr,
-        .stream2        = nullptr
+        .stream2        = nullptr,
+        .fermion_ghost_ = fermion_ghost_ptr
     };
     solver::ApplyBicgStab(param, underlying_args_.out_float_precision,
         underlying_args_.compute_float_precision, max_iteration, max_precision);
