@@ -1,6 +1,6 @@
 #include <qcu_config/qcu_config.h>
 #include <thrust/system/cuda/detail/par.h>
-
+#include <iostream>
 #include <type_traits>
 #include <vector>
 
@@ -91,6 +91,10 @@ template <typename _Float,
     std::enable_if_t<std::is_same_v<_Float, float> || std::is_same_v<_Float, double>>* = nullptr
 >
 inline bool isConverged_policy2 (const _Float norm_r, const _Float norm_b, _Float target_diff) {
+    std::cout
+        << "norm_r = " << norm_r << ", norm_b = " << norm_b
+        << ", cur = " << norm_r / norm_b
+        << ", required = " << target_diff << "\n";
     return norm_r / norm_b <= target_diff;
 }
 
@@ -182,7 +186,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
         param_.lattDesc,            // lattDesc,
         param_.procDesc,            // procDesc,
         stream1,                    // stream1 = NULL,
-        stream2                     // stream2 = NULL
+        stream2,                     // stream2 = NULL
+        param_.fermion_ghost_
     );
 
     using Output_xsayArgument =
@@ -473,7 +478,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
     param_.lattDesc,            // lattDesc,
     param_.procDesc,            // procDesc,
     stream1,                    // stream1 = NULL,
-    stream2                     // stream2 = NULL
+    stream2,                     // stream2 = NULL
+    param_.fermion_ghost_
   );
 
   using Output_xsayArgument = typename InteriorOperator::template Complex_xsay<OutputFloat>
@@ -679,7 +685,7 @@ template <
     QcuPrecision IteratePrecision
 >
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
-    return solve_odd_policy1();
+    return solve_odd_policy2();
 }
 template <
     QcuPrecision OutputPrecision,
@@ -713,7 +719,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
         param_.lattDesc,            // const QcuLattDesc* p_lattDesc,
         param_.procDesc,            // const QcuProcDesc* p_procDesc,
         param_.stream1,             // cudaStream_t p_stream1 = NULL,
-        param_.stream2              // cudaStream_t p_stream2 = NULL)
+        param_.stream2,              // cudaStream_t p_stream2 = NULL)
+        param_.fermion_ghost_
     );
 
     dslash_operator_->apply(dslashParam);  // x_e = D_{eo} x_{o}

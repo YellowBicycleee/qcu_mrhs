@@ -13,131 +13,135 @@ template <
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
     if (bufferAllocated_) { return true; }
 
-  const int Lx  = param_.lattDesc->X();
-  const int Ly  = param_.lattDesc->Y();
-  const int Lz  = param_.lattDesc->Z();
-  const int Lt  = param_.lattDesc->T();
-  const int vol = Lx * Ly * Lz * Lt;
-  const int complex_vec_len = param_.mInput * param_.nColor * Ns; // on single point
+    const int Lx  = param_.lattDesc->X();
+    const int Ly  = param_.lattDesc->Y();
+    const int Lz  = param_.lattDesc->Z();
+    const int Lt  = param_.lattDesc->T();
 
-  int iterate_float_size;
-  int output_float_size;
-  if      constexpr (IteratePrecision == QcuPrecision::kPrecisionHalf)   { iterate_float_size = sizeof (half);   }
-  else if constexpr (IteratePrecision == QcuPrecision::kPrecisionSingle) { iterate_float_size = sizeof (float);  }
-  else if constexpr (IteratePrecision == QcuPrecision::kPrecisionDouble) { iterate_float_size = sizeof (double); }
-  else                                                         { return false; }
+    const int vol = Lx * Ly * Lz * Lt;
+    const int complex_vec_len = param_.mInput * param_.nColor * Ns; // on single point
 
-  if      constexpr (OutputPrecision == QcuPrecision::kPrecisionHalf)    { output_float_size = sizeof (half);   }
-  else if constexpr (OutputPrecision == QcuPrecision::kPrecisionSingle)  { output_float_size = sizeof (float);  }
-  else if constexpr (OutputPrecision == QcuPrecision::kPrecisionDouble)  { output_float_size = sizeof (double); }
-  else                                                         { return false; }
+    int iterate_float_size;
+    int output_float_size;
+    if      constexpr (IteratePrecision == QcuPrecision::kPrecisionHalf)   { iterate_float_size = sizeof (half);   }
+    else if constexpr (IteratePrecision == QcuPrecision::kPrecisionSingle) { iterate_float_size = sizeof (float);  }
+    else if constexpr (IteratePrecision == QcuPrecision::kPrecisionDouble) { iterate_float_size = sizeof (double); }
+    else                                                         { return false; }
 
-  CHECK_CUDA(cudaMalloc(&tmpReduceMem_,      vol * complex_vec_len * output_float_size  * 2));
-  CHECK_CUDA(cudaMalloc(&new_b_iter_prec_,   vol * complex_vec_len * iterate_float_size * 2));
-  CHECK_CUDA(cudaMalloc(&new_b_output_prec_, vol * complex_vec_len * output_float_size  * 2));
-  CHECK_CUDA(cudaMalloc(&result_x_output_prec_, vol * complex_vec_len * output_float_size * 2)); // full-length
-  for (auto& buffer : outputBuffer_) {
-    CHECK_CUDA(cudaMalloc(&buffer, vol / 2 * complex_vec_len * output_float_size  * 2)); // half vol
-  }
+    if      constexpr (OutputPrecision == QcuPrecision::kPrecisionHalf)    { output_float_size = sizeof (half);   }
+    else if constexpr (OutputPrecision == QcuPrecision::kPrecisionSingle)  { output_float_size = sizeof (float);  }
+    else if constexpr (OutputPrecision == QcuPrecision::kPrecisionDouble)  { output_float_size = sizeof (double); }
+    else                                                         { return false; }
 
-  for (auto& buffer : tmpFermionMrhs_) {
-    CHECK_CUDA(cudaMalloc(&buffer, vol / 2 * complex_vec_len * iterate_float_size * 2)); // half-vol
-  }
+    CHECK_CUDA(cudaMalloc(&tmpReduceMem_,      vol * complex_vec_len * output_float_size  * 2));
+    CHECK_CUDA(cudaMalloc(&new_b_iter_prec_,   vol * complex_vec_len * iterate_float_size * 2));
+    CHECK_CUDA(cudaMalloc(&new_b_output_prec_, vol * complex_vec_len * output_float_size  * 2));
+    CHECK_CUDA(cudaMalloc(&result_x_output_prec_, vol * complex_vec_len * output_float_size * 2)); // full-length
+    for (auto& buffer : outputBuffer_) {
+        CHECK_CUDA(cudaMalloc(&buffer, vol / 2 * complex_vec_len * output_float_size  * 2)); // half vol
+    }
 
-  for (auto& buffer : iter_scala_array_) {
-    CHECK_CUDA(cudaMalloc(&buffer, param_.mInput * iterate_float_size * 2));  // length: m-rhs * complex(2)
-  }
+    for (auto& buffer : tmpFermionMrhs_) {
+        CHECK_CUDA(cudaMalloc(&buffer, vol / 2 * complex_vec_len * iterate_float_size * 2)); // half-vol
+    }
 
-  for (auto& buffer : output_scala_array_) {
-    CHECK_CUDA(cudaMalloc(&buffer, param_.mInput * output_float_size * 2)); // length: m-rhs * complex(2)
-  }
+    for (auto& buffer : iter_scala_array_) {
+        CHECK_CUDA(cudaMalloc(&buffer, param_.mInput * iterate_float_size * 2));  // length: m-rhs * complex(2)
+    }
 
-  CHECK_CUDA(cudaMalloc(&alpha_array, param_.mInput * output_float_size * 2));
-  CHECK_CUDA(cudaMalloc(&beta_array,  param_.mInput * output_float_size * 2));
-  CHECK_CUDA(cudaMalloc(&omega_array, param_.mInput * output_float_size * 2));
+    for (auto& buffer : output_scala_array_) {
+        CHECK_CUDA(cudaMalloc(&buffer, param_.mInput * output_float_size * 2)); // length: m-rhs * complex(2)
+    }
 
-  // dslash运算符构造
-  dslash_operator_ = std::make_shared<WilsonDslash>(false);
-  // cublasHandler申请
-  if (const cublasStatus_t stat = cublasCreate(&cublasHandle_); stat != CUBLAS_STATUS_SUCCESS) {
+    CHECK_CUDA(cudaMalloc(&alpha_array, param_.mInput * output_float_size * 2));
+    CHECK_CUDA(cudaMalloc(&beta_array,  param_.mInput * output_float_size * 2));
+    CHECK_CUDA(cudaMalloc(&omega_array, param_.mInput * output_float_size * 2));
+
+    // dslash运算符构造
+    dslash_operator_ = std::make_shared<qcu::simt::WilsonDslash>(false);
+    // cublasHandler申请
+    if (const cublasStatus_t stat = cublasCreate(&cublasHandle_); stat != CUBLAS_STATUS_SUCCESS) {
     printf("IN file %s, line %d, error happened\n", __FILE__, __LINE__);
     abort();
-  }
+    }
 
-  // 初始化kappa序列和1序列
-  // init output_scala_array_[0] with Complex(kappa, 0) and init  output_scala_array_[1] with Complex(1, 0)
-  // both with output precision
-  void* output_prec_kappa = output_scala_array_[0];
-  void* output_prec_ones  = output_scala_array_[1];
-  void* output_prec_kappa_square = output_scala_array_[5];
+    // 初始化kappa序列和1序列
+    // init output_scala_array_[0] with Complex(kappa, 0) and init  output_scala_array_[1] with Complex(1, 0)
+    // both with output precision
+    void* output_prec_kappa = output_scala_array_[0];
+    void* output_prec_ones  = output_scala_array_[1];
+    void* output_prec_kappa_square = output_scala_array_[5];
 
-  // init multiple-Mrhs kappa s
-  using InitArgument = typename InteriorOperator::template ElementwiseInit<Complex<OutputFloat>>::ElementwiseInitArgument;
-  InitArgument 
-    output_elementwise_init_arg (
-          static_cast<Complex<OutputFloat>*>(output_prec_kappa),
-          Complex<OutputFloat>{static_cast<OutputFloat>(param_.kappa), 0},
-          param_.mInput, param_.stream1
+    // init multiple-Mrhs kappa s
+    using InitArgument = typename InteriorOperator::template ElementwiseInit<Complex<OutputFloat>>::ElementwiseInitArgument;
+    InitArgument output_elementwise_init_arg (
+        static_cast<Complex<OutputFloat>*>(output_prec_kappa),
+        Complex<OutputFloat>{static_cast<OutputFloat>(param_.kappa), 0},
+        param_.mInput, param_.stream1
     );
-  interior_operator_.output_elementwise_init(output_elementwise_init_arg);
+    interior_operator_.output_elementwise_init(output_elementwise_init_arg);
 
 
-  // init mrhs 1 s
-  output_elementwise_init_arg.res = static_cast<Complex<OutputFloat>*>(output_prec_ones);
-  output_elementwise_init_arg.val = Complex<OutputFloat>{1, 0};
-  interior_operator_.output_elementwise_init(output_elementwise_init_arg);
-  // sync
-  // init mrhs kappa * kappa s
-  output_elementwise_init_arg.res = static_cast<Complex<OutputFloat>*>(output_prec_kappa_square);
-  output_elementwise_init_arg.val = Complex<OutputFloat>{static_cast<OutputFloat>(param_.kappa)
+    // init mrhs 1 s
+    output_elementwise_init_arg.res = static_cast<Complex<OutputFloat>*>(output_prec_ones);
+    output_elementwise_init_arg.val = Complex<OutputFloat>{1, 0};
+    interior_operator_.output_elementwise_init(output_elementwise_init_arg);
+    // sync
+    // init mrhs kappa * kappa s
+    output_elementwise_init_arg.res = static_cast<Complex<OutputFloat>*>(output_prec_kappa_square);
+    output_elementwise_init_arg.val = Complex<OutputFloat>{static_cast<OutputFloat>(param_.kappa)
                                                         * static_cast<OutputFloat>(param_.kappa), 0};
-  interior_operator_.output_elementwise_init(output_elementwise_init_arg);
+    interior_operator_.output_elementwise_init(output_elementwise_init_arg);
 
-  CHECK_CUDA(cudaStreamSynchronize(param_.stream1));
-  bufferAllocated_ = true;
+    CHECK_CUDA(cudaStreamSynchronize(param_.stream1));
+    bufferAllocated_ = true;
 
-  return true;
+    return true;
 }
 
 // 释放临时空间
 // 申请临时空间
-template <QcuPrecision OutputPrecision,
-          QcuPrecision IteratePrecision>
+template <
+    QcuPrecision OutputPrecision,
+    QcuPrecision IteratePrecision
+>
 void BiCGStabImpl<OutputPrecision,IteratePrecision>::tempBufferFree() {
-  CHECK_CUDA(cudaFree(tmpReduceMem_));
-  CHECK_CUDA(cudaFree(new_b_iter_prec_));
-  CHECK_CUDA(cudaFree(new_b_output_prec_));
-  CHECK_CUDA(cudaFree(result_x_output_prec_));
-  for (auto& buffer : outputBuffer_) {
-    CHECK_CUDA(cudaFree(buffer));
-    buffer = nullptr;
-  }
-  for (auto& buffer : tmpFermionMrhs_) {
-    CHECK_CUDA(cudaFree(buffer));
-    buffer = nullptr;
-  }
-  for (auto& buffer : iter_scala_array_) {
-    CHECK_CUDA(cudaFree(buffer));
-    buffer = nullptr;
-  }
-  for (auto& buffer : output_scala_array_) {
-    CHECK_CUDA(cudaFree(buffer));
-    buffer = nullptr;
-  }
-  CHECK_CUDA(cudaFree(alpha_array));
-  CHECK_CUDA(cudaFree(beta_array));
-  CHECK_CUDA(cudaFree(omega_array));
-  if (const cublasStatus_t stat = cublasDestroy(cublasHandle_); stat != CUBLAS_STATUS_SUCCESS) {
-    printf("IN file %s, line %d, error happened\n", __FILE__, __LINE__);
-    abort();
-  }
+    CHECK_CUDA(cudaFree(tmpReduceMem_));
+    CHECK_CUDA(cudaFree(new_b_iter_prec_));
+    CHECK_CUDA(cudaFree(new_b_output_prec_));
+    CHECK_CUDA(cudaFree(result_x_output_prec_));
+    for (auto& buffer : outputBuffer_) {
+        CHECK_CUDA(cudaFree(buffer));
+        buffer = nullptr;
+    }
+    for (auto& buffer : tmpFermionMrhs_) {
+        CHECK_CUDA(cudaFree(buffer));
+        buffer = nullptr;
+    }
+    for (auto& buffer : iter_scala_array_) {
+        CHECK_CUDA(cudaFree(buffer));
+        buffer = nullptr;
+    }
+    for (auto& buffer : output_scala_array_) {
+        CHECK_CUDA(cudaFree(buffer));
+        buffer = nullptr;
+    }
+    CHECK_CUDA(cudaFree(alpha_array));
+    CHECK_CUDA(cudaFree(beta_array));
+    CHECK_CUDA(cudaFree(omega_array));
+    if (const cublasStatus_t stat = cublasDestroy(cublasHandle_); stat != CUBLAS_STATUS_SUCCESS) {
+        printf("IN file %s, line %d, error happened\n", __FILE__, __LINE__);
+        abort();
+    }
 
-  bufferAllocated_ = false;
+    bufferAllocated_ = false;
 }
 
 
-template <QcuPrecision OutputPrecision,
-          QcuPrecision IteratePrecision>
+template <
+    QcuPrecision OutputPrecision,
+    QcuPrecision IteratePrecision
+>
 void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
   const int Lx  = param_.lattDesc->X();
   const int Ly  = param_.lattDesc->Y();
@@ -166,7 +170,8 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
     /*param.lattDesc        */   param_.lattDesc,
     /*param.procDesc        */   param_.procDesc,
     /*param.stream1         */   param_.stream1,
-    /*param.stream2         */   param_.stream2
+    /*param.stream2         */   param_.stream2,
+    param_.fermion_ghost_
   );
 
   dslash_operator_->apply(param);  // new_even_b = D_{oe} b_{e}
