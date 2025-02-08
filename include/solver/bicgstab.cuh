@@ -10,16 +10,17 @@
 namespace qcu::solver {
 
 struct BiCGStabParam {
-  int nColor;
-  int mInput;
-  double kappa;
-  void* output_x_mrhs;
-  void* input_b_mrhs;
-  void* gauge;
-  const QcuLattDesc* lattDesc;
-  const QcuProcDesc* procDesc;
-  cudaStream_t stream1;
-  cudaStream_t stream2;
+    int nColor;
+    int mInput;
+    double kappa;
+    void* output_x_mrhs;
+    void* input_b_mrhs;
+    void* gauge;
+    const QcuLattDesc* lattDesc;
+    const QcuProcDesc* procDesc;
+    cudaStream_t stream1;
+    cudaStream_t stream2;
+    std::shared_ptr<qcu::FermionGhost<Nd>> fermion_ghost_;
 };
 
 // OutputPrecision     既表示输入又表示输出精度，
