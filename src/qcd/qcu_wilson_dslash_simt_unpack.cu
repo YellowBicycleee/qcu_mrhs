@@ -35,7 +35,7 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
     dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
-    printf("SIMT dslash pack Beginning\n");
+    // printf("SIMT dslash pack Beginning\n");
     qcu::device::wilson_dslash_sun_mrhs_forward_ghost_unpack<Float_, BlockShape>
         <<<grid_size, block_size, 0, fwd_stream>>> (
             static_cast<Float_*>(dslash_param.fermion_out_MRHS), static_cast<Float_*>(fwd_unpack_buf),
@@ -47,7 +47,7 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
             latt_desc, ghost_dim, dslash_param.parity, dslash_param.dagger_flag,
             dslash_param.n_color, dslash_param.m_input);
     CHECK_CUDA(cudaDeviceSynchronize());
-    printf("SIMT dslash Ending, config = grid(%d, %d, %d), block(%d, %d, %d)\n", grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z);
+    // printf("SIMT dslash Ending, config = grid(%d, %d, %d), block(%d, %d, %d)\n", grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z);
 }
 
 void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) {
@@ -101,59 +101,11 @@ void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) 
     CHECK_CUDA(cudaMemcpy(device_unpack_buf_fwd, host_unpack_buf_fwd, byte_size, cudaMemcpyHostToDevice));
     CHECK_CUDA(cudaMemcpy(device_unpack_buf_bwd, host_unpack_buf_bwd, byte_size, cudaMemcpyHostToDevice));
 
-    // DEBUG
-    printf("mpirank : %d, dim %d, fwd = %d, bwd = %d\n",
-        config::get_mpi_rank(), ghost_dim,
-        mpi_coord_forward.getReversedIdx1D(mpi_desc),
-        mpi_coord_backward.getReversedIdx1D(mpi_desc));
-    // end DEBUG
     // // DEBUG
-    // CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    // int mpi_size;
-    // CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &mpi_size));
-    // for (int i = 0; i < mpi_size; ++i) {
-    //     if (config::get_mpi_rank() == 1) {
-    //         printf("unpack begin=====================================\n");
-    //         printf("rank = %d, dim = %d, dir = %d BWD\n", i, ghost_dim, BWD);
-    //         printf("byte size = %d", byte_size);
-    //         qcu::Complex<double>* start_ptr;
-    //         const int m_input = dslash_param.m_input;
-    //         const int n_color = dslash_param.n_color;
-    //         printf("first point elements\n");
-    //         start_ptr = reinterpret_cast<qcu::Complex<double>*>(host_unpack_buf_bwd);
-    //         for (int i = 0; i < 2; ++i) {
-    //             for (int j = 0; j < n_color; ++j) {
-    //                 for (int k = 0; k < m_input; ++k) {
-    //                     int pos = i * n_color * m_input + j * m_input + k;
-    //                     printf("(%e, %e)", start_ptr[pos].real(), start_ptr[pos].imag());
-    //                 }
-    //                 printf("\n");
-    //             }
-    //             printf("------------------------------------\n");
-    //         }
-    //         printf("=====================================\n");
-    //         const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
-    //         int half_vol = config::lattice_volume_local() / 2;
-    //         int num_threads = half_vol / latt_desc.at(ghost_dim);
-    //         printf("last point elements\n");
-    //         start_ptr = reinterpret_cast<qcu::Complex<double>*>(host_unpack_buf_bwd) + (num_threads - 1) * 2 * n_color * m_input;
-    //         printf("start_ptr(%p) - host_pack_buf_fwd(%p) = %ld\n", start_ptr, host_unpack_buf_bwd,
-    //             start_ptr - reinterpret_cast<qcu::Complex<double>*>(host_unpack_buf_bwd));
-    //         for (int i = 0; i < 2; ++i) {
-    //             for (int j = 0; j < n_color; ++j) {
-    //                 for (int k = 0; k < m_input; ++k) {
-    //                     int pos = i * n_color * m_input + j * m_input + k;
-    //                     printf("(%e, %e)", start_ptr[pos].real(), start_ptr[pos].imag());
-    //                 }
-    //                 printf("\n");
-    //             }
-    //             printf("------------------------------------\n");
-    //         }
-    //         printf("unpack end=====================================\n");
-    //     }
-    //     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    // }
-    // // END DEBUG
+    // printf("mpirank : %d, dim %d, fwd = %d, bwd = %d\n",
+    //     config::get_mpi_rank(), ghost_dim,
+    //     mpi_coord_forward.getReversedIdx1D(mpi_desc),
+    //     mpi_coord_backward.getReversedIdx1D(mpi_desc));
 
     const int m_input = dslash_param.m_input;
     const int n_color = dslash_param.n_color;

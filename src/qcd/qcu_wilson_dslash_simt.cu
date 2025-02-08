@@ -46,7 +46,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(half_vol, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
-    printf("SIMT dslash Beginning\n");
+    // printf("SIMT dslash Beginning\n");
     qcu::device::wilson_dslash_su_n_mrhs<Float, BlockShape>
         <<<grid_size, block_size, 0, dslash_param.stream1>>>
         (   static_cast<Float*>(dslash_param.fermion_out_MRHS),
@@ -56,7 +56,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
             dslash_param.parity, dslash_param.dagger_flag,
             dslash_param.n_color, dslash_param.m_input);
     CHECK_CUDA(cudaDeviceSynchronize());
-    printf("SIMT dslash Ending, config = grid(%d, %d, %d), block(%d, %d, %d)\n", grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z);
+    // printf("SIMT dslash Ending, config = grid(%d, %d, %d), block(%d, %d, %d)\n", grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z);
 }
 
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
