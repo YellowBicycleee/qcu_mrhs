@@ -45,24 +45,23 @@ void ComplexDotc<OutputFloat, InputFloat>::operator()(DotcArgument arg) {
     }
     CHECK_CUDA(cudaStreamSynchronize(arg.stream));
 
-    size_t type_size = 0;
-    // MPI_Datatype mpi_datatype;
+    MPI_Datatype mpi_datatype;
     if constexpr (std::is_same_v<OutputFloat, double>) {
-        type_size = sizeof(double) * 2;
+        mpi_datatype = MPI_DOUBLE;
     } else if constexpr (std::is_same_v<OutputFloat, float>) {
-        type_size = sizeof(float) * 2;
+        mpi_datatype = MPI_FLOAT;
     } else {
         throw std::runtime_error("Unsupported type, Output type must be float or double");
     }
     auto mpi_separated_mask = qcu::config::get_mpi_separated_mask();
     if (mpi_separated_mask > 0) {
-        OutputFloat local_norm;
-        OutputFloat global_norm;
-        CHECK_CUDA(cudaMemcpy(&local_norm, arg.resArr, type_size, cudaMemcpyDeviceToHost));
-        local_norm = local_norm * local_norm;
-        CHECK_MPI(MPI_Allreduce(&local_norm, &global_norm, type_size, MPI_BYTE, MPI_SUM, MPI_COMM_WORLD));
-        global_norm = std::sqrt(global_norm);
-        CHECK_CUDA(cudaMemcpy(arg.resArr, &global_norm, type_size, cudaMemcpyHostToDevice));
+        OutputFloat local_norm[kMaxRHS * 2];
+        OutputFloat global_norm[kMaxRHS * 2];
+        const int num_rhs = arg.stride;
+
+        CHECK_CUDA(cudaMemcpy(local_norm, arg.resArr, sizeof(OutputFloat) * 2 * num_rhs, cudaMemcpyDeviceToHost));
+        CHECK_MPI(MPI_Allreduce(local_norm, global_norm, 2 * num_rhs, mpi_datatype, MPI_SUM, MPI_COMM_WORLD));
+        CHECK_CUDA(cudaMemcpy(arg.resArr, global_norm, sizeof(OutputFloat) * 2 * num_rhs, cudaMemcpyHostToDevice));
     }
 }
 
@@ -81,21 +80,20 @@ void ComplexDotc<double, double>::operator() (DotcArgument arg) {
                 reinterpret_cast<cuDoubleComplex*>(arg.resArr) + i
             ));
     }
-    size_t type_size = sizeof(double) * 2;
+
     auto mpi_separated_mask = qcu::config::get_mpi_separated_mask();
     if (mpi_separated_mask > 0) {
         double local_norm;
         double global_norm;
-        CHECK_CUDA(cudaMemcpy(&local_norm, arg.resArr, type_size, cudaMemcpyDeviceToHost));
+        CHECK_CUDA(cudaMemcpy(&local_norm, arg.resArr, sizeof(double) * 2, cudaMemcpyDeviceToHost));
         local_norm = local_norm * local_norm;
-        CHECK_MPI(MPI_Allreduce(&local_norm, &global_norm, type_size, MPI_BYTE, MPI_SUM, MPI_COMM_WORLD));
+        CHECK_MPI(MPI_Allreduce(&local_norm, &global_norm, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD));
         global_norm = std::sqrt(global_norm);
-        CHECK_CUDA(cudaMemcpy(arg.resArr, &global_norm, type_size, cudaMemcpyHostToDevice));
+        CHECK_CUDA(cudaMemcpy(arg.resArr, &global_norm, sizeof(double) * 2, cudaMemcpyHostToDevice));
     }
 }
 template struct ComplexDotc<double, double>;
 template struct ComplexDotc<float, float>;
-// template struct ComplexDotc<half, half>;
 template struct ComplexDotc<double, half>;
 template struct ComplexDotc<float, half>;
 }  // namespace qcu::qcu_blas

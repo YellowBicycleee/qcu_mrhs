@@ -1,17 +1,17 @@
+#include <cmath>
+#include <cublas_v2.h>
+#include <cuda_fp16.h>
+#include <mpi.h>
 #include <stdexcept>
 #include <type_traits>
-#include <cuda_fp16.h>
-#include "qcu_utils.h"
-#include "qcu_blas/qcu_blas_complex_norm.h"
+
+#include "check_error/check_cuda.cuh"
+#include "check_error/check_mpi.h"
 #include "kernel/reduction/operation.cuh"
 #include "kernel/reduction/reduction.cuh"
-
-#include <cublas_v2.h>
+#include "qcu_utils.h"
+#include "qcu_blas/qcu_blas_complex_norm.h"
 #include "qcu_blas_public.h"
-#include "check_error/check_cuda.cuh"
-
-#include <mpi.h>
-#include "check_error/check_mpi.h"
 #include "qcu_config/qcu_config.h"
 
 namespace qcu::qcu_blas {
@@ -49,24 +49,32 @@ void ComplexNorm<OutputFloat, InputFloat>::operator()(ComplexNormArgument param)
         CHECK_CUDA(cudaGetLastError());
     }
     CHECK_CUDA(cudaStreamSynchronize(param.stream));
-    size_t type_size = 0;
-    // MPI_Datatype mpi_datatype;
+    MPI_Datatype mpi_datatype;
     if constexpr (std::is_same_v<OutputFloat, double>) {
-        type_size = sizeof(double);
+        mpi_datatype = MPI_DOUBLE;
     } else if constexpr (std::is_same_v<OutputFloat, float>) {
-        type_size = sizeof(float);
+        mpi_datatype = MPI_FLOAT;
     } else {
         throw std::runtime_error("Unsupported type, Output type must be float or double");
     }
     auto mpi_separated_mask = qcu::config::get_mpi_separated_mask();
     if (mpi_separated_mask > 0) {
-        OutputFloat local_norm;
-        OutputFloat global_norm;
-        CHECK_CUDA(cudaMemcpy(&local_norm, param.resArr, type_size, cudaMemcpyDeviceToHost));
-        local_norm = local_norm * local_norm;
-        CHECK_MPI(MPI_Allreduce(&local_norm, &global_norm, type_size, MPI_BYTE, MPI_SUM, MPI_COMM_WORLD));
-        global_norm = sqrt(global_norm);
-        CHECK_CUDA(cudaMemcpy(param.resArr, &global_norm, type_size, cudaMemcpyHostToDevice));
+        int num_rhs = param.stride;
+        OutputFloat local_norm[kMaxRHS];
+        OutputFloat global_norm[kMaxRHS];
+
+        CHECK_CUDA(cudaMemcpy(local_norm, param.resArr, sizeof(OutputFloat) * num_rhs, cudaMemcpyDeviceToHost));
+        
+#pragma omp parallel for
+        for (int i = 0; i < num_rhs; ++i) {
+            local_norm[i] = local_norm[i] * local_norm[i];
+        }
+        CHECK_MPI(MPI_Allreduce(local_norm, global_norm, num_rhs, mpi_datatype, MPI_SUM, MPI_COMM_WORLD));
+#pragma omp parallel for
+        for (int i = 0; i < num_rhs; ++i) {
+            global_norm[i] = std::sqrt(global_norm[i]);
+        }
+        CHECK_CUDA(cudaMemcpy(param.resArr, global_norm, sizeof(OutputFloat) * num_rhs, cudaMemcpyHostToDevice));
     }
 }
 
