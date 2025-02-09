@@ -1,5 +1,6 @@
 #pragma once
 
+constexpr int kMaxRHS = 100;
 // shift 1D index to 4D index
 inline __device__ __host__ void get4DCoord(int &t, int &z, int &y, int &x, int lex_id, int Lz, int Ly,
                                                            int Lx) {
