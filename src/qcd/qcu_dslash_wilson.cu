@@ -41,9 +41,9 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
     int n_color = dslash_param->n_color;
     int half_vol = config::lattice_volume_local() / 2;
     double num_operations = static_cast<double>(half_vol * m_input * (
-        2 * Nd * Ns * n_color   // project
-        + 2 * Nd * Ns / 2 * (8 * n_color  - 2) * n_color  // GEMV
-        + (2 * Nd - 1) * Ns * n_color  // reconstruct
+        2 * Nd * Nspin_ * n_color   // project
+        + 2 * Nd * Nspin_ / 2 * (8 * n_color  - 2) * n_color  // GEMV
+        + (2 * Nd - 1) * Nspin_ * n_color  // reconstruct
     ));
     operations_cur_ = num_operations;
     operations_total_ += num_operations;

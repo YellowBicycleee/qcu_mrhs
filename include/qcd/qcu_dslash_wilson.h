@@ -14,6 +14,9 @@ public:
 
     virtual double flops() override;
 
+protected:
+    static constexpr int Nspin_ = 4;
+
 private:
     void pre_apply(const std::shared_ptr<DslashParam>);
 
@@ -33,6 +36,8 @@ public:
 
     virtual double flops() override;
 
+protected:
+    static constexpr int Nspin_ = 4;
 private:
     void pre_apply(const std::shared_ptr<DslashParam>);
 

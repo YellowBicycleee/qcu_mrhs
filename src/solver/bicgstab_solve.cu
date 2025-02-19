@@ -110,7 +110,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
     // diff_array = [r1, r2, r3, ...] / [b1, b2, b3, ...]
     const int mInput = param_.mInput;
     const int vol = param_.lattDesc->lattice_volume();
-    const int single_complex_vec_len = param_.nColor * Ns;
+    const int single_complex_vec_len = param_.nColor * param_.Nspin;
     const int complex_vec_len =   param_.mInput * single_complex_vec_len; // m-rhs on single point
 
     cudaStream_t stream1 = param_.stream1;
@@ -405,7 +405,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
 
   const int mInput = param_.mInput;
   const int vol = param_.lattDesc->lattice_volume();
-  const int single_complex_vec_len = param_.nColor * Ns;
+  const int single_complex_vec_len = param_.nColor * param_.Nspin;
   const int complex_vec_len =   param_.mInput * single_complex_vec_len; // m-rhs on single point
 
   cudaStream_t stream1 = param_.stream1;
@@ -695,7 +695,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
 
     const int mInput = param_.mInput;
     const int vol = param_.lattDesc->lattice_volume();
-    const int single_complex_vec_len = param_.nColor * Ns;
+    const int single_complex_vec_len = param_.nColor * param_.Nspin;
     const int mrhs_complex_vec_len = param_.mInput * single_complex_vec_len;
     // solve x_e
     // x_e = b_e + kappa D_{eo} x_{o}
@@ -768,7 +768,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve() {
 
     printf("QCU BICGStab solve success, %d iterations\n", currentIteration_);
     const int vol = param_.lattDesc->lattice_volume();
-    const int mrhs_vec_len = param_.mInput * param_.nColor * Ns; // on single point
+    const int mrhs_vec_len = param_.mInput * param_.nColor * param_.Nspin; // on single point
     const cudaStream_t cuda_stream = param_.stream1;
     // copy x to outputBuffer
     copyComplexVector_interface(

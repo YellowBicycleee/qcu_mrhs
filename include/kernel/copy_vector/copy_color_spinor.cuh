@@ -15,26 +15,26 @@ namespace device {
 // global_src_array must be an device pointer array.
 template <typename Float2_dst, typename Float2_src>
 __device__ __forceinline__ void gather_color_spinor (Float2_dst*  __restrict__ global_dst_ptr,
-                                                     Float2_src** __restrict__ global_src_array,
+                                                    Float2_src** __restrict__ global_src_array,
                                                     int x, int y, int z, int t, 
                                                     int Lx, int Ly, int Lz, int Lt,
-                                                    int n_color, int m_input) {
+                                                    int n_color, int m_input, int Nspin = 4) {
     int half_Lx = Lx / 2;
     int src_offset;
     Float2_dst dst_temp;
     Float2_src src_temp;
 
-    Float2_dst* dst_point_element_ptr = global_dst_ptr + IDX4D(t, z, y, x, Lz, Ly, half_Lx) * (Ns * n_color * m_input);
+    Float2_dst* dst_point_element_ptr = global_dst_ptr + IDX4D(t, z, y, x, Lz, Ly, half_Lx) * (Nspin * n_color * m_input);
     Float2_src* src_point_element_ptr;
-    src_offset = IDX4D(t, z, y, x, Lz, Ly, half_Lx) * (Ns * n_color);
+    src_offset = IDX4D(t, z, y, x, Lz, Ly, half_Lx) * (Nspin * n_color);
 
     for (int i = 0; i < m_input; i++) {
         src_point_element_ptr = global_src_array[i] + src_offset;
-        for (int j = 0; j < Ns; j++) {
+        for (int j = 0; j < Nspin; j++) {
             for (int k = 0; k < n_color; k++) {
-                src_temp = src_point_element_ptr[IDX2D(j, k, n_color)];        // Ns, Nc
+                src_temp = src_point_element_ptr[IDX2D(j, k, n_color)];        // Nspin, Nc
                 dst_temp = shiftDataType<Float2_dst, Float2_src>(src_temp);
-                dst_point_element_ptr[IDX3D(j, k, i, n_color, m_input)] = dst_temp;  // Nc, Ns, m_input
+                dst_point_element_ptr[IDX3D(j, k, i, n_color, m_input)] = dst_temp;  // Nc, Nspin, m_input
             }
         }
     }
@@ -42,26 +42,26 @@ __device__ __forceinline__ void gather_color_spinor (Float2_dst*  __restrict__ g
 
 template <typename Float2_dst, typename Float2_src>
 __device__ __forceinline__ void scatter_color_spinor (Float2_dst**  __restrict__ global_dst_array,
-                                                      Float2_src* __restrict__ global_src_ptr,
-                                                    int x, int y, int z, int t, 
+                                                    Float2_src* __restrict__ global_src_ptr,
+                                                    int x, int y, int z, int t,
                                                     int Lx, int Ly, int Lz, int Lt,
-                                                    int n_color, int m_input) { 
+                                                    int n_color, int m_input, int Nspin = 4) { 
     int half_Lx = Lx / 2;
-    int dst_offset; 
+    int dst_offset;
     Float2_dst dst_temp;
     Float2_src src_temp;
 
-    Float2_src* src_point_element_ptr = global_src_ptr + IDX4D(t, z, y, x, Lz, Ly, half_Lx) * (Ns * n_color * m_input);
+    Float2_src* src_point_element_ptr = global_src_ptr + IDX4D(t, z, y, x, Lz, Ly, half_Lx) * (Nspin * n_color * m_input);
     Float2_dst* dst_point_element_ptr;
-    dst_offset = IDX4D(t, z, y, x, Lz, Ly, half_Lx) * (Ns * n_color);
+    dst_offset = IDX4D(t, z, y, x, Lz, Ly, half_Lx) * (Nspin * n_color);
 
     for (int i = 0; i < m_input; i++) {
         dst_point_element_ptr = global_dst_array[i] + dst_offset;
-        for (int j = 0; j < Ns; j++) {
+        for (int j = 0; j < Nspin; j++) {
             for (int k = 0; k < n_color; k++) {
-                src_temp = src_point_element_ptr[IDX3D(j, k, i, n_color, m_input)];  // Ns, Nc, m_input
+                src_temp = src_point_element_ptr[IDX3D(j, k, i, n_color, m_input)];  // Nspin, Nc, m_input
                 dst_temp = shiftDataType<Float2_dst, Float2_src>(src_temp);
-                dst_point_element_ptr[IDX2D(j, k, n_color)] = dst_temp;  // Ns, Nc
+                dst_point_element_ptr[IDX2D(j, k, n_color)] = dst_temp;  // Nspin, Nc
             }
         }
     }

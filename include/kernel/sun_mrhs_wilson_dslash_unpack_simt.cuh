@@ -16,7 +16,8 @@ template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
-    int Stages = 1,
+    int Nspin_ = 4,
+    int Stages_ = 1,
     typename Float2 = Float2_t<FloatType_>,
     typename Complex = Complex<FloatType_>
 >
@@ -41,8 +42,8 @@ void single_point_wilson_dslash_xdim_forward_ghost_unpack(
         cuda_abort();
     }
 
-    __shared__ Float2 smem_A[Stages][A_Shape];
-    __shared__ Float2 smem_B[Stages][B_Shape * 2];
+    __shared__ Float2 smem_A[Stages_][A_Shape];
+    __shared__ Float2 smem_B[Stages_][B_Shape * 2];
 
     // ldg_A and ldg_B are used to load A and B from global memory
     Complex ldg_A[1];
@@ -55,7 +56,7 @@ void single_point_wilson_dslash_xdim_forward_ghost_unpack(
     QcuLattDesc latt_half_desc{latt_desc.X() >> 1, latt_desc.Y(), latt_desc.Z(), latt_desc.T()};
     QcuLattDesc sub_space_half_desc {1, latt_desc.Y() >> 1, latt_desc.Z(), latt_desc.T()}; // 3-dim sub-space lattice desc
 
-    Point sub_latt_coord {
+    Point<Nspin_> sub_latt_coord {
         coord_1dim % sub_space_half_desc.X()
         , coord_1dim % (sub_space_half_desc.Y() * sub_space_half_desc.X()) / sub_space_half_desc.X()
         , coord_1dim % (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X()) / (sub_space_half_desc.Y() * sub_space_half_desc.X())
@@ -64,7 +65,7 @@ void single_point_wilson_dslash_xdim_forward_ghost_unpack(
     };
 
     int cb_xzt = 1 - (sub_latt_coord.Z() + sub_latt_coord.T()) % 2;
-    Point coord {sub_latt_coord};
+    Point<Nspin_> coord {sub_latt_coord};
     coord.at(X_DIM) = latt_half_desc.X() - 1; // recv from forward
     coord.at(Y_DIM) = 2 * sub_latt_coord.Y() + (parity != cb_xzt);
 
@@ -85,7 +86,7 @@ void single_point_wilson_dslash_xdim_forward_ghost_unpack(
             // load res from global memory
             Float2* glb_out = reinterpret_cast<Float2 *>(coord.getGatheredColorSpinorAddr(out, latt_half_desc, n_color, m_rhs));
             // load res to register
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 gemm::ldg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -151,7 +152,7 @@ void single_point_wilson_dslash_xdim_forward_ghost_unpack(
 
             // store global memory
 #pragma unroll
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 // store
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
@@ -166,7 +167,8 @@ template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
-    int Stages = 1,
+    int Nspin_ = 4,
+    int Stages_ = 1,
     typename Float2 = Float2_t<FloatType_>,
     typename Complex = Complex<FloatType_>
 >
@@ -192,7 +194,7 @@ void single_point_wilson_dslash_xdim_backward_ghost_unpack(
     QcuLattDesc latt_half_desc{latt_desc.X() >> 1, latt_desc.Y(), latt_desc.Z(), latt_desc.T()}; // 4-dim lattice desc
     QcuLattDesc sub_space_half_desc {1, latt_desc.Y() >> 1, latt_desc.Z(), latt_desc.T()}; // 3-dim sub-space lattice desc
 
-    Point sub_latt_coord {
+    Point<Nspin_> sub_latt_coord {
         coord_1dim % sub_space_half_desc.X()
         , coord_1dim % (sub_space_half_desc.Y() * sub_space_half_desc.X()) / sub_space_half_desc.X()
         , coord_1dim % (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X()) / (sub_space_half_desc.Y() * sub_space_half_desc.X())
@@ -201,7 +203,7 @@ void single_point_wilson_dslash_xdim_backward_ghost_unpack(
     };
 
     int cb_xzt = (sub_latt_coord.Z() + sub_latt_coord.T()) % 2;
-    Point coord {sub_latt_coord};
+    Point<Nspin_> coord {sub_latt_coord};
     coord.at(X_DIM) = 0;
     coord.at(Y_DIM) = 2 * sub_latt_coord.Y() + (parity != cb_xzt);
 
@@ -219,7 +221,7 @@ void single_point_wilson_dslash_xdim_backward_ghost_unpack(
             // load res from global memory
             Float2* glb_out = reinterpret_cast<Float2 *>(coord.getGatheredColorSpinorAddr(out, latt_half_desc, n_color, m_rhs));
             // load res to register
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 gemm::ldg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -228,7 +230,7 @@ void single_point_wilson_dslash_xdim_backward_ghost_unpack(
 
             Float2* glb_B = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredHalfColorSpinorAddr(temp_in, sub_space_half_desc, n_color, m_rhs));
 
-            for (int i = 0; i < Ns / 2; ++i) {
+            for (int i = 0; i < Nspin_ / 2; ++i) {
                 gemm::ldg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_B) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -237,7 +239,7 @@ void single_point_wilson_dslash_xdim_backward_ghost_unpack(
 
             // add to res
             if (row < n_color && col < m_rhs) {
-                for (int mat1_pos = 0; mat1_pos < Ns / 2; ++mat1_pos) {
+                for (int mat1_pos = 0; mat1_pos < Nspin_ / 2; ++mat1_pos) {
                     int mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(ghost_dim, mat1_pos);
                     scale = kernel::Gamma<FloatType_>::get_reconstruct_scale(ghost_dim, mat1_pos, dir);
                     if (dagger_flag) { scale = -scale; }
@@ -248,7 +250,7 @@ void single_point_wilson_dslash_xdim_backward_ghost_unpack(
 
             // store global memory
 #pragma unroll
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 // store
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
@@ -264,7 +266,8 @@ template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
-    int Stages = 1,
+    int Nspin_ = 4,
+    int Stages_ = 1,
     typename Float2 = Float2_t<FloatType_>,
     typename Complex = Complex<FloatType_>
 >
@@ -287,8 +290,8 @@ void single_point_wilson_dslash_forward_ghost_unpack(
         cuda_abort();
     }
 
-    __shared__ Float2 smem_A[Stages][A_Shape];
-    __shared__ Float2 smem_B[Stages][B_Shape * 2];
+    __shared__ Float2 smem_A[Stages_][A_Shape];
+    __shared__ Float2 smem_B[Stages_][B_Shape * 2];
 
     // ldg_A and ldg_B are used to load A and B from global memory
     Complex ldg_A[1];
@@ -307,7 +310,7 @@ void single_point_wilson_dslash_forward_ghost_unpack(
         printf("X dim not implemented yet\n");
     }
 
-    Point sub_latt_coord {
+    Point<Nspin_> sub_latt_coord {
         coord_1dim % sub_space_half_desc.X()
         , coord_1dim % (sub_space_half_desc.Y() * sub_space_half_desc.X()) / sub_space_half_desc.X()
         , coord_1dim % (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X()) / (sub_space_half_desc.Y() * sub_space_half_desc.X())
@@ -315,7 +318,7 @@ void single_point_wilson_dslash_forward_ghost_unpack(
         , parity
     };
 
-    Point coord {sub_latt_coord};
+    Point<Nspin_> coord {sub_latt_coord};
 
     if (dir == FWD) {  coord.at(ghost_dim) = latt_half_desc.at(ghost_dim) - 1; } // recv from forward
     else { printf("Direction Wrong\n");  cuda_abort(); }
@@ -337,7 +340,7 @@ void single_point_wilson_dslash_forward_ghost_unpack(
             // load res from global memory
             Float2* glb_out = reinterpret_cast<Float2 *>(coord.getGatheredColorSpinorAddr(out, latt_half_desc, n_color, m_rhs));
             // load res to register
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 gemm::ldg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -402,7 +405,7 @@ void single_point_wilson_dslash_forward_ghost_unpack(
 
             // store global memory
 #pragma unroll
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 // store
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
@@ -417,7 +420,8 @@ template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
-    int Stages = 1,
+    int Nspin_ = 4,
+    int Stages_ = 1,
     typename Float2 = Float2_t<FloatType_>,
     typename Complex = Complex<FloatType_>
 >
@@ -454,7 +458,7 @@ void single_point_wilson_dslash_backward_ghost_unpack(
         cuda_abort();
     }
 
-    Point sub_latt_coord {
+    Point<Nspin_> sub_latt_coord {
         coord_1dim % sub_space_half_desc.X()
         , coord_1dim % (sub_space_half_desc.Y() * sub_space_half_desc.X()) / sub_space_half_desc.X()
         , coord_1dim % (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X()) / (sub_space_half_desc.Y() * sub_space_half_desc.X())
@@ -462,7 +466,7 @@ void single_point_wilson_dslash_backward_ghost_unpack(
         , parity
     };
 
-    Point coord {sub_latt_coord};
+    Point<Nspin_> coord {sub_latt_coord};
     if (dir == BWD) {  coord.at(ghost_dim) = 0; } // recv from backward
     else { printf("Direction Wrong\n");  cuda_abort(); }
 
@@ -480,7 +484,7 @@ void single_point_wilson_dslash_backward_ghost_unpack(
             // load res from global memory
             Float2* glb_out = reinterpret_cast<Float2 *>(coord.getGatheredColorSpinorAddr(out, latt_half_desc, n_color, m_rhs));
             // load res to register
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 gemm::ldg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -489,7 +493,7 @@ void single_point_wilson_dslash_backward_ghost_unpack(
 
             Float2* glb_B = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredHalfColorSpinorAddr(temp_in, sub_space_half_desc, n_color, m_rhs));
 
-            for (int i = 0; i < Ns / 2; ++i) {
+            for (int i = 0; i < Nspin_ / 2; ++i) {
                 gemm::ldg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_B) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -498,7 +502,7 @@ void single_point_wilson_dslash_backward_ghost_unpack(
 
             // add to res
             if (row < n_color && col < m_rhs) {
-                for (int mat1_pos = 0; mat1_pos < Ns / 2; ++mat1_pos) {
+                for (int mat1_pos = 0; mat1_pos < Nspin_ / 2; ++mat1_pos) {
                     int mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(ghost_dim, mat1_pos);
                     scale = kernel::Gamma<FloatType_>::get_reconstruct_scale(ghost_dim, mat1_pos, dir);
                     if (dagger_flag) { scale = -scale; }
@@ -509,7 +513,7 @@ void single_point_wilson_dslash_backward_ghost_unpack(
 
             // store global memory
 #pragma unroll
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 // store
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
@@ -526,7 +530,8 @@ void single_point_wilson_dslash_backward_ghost_unpack(
 template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
-    typename WarpShape_ = gemm::GemmShape<8, 8, 4>
+    typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
+    int Nspin_ = 4
 >
 QCU_GLOBAL
 void wilson_dslash_sun_mrhs_forward_ghost_unpack(
@@ -559,7 +564,8 @@ void wilson_dslash_sun_mrhs_forward_ghost_unpack(
 template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
-    typename WarpShape_ = gemm::GemmShape<8, 8, 4>
+    typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
+    int Nspin_ = 4
 >
 QCU_GLOBAL
 void wilson_dslash_sun_mrhs_backward_ghost_unpack(

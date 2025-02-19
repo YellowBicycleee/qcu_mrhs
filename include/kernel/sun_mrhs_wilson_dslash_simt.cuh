@@ -29,8 +29,9 @@ template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
+    int Nspin_ = 4,
     bool _use_tensor_core = false,
-    int Stages = 1,
+    int Stages_ = 1,
     typename Float2 = Float2_t<FloatType_>,
     typename Complex = Complex<FloatType_>
 >
@@ -51,9 +52,8 @@ void single_point_wilson_dslash(
 
     const int fermion_site_length = n_color * m_rhs;
     // used for ping pong
-    __shared__ Float2 smem_A[Stages][A_Shape]; // smem A size = BlockShape_::kMK
-    __shared__ Float2 smem_B[Stages][B_Shape * 2]; // smem B size = BlockShape_::kKN
-    // __shared__ Float2 smem_B2[Stages][BlockShape_::kKN];
+    __shared__ Float2 smem_A[Stages_][A_Shape]; // smem A size = BlockShape_::kMK
+    __shared__ Float2 smem_B[Stages_][B_Shape * 2]; // smem B size = BlockShape_::kKN
 
     // ldg_A and ldg_B are used to load A and B from global memory
     Complex ldg_A[1]; // BlockShape_::kMK / BlockSize_
@@ -87,7 +87,7 @@ void single_point_wilson_dslash(
             int row = loop_blk_m * BlockShape_::kM;// + threadIdx.y;
             int col = loop_blk_n * BlockShape_::kN;// + threadIdx.x;
 
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 res[i][0] = 0;
             }
 
@@ -203,7 +203,7 @@ void single_point_wilson_dslash(
 
             // store global memory
 #pragma unroll
-            for (int i = 0; i < Ns; ++i) {
+            for (int i = 0; i < Nspin_; ++i) {
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,

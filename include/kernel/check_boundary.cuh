@@ -13,8 +13,9 @@ enum class QcuBoundary {
     kQcuCenter
 };
 
+template <int Nspin_>
 QCU_DEVICE
-QcuBoundary check_boundary_with_eo_precondition (QcuLattDesc& latt_desc, Point& point, int dim, int multiprocess) {
+QcuBoundary check_boundary_with_eo_precondition (QcuLattDesc& latt_desc, Point<Nspin_>& point, int dim, int multiprocess) {
 
     if (dim < 0 || dim > 1) {
         printf("Fatal, in function %s, error dim %d, must be one of (x-0, y-1, z-2, t-3)\n", __func__, dim);

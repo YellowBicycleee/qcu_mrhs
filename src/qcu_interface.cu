@@ -21,8 +21,10 @@
 namespace qcu {
 
 void Qcu::allocateMemory() {
+    // printf("nspin: %d, ncolor: %d, m_input: %d\n", n_spin_, n_colors_, m_input_);
+    assert(n_spin_ > 0);
     int vol = qcu::config::lattice_volume_local();
-    int colorSpinorMrhs_size = vol * Ns * n_colors_ * m_input_;  // even and odd
+    int colorSpinorMrhs_size = vol * n_spin_ * n_colors_ * m_input_;  // even and odd
     int gauge_size = Nd * vol * n_colors_ * n_colors_;   // even and odd
 
     switch (underlying_args_.compute_float_precision) {
@@ -65,9 +67,20 @@ void Qcu::freeMemory() {
 }
 
 void Qcu::get_dslash(DslashType dslashType, double mass) {
-    // if (nullptr != dslash_) {
-    //     delete dslash_;
-    // }
+    switch (dslashType)
+    {
+    case DslashType::kDslashWilson:
+        n_spin_ = 4;
+        break;
+    case DslashType::kDslashStaggered:
+        n_spin_ = 1;
+        break;
+    default:
+        n_spin_ = -1;
+        errorQcu("Unsupported dslash type\n");
+        break;
+    }
+    allocateMemory();
     void* gauge;
     switch (underlying_args_.compute_float_precision) {
         case QcuPrecision::kPrecisionHalf:
@@ -138,7 +151,7 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
         d_lookup_table_in_, underlying_args_.out_float_precision, *qcu::config::get_lattice_desc_ptr(),
         n_colors_, m_input_, NULL), 0, "gather");
     CHECK_CUDA(cudaDeviceSynchronize());
-    
+
     TIMER_EVENT(dslash_->apply(dslash_param_), dslash_->operations(), "wilson dslash");
     TIMER_EVENT(
         colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision, fermion_out_mrhs_,
@@ -169,15 +182,15 @@ void Qcu::mat_qcu (bool dagger_flag) {
     vector<void*> fermion_in_half (m_input_);
     vector<void*> fermion_out_half (m_input_);
     const int vol = underlying_args_.lattice_desc_ptr.lattice_volume();
-    const int fermion_half_len = (vol / 2) * Ns * n_colors_ * m_input_;
+    const int fermion_half_len = (vol / 2) * n_spin_ * n_colors_ * m_input_;
     // mat_qcu = fermionIn - kappa fermionOut   
     qcu::qcu_blas::Complex_xsay<OutputFloat> xsay_op;
 
     for (int parity = 0; parity < 2; ++parity) {
         dslash_param_->parity = parity;
         for (int i = 0; i < m_input_; ++i) {
-            fermion_out_half[i] = static_cast<Complex<OutputFloat>*>(fermion_out_vec_[i]) + parity * vol / 2 * Ns * n_colors_;
-            fermion_in_half[i] = static_cast<Complex<OutputFloat>*>(fermion_in_vec_[i]) + (1 - parity) * vol / 2 * Ns * n_colors_;
+            fermion_out_half[i] = static_cast<Complex<OutputFloat>*>(fermion_out_vec_[i]) + parity * vol / 2 * n_spin_ * n_colors_;
+            fermion_in_half[i] = static_cast<Complex<OutputFloat>*>(fermion_in_vec_[i]) + (1 - parity) * vol / 2 * n_spin_ * n_colors_;
         }
         CHECK_CUDA(
             cudaMemcpy(d_lookup_table_in_, fermion_in_half.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
@@ -257,7 +270,7 @@ void Qcu::push_back_fermion(void* fermionOut, void* fermionIn) {
 
 void Qcu::solve_fermions(int max_iteration, double max_precision) {
     const int vol = qcu::config::lattice_volume_local();
-    const int colorSpinor_len = Ns * n_colors_;
+    const int colorSpinor_len = n_spin_ * n_colors_;
 
     if (m_input_ != fermion_in_vec_.size()) {
         errorQcu("number of fermion is different from mInput\n");
@@ -313,6 +326,7 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
     qcu::solver::BiCGStabParam param{
         .nColor         = n_colors_,
         .mInput         = m_input_,
+        .Nspin          = 4,
         .kappa          = kappa_,
         .output_x_mrhs  = fermion_out_mrhs_,
         .input_b_mrhs   = fermion_in_mrhs_,

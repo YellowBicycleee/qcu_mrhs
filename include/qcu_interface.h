@@ -34,6 +34,7 @@ private:
 
     int32_t n_colors_;
     int32_t m_input_;
+    int32_t n_spin_ = -1;
     double mass_;
     double kappa_;
 
@@ -89,15 +90,12 @@ public:
         , fp16_gauge_(nullptr)
         , fermion_in_mrhs_(nullptr)
         , fermion_out_mrhs_(nullptr)
-    {
-        allocateMemory();
-    }
+    {}
 
-    ~Qcu() { freeMemory(); }
+    ~Qcu() { freeMemory(); /* getDslash申请内存 */ }
 
     int32_t color() const { return n_colors_; }
     int32_t rhs_num () const { return m_input_; }
-    int32_t n_spin () const { return Ns; }
 
     void get_dslash (DslashType dslashType, double mass);
     void start_dslash (int parity, bool daggerFlag = false);

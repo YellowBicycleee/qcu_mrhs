@@ -20,7 +20,8 @@ template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
-    int Stages = 1,
+    int Nspin_ = 4,
+    int Stages_ = 1,
     typename Float2 = Float2_t<FloatType_>,
     typename Complex = Complex<FloatType_>
 >
@@ -43,8 +44,8 @@ void single_point_wilson_dslash_xdim_forward_ghost_pack(
 
     const int fermion_site_length = n_color * m_rhs;
 
-    __shared__ Float2 smem_A[Stages][A_Shape];
-    __shared__ Float2 smem_B[Stages][B_Shape * 2];
+    __shared__ Float2 smem_A[Stages_][A_Shape];
+    __shared__ Float2 smem_B[Stages_][B_Shape * 2];
 
     // ldg_A and ldg_B are used to load A and B from global memory
     Complex ldg_A[1];
@@ -140,7 +141,7 @@ void single_point_wilson_dslash_xdim_forward_ghost_pack(
 
             // epilogue, store into global memory
 #pragma unroll
-            for (int i = 0; i < Ns / 2; ++i) {
+            for (int i = 0; i < Nspin_ / 2; ++i) {
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -155,7 +156,8 @@ template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
-    int Stages = 1,
+    int Nspin_ = 4,
+    int Stages_ = 1,
     typename Float2 = Float2_t<FloatType_>,
     typename Complex = Complex<FloatType_>
 >
@@ -209,7 +211,7 @@ void single_point_wilson_dslash_xdim_backward_ghost_pack(
             Float2* glb_B = reinterpret_cast<Float2 *>(coord.getGatheredColorSpinorAddr(in, latt_half_desc, n_color, m_rhs));
             Float2* glb_out = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredHalfColorSpinorAddr(temp_out, sub_space_half_desc, n_color, m_rhs));
 #pragma unroll
-            for (int pos = 0; pos < Ns / 2; ++pos) {
+            for (int pos = 0; pos < Nspin_ / 2; ++pos) {
                 if (row < n_color && col < m_rhs) {
                     mat1_pos = pos;
                     mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(ghost_dim, mat1_pos);
@@ -234,7 +236,8 @@ template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
-    int Stages = 1,
+    int Nspin_ = 4,
+    int Stages_ = 1,
     typename Float2 = Float2_t<FloatType_>,
     typename Complex = Complex<FloatType_>
 >
@@ -259,8 +262,8 @@ void single_point_wilson_dslash_forward_ghost_pack(
 
     const int fermion_site_length = n_color * m_rhs;
 
-    __shared__ Float2 smem_A[Stages][A_Shape];
-    __shared__ Float2 smem_B[Stages][B_Shape * 2];
+    __shared__ Float2 smem_A[Stages_][A_Shape];
+    __shared__ Float2 smem_B[Stages_][B_Shape * 2];
 
     // ldg_A and ldg_B are used to load A and B from global memory
     Complex ldg_A[1];
@@ -362,7 +365,7 @@ void single_point_wilson_dslash_forward_ghost_pack(
 
             // epilogue, store into global memory
 #pragma unroll
-            for (int i = 0; i < Ns / 2; ++i) {
+            for (int i = 0; i < Nspin_ / 2; ++i) {
                 gemm::stg<Float2, FermionMatShape, BlockShape_, WarpShape_> (
                     reinterpret_cast<Float2*>(glb_out) + i * n_color * m_rhs,
                     n_color, m_rhs, row, col,
@@ -377,7 +380,8 @@ template <
     typename FloatType_ = double,
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
-    int Stages = 1,
+    int Nspin_ = 4,
+    int Stages_ = 1,
     typename Float2 = Float2_t<FloatType_>,
     typename Complex = Complex<FloatType_>
 >
@@ -442,7 +446,7 @@ void single_point_wilson_dslash_backward_ghost_pack(
             Float2* glb_B = reinterpret_cast<Float2 *>(coord.getGatheredColorSpinorAddr(in, latt_half_desc, n_color, m_rhs));
             Float2* glb_out = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredHalfColorSpinorAddr(temp_out, sub_space_half_desc, n_color, m_rhs));
 #pragma unroll
-            for (int pos = 0; pos < Ns / 2; ++pos) {
+            for (int pos = 0; pos < Nspin_ / 2; ++pos) {
                 if (row < n_color && col < m_rhs) {
                     mat1_pos = pos;
                     mat2_pos = kernel::Gamma<FloatType_>::get_reconstruct_mat_id(ghost_dim, mat1_pos);

@@ -11,7 +11,8 @@ namespace qcu {
 
 // 异常不安全版本，可能暂时没时间去做一个异常安全版本了。。。
 template <
-    int Ndim_ = Nd
+    int Ndim_ = Nd,
+    int Nspin_ = 4
 >
 struct FermionGhost {
     FermionGhost(
@@ -19,8 +20,8 @@ struct FermionGhost {
         unsigned int multiprogress_mask,
         int n_color, int m_rhs, QcuPrecision precision)
     {   // lattice_volume() / 2 : even odd precondition
-        // Ns / 2 : projection
-        size_t total_length = latt_desc_local.lattice_volume() / 2 * Ns / 2 * n_color * m_rhs;
+        // Nspin_ / 2 : projection
+        size_t total_length = latt_desc_local.lattice_volume() / 2 * Nspin_ / 2 * n_color * m_rhs;
         size_t size_complex = 0;
         switch (precision) {
             case QcuPrecision::kPrecisionHalf:
@@ -147,12 +148,14 @@ struct FermionGhost {
     std::array<size_t, Nd> ghost_len;
 };
 
-
+template<
+    int Nspin_ = 4
+>
 struct Fermion {
     Fermion(qcu::QcuLattDesc const& latt_desc_local,
         unsigned int multiprogress_mask,
         int n_color, int m_rhs, QcuPrecision precision)
-    : complex_buff_len(latt_desc_local.lattice_volume() * Ns * n_color * m_rhs)
+    : complex_buff_len(latt_desc_local.lattice_volume() * Nspin_ * n_color * m_rhs)
     {
         size_t size_complex = 0;
         switch (precision) {

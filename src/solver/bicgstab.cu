@@ -19,7 +19,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
     const int Lt  = param_.lattDesc->T();
 
     const int vol = Lx * Ly * Lz * Lt;
-    const int complex_vec_len = param_.mInput * param_.nColor * Ns; // on single point
+    const int complex_vec_len = param_.mInput * param_.nColor * param_.Nspin; // on single point
 
     int iterate_float_size;
     int output_float_size;
@@ -148,7 +148,7 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
   const int Lz  = param_.lattDesc->Z();
   const int Lt  = param_.lattDesc->T();
   const int vol = Lx * Ly * Lz * Lt;
-  const int single_vec_len = param_.nColor * Ns;
+  const int single_vec_len = param_.nColor * param_.Nspin;
   const int complex_vec_len = param_.mInput * single_vec_len;
 
   // copy origin_even_b to new_b_ first, with correct precision
