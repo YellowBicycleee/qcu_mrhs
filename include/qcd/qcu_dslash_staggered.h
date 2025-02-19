@@ -1,8 +1,27 @@
-//
-// Created by wangj on 2025/2/13.
-//
+#pragma once
 
-#ifndef QCU_DSLASH_STAGGERED_H
-#define QCU_DSLASH_STAGGERED_H
+#include "qcd/qcu_dslash.h"
 
-#endif //QCU_DSLASH_STAGGERED_H
+namespace qcu::simt {
+
+class WilsonDslash : public Dslash {
+public:
+    WilsonDslash(bool if_metric = false) : Dslash() {}
+
+    virtual ~WilsonDslash() noexcept = default;
+
+    virtual void apply(const std::shared_ptr<DslashParam>) override;
+
+    virtual double flops() override;
+
+private:
+    void pre_apply(const std::shared_ptr<DslashParam>);
+
+    void post_apply(const std::shared_ptr<DslashParam>);
+
+    void apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim);
+
+    void apply_ghost_pack(DslashParam& dslash_param, int ghost_dim);
+};
+
+}
