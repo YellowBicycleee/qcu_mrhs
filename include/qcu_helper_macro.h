@@ -6,9 +6,16 @@
 #include "qcu_helper.h"
 enum DslashType {
     kDslashWilson = 0,
-    kDslashClover,
+    kDslashStaggered = 1,
     kDslashUnkown
 };
+
+enum QcuNspin {
+    kNspinWilson = 4,
+    kNspinStaggered = 1,
+    kNspinUndefined
+};
+
 enum QcuDaggerFlag {
     kDaggerNo = 0,
     kDaggerYes,
