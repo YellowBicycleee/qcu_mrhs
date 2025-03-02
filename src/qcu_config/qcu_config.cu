@@ -71,7 +71,7 @@ public:
     [[nodiscard]] qcu::QcuLattDesc get_latt_desc_local () const { return latt_desc; }
     [[nodiscard]] qcu::QcuProcDesc get_mpi_desc () const { return mpi_desc; }
     [[nodiscard]] qcu::FourDimCoordinate get_mpi_coord() const { return mpi_coord; }
-
+    [[nodiscard]] bool process_last_t () const { return mpi_coord.data[T_DIM] == mpi_desc.data[T_DIM] - 1; }
 private:
     int latt_vol_total;
     int latt_vol_local;
@@ -86,6 +86,10 @@ private:
 
 std::shared_ptr<QcuConfig> qcu_configuration(nullptr);
 
+bool is_last_process_t() {
+    if (qcu_configuration) { return qcu_configuration->process_last_t(); }
+    else { errorQcu("Get parameters before configured\n"); }
+}
 
 unsigned int get_mpi_separated_mask () {
     if (qcu_configuration) { return qcu_configuration->get_mpi_separated_mask(); }
