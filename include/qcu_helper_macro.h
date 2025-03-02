@@ -16,6 +16,14 @@ enum QcuNspin {
     kNspinUndefined
 };
 
+enum QcuStaggeredPhase {
+    kQcuStaggeredPhaseNo = 0,
+    kQcuStaggeredPhaseMilc = 1,
+    kQcuStaggeredPhaseCps = 2,
+    kQcuStaggeredPhaseTifr = 3,
+    kQcuStaggeredPhaseNoInvalid
+};
+
 enum QcuDaggerFlag {
     kDaggerNo = 0,
     kDaggerYes,

@@ -7,8 +7,9 @@
 #include "desc/qcu_desc.h"
 #include "lattice_desc.h"
 
-namespace qcu {
-namespace config {
+namespace qcu::config {
+
+bool is_last_process_t();
 MPI_Request& get_mpi_request_pack(int dim, int dir);
 MPI_Request& get_mpi_request_unpack(int dim, int dir);
 
@@ -28,5 +29,5 @@ std::vector<cudaStream_t>& get_qcu_streams() noexcept;
 cudaStream_t get_qcu_default_stream() noexcept;
 void init_streams();
 void destroy_streams();
-}
+
 }

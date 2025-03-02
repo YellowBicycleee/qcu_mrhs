@@ -18,7 +18,7 @@ __device__ __forceinline__ void gather_color_spinor (Float2_dst*  __restrict__ g
                                                     Float2_src** __restrict__ global_src_array,
                                                     int x, int y, int z, int t, 
                                                     int Lx, int Ly, int Lz, int Lt,
-                                                    int n_color, int m_input, int Nspin = 4) {
+                                                    int n_color, int m_input, int Nspin) {
     int half_Lx = Lx / 2;
     int src_offset;
     Float2_dst dst_temp;
@@ -45,7 +45,7 @@ __device__ __forceinline__ void scatter_color_spinor (Float2_dst**  __restrict__
                                                     Float2_src* __restrict__ global_src_ptr,
                                                     int x, int y, int z, int t,
                                                     int Lx, int Ly, int Lz, int Lt,
-                                                    int n_color, int m_input, int Nspin = 4) { 
+                                                    int n_color, int m_input, int Nspin) {
     int half_Lx = Lx / 2;
     int dst_offset;
     Float2_dst dst_temp;
@@ -71,7 +71,7 @@ template <typename Float2_dst, typename Float2_src>
 __global__ void color_spinor_gather_kernel (Float2_dst*  __restrict__ global_dst_ptr,
                                             Float2_src** __restrict__ global_src_array,
                                             int Lx, int Ly, int Lz, int Lt,
-                                            int n_color, int m_input) {
+                                            int n_color, int m_input, int nspin) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
     int half_Lx = Lx / 2;
@@ -80,7 +80,7 @@ __global__ void color_spinor_gather_kernel (Float2_dst*  __restrict__ global_dst
 
     for (int i = idx; i < vol; i += stride){
         get4DCoord(t, z, y, x, i, Lz, Ly, half_Lx);
-        gather_color_spinor<Float2_dst, Float2_src>(global_dst_ptr, global_src_array, x, y, z, t, Lx, Ly, Lz, Lt, n_color, m_input);
+        gather_color_spinor<Float2_dst, Float2_src>(global_dst_ptr, global_src_array, x, y, z, t, Lx, Ly, Lz, Lt, n_color, m_input, nspin);
     }
 }
 
@@ -88,7 +88,7 @@ template <typename Float2_dst, typename Float2_src>
 __global__ void color_spinor_scatter_kernel (Float2_dst**  __restrict__ global_dst_array,
                                             Float2_src* __restrict__ global_src_ptr,
                                             int Lx, int Ly, int Lz, int Lt,
-                                            int n_color, int m_input) {
+                                            int n_color, int m_input, int nspin) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
     int half_Lx = Lx / 2;
@@ -97,7 +97,7 @@ __global__ void color_spinor_scatter_kernel (Float2_dst**  __restrict__ global_d
 
     for (int i = idx; i < vol; i += stride){
         get4DCoord(t, z, y, x, i, Lz, Ly, half_Lx);
-        scatter_color_spinor<Float2_dst, Float2_src>(global_dst_array, global_src_ptr, x, y, z, t, Lx, Ly, Lz, Lt, n_color, m_input);
+        scatter_color_spinor<Float2_dst, Float2_src>(global_dst_array, global_src_ptr, x, y, z, t, Lx, Ly, Lz, Lt, n_color, m_input, nspin);
     }
 }
 

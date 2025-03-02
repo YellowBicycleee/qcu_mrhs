@@ -10,9 +10,9 @@ void copyComplexVector_interface(void* __restrict__ dst, QcuPrecision dstPrec, v
 
 void colorSpinorGather(void* __restrict__ global_dst_ptr, QcuPrecision dstPrec, void* __restrict__ global_src_array,
                        QcuPrecision srcPrec, const qcu::QcuLattDesc& latt_desc, int n_color, int m_input,
-                       cudaStream_t stream = NULL);
+                       cudaStream_t stream, int nspin);
 
 void colorSpinorScatter(void* __restrict__ global_dst_array, QcuPrecision dstPrec, void* __restrict__ global_src_ptr,
                         QcuPrecision srcPrec, const qcu::QcuLattDesc& latt_desc, int n_color, int m_input,
-                        cudaStream_t stream = NULL);
+                        cudaStream_t stream, int nspin);
 }  // namespace qcu

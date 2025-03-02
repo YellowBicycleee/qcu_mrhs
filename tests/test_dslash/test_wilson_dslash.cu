@@ -80,7 +80,7 @@ int main() {
 
     // begin
     initGridSize(&process_grid, &qcu_latt_param, nColor, mInput, inputFloatPrecision, dslashFloatPrecision);
-    getDslash(DslashType::kDslashWilson, -3.5);
+    getDslash(DslashType::kDslashWilson, -3.5, 0);
     loadQcuGauge(gauge, inputFloatPrecision);
 
     for (int parity = 0; parity < 2; ++parity) {

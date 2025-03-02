@@ -8,7 +8,7 @@
 #include "qcu_interface.h"
 #include "qcu_public.h"
 #include "qcu_config/qcu_config.h"
-
+#include "qcu_helper_macro.h"
 static qcu::Qcu *qcu_ptr = nullptr;
 
 static void check_qcu_ptr() {
@@ -47,9 +47,9 @@ void loadQcuGauge(void *gauge, int floatPrecision) {
     qcu_ptr->load_gauge(gauge, (QcuPrecision)floatPrecision);
 }
 
-void getDslash(int dslashType, double mass) { 
+void getDslash(int dslashType, double mass, int anti_periodic_t) {
     check_qcu_ptr();
-    qcu_ptr->get_dslash((DslashType)dslashType, mass);
+    qcu_ptr->get_dslash((DslashType)dslashType, mass, static_cast<bool>(anti_periodic_t));
 }
 
 void start_dslash(int parity, int daggerFlag) {
@@ -65,6 +65,10 @@ void finalizeQcu() {
     delete qcu_ptr;
     qcu_ptr = nullptr;
     qcu::config::destroy_streams();
+}
+void setStaggeredPhase (int staggered_phase) {
+    check_qcu_ptr();
+    qcu_ptr->set_staggered_phase(static_cast<QcuStaggeredPhase>(staggered_phase));
 }
 
 void qcuInvert(int max_iteration, double max_precison) {

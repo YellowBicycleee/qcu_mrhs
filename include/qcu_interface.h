@@ -8,6 +8,7 @@
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_helper_macro.h"
 #include "qcu_public.h"
+#include "qcd/qcu_dslash_staggered.h"
 namespace qcu {
 class Qcu {
 public:
@@ -35,8 +36,11 @@ private:
     int32_t n_colors_;
     int32_t m_input_;
     int32_t n_spin_ = -1;
+    int32_t t_boundary_ = 1;
+    bool anti_periodic_t_ = false;
     double mass_;
     double kappa_;
+    QcuStaggeredPhase staggered_phase_ = QcuStaggeredPhase::kQcuStaggeredPhaseNo;
 
     std::shared_ptr<DslashParam> dslash_param_ = nullptr;
     std::shared_ptr<Dslash> dslash_ = nullptr;
@@ -44,18 +48,18 @@ private:
     std::vector<void *> fermion_in_vec_;
     std::vector<void *> fermion_out_vec_;
 
-    void *gauge_external_;      // gauge field, donnot allocate memory, external pointer
-    void *fp64_gauge_;          // double gauge field
-    void *fp32_gauge_;          // single gauge field
-    void *fp16_gauge_;          // half gauge field
+    void *gauge_external_ = nullptr;      // gauge field, donnot allocate memory, external pointer
+    void *fp64_gauge_ = nullptr;          // double gauge field
+    void *fp32_gauge_ = nullptr;          // single gauge field
+    void *fp16_gauge_ = nullptr;          // half gauge field
 
     // mrhs fermion field, gathered into my preferred shape
-    void *fermion_in_mrhs_;
-    void *fermion_out_mrhs_;
+    void *fermion_in_mrhs_ = nullptr;
+    void *fermion_out_mrhs_ = nullptr;
 
     // lookup table
-    void* d_lookup_table_in_;
-    void* d_lookup_table_out_;
+    void* d_lookup_table_in_ = nullptr;
+    void* d_lookup_table_out_ = nullptr;
 
     void* device_kappa_ = nullptr;
 
@@ -97,7 +101,7 @@ public:
     int32_t color() const { return n_colors_; }
     int32_t rhs_num () const { return m_input_; }
 
-    void get_dslash (DslashType dslashType, double mass);
+    void get_dslash (DslashType dslashType, double mass, bool anti_periodic_t);
     void start_dslash (int parity, bool daggerFlag = false);
     void mat_qcu (bool daggerFlag = false);
     void load_gauge (void *gauge, QcuPrecision floatPrecision);
@@ -107,6 +111,8 @@ public:
     void solve_fermions (int max_iteration, double p_max_prec);
     // IO
     void read_gauge_from_file (const char* file_path, void* data_ptr);
+
+    void set_staggered_phase (QcuStaggeredPhase staggered_phase);
 };
 
 }  // namespace qcu

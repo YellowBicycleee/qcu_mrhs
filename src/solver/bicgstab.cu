@@ -160,6 +160,8 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
   std::shared_ptr<DslashParam> param = std::make_shared<DslashParam> (
     /*param.daggerFlag      */   false,
     /*param.precision       */   OutputPrecision,
+    /*param.staggered_phase */   param_.staggered_phase,
+    /*param.t_boundary      */   param_.t_boudary,
     /*param.nColor          */   param_.nColor,
     /*param.mInput          */   param_.mInput,
     /*param.parity          */   ODD_PARITY,      // D_{oe} b_{e}

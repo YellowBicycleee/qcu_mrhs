@@ -176,6 +176,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
     std::shared_ptr<DslashParam> dslashParam = std::make_shared<DslashParam>(
         false,                      // daggerFlag,
         OutputPrecision,            // dslash precision
+        param_.staggered_phase,
+        param_.t_boudary,
         param_.nColor,              // nColor,
         param_.mInput,              // mInput,
         EVEN_PARITY,                // parity,
@@ -468,6 +470,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
   std::shared_ptr<DslashParam> dslashParam = std::make_shared<DslashParam>(
     false,                      // daggerFlag,
     OutputPrecision,            // dslash precision
+    param_.staggered_phase,
+    param_.t_boudary,
     param_.nColor,              // nColor,
     param_.mInput,              // mInput,
     EVEN_PARITY,                // parity,
@@ -709,6 +713,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
     std::shared_ptr<DslashParam> dslashParam = std::make_shared<DslashParam>(
         false,                      // bool p_daggerFlag,
         OutputPrecision,            // QCU_PRECISION p_precision,
+        param_.staggered_phase,     // int p_staggered_phase,
+        param_.t_boudary,           // int p_t_boundary,
         param_.nColor,              // int p_nColor,
         param_.mInput,              // int p_mInput,
         EVEN_PARITY,                // int p_parity,

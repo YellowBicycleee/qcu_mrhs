@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(QCU LANGUAGES C CXX CUDA) # project name = ${PROJECT_NAME}
 find_package(MPI REQUIRED)
 find_package(CUDA REQUIRED)
-
+# set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --ptxas-options=-v --keep") #保留ptx
 # include_directories(/usr/lib/x86_64-linux-gnu/openmpi/include)  
 include_directories(${MPI_INCLUDE_PATH})
 set(CMAKE_CUDA_ARCHITECTURES 89)    # for 4060 laptop

@@ -42,8 +42,8 @@ static void copyVector_Complex_Async(void* __restrict__ dst, void* __restrict__ 
 }
 
 template <typename DstFloat, typename SrcFloat>
-void colorSpinorScatter(void* __restrict__ global_dst_array, void* __restrict__ global_src_ptr,
-    const qcu::QcuLattDesc& latt_desc, int n_color, int m_input, cudaStream_t stream)
+void colorSpinorScatterKernel(void* __restrict__ global_dst_array, void* __restrict__ global_src_ptr,
+    const qcu::QcuLattDesc& latt_desc, int n_color, int m_input, cudaStream_t stream, int nspin)
 {
     using DstFloat2 = typename qcu::Float2Wrapper<DstFloat>::Float2;
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
@@ -52,14 +52,14 @@ void colorSpinorScatter(void* __restrict__ global_dst_array, void* __restrict__ 
 
     device::color_spinor_scatter_kernel<DstFloat2, SrcFloat2>
         <<<grid_size, block_size, 0, stream>>>(static_cast<DstFloat2**>(global_dst_array), static_cast<SrcFloat2*>(global_src_ptr),
-            latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color, m_input);
+            latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color, m_input, nspin);
     CHECK_CUDA(cudaGetLastError());
     CHECK_CUDA(cudaStreamSynchronize(stream));
 }
 
 template <typename DstFloat, typename SrcFloat>
-void colorSpinorGather(void* __restrict__ global_dst_ptr, void* __restrict__ global_src_array, const QcuLattDesc& latt_desc,
-    int n_color, int m_input, cudaStream_t stream)
+void colorSpinorGatherKernel(void* __restrict__ global_dst_ptr, void* __restrict__ global_src_array, const QcuLattDesc& latt_desc,
+    int n_color, int m_input, cudaStream_t stream, int nspin)
 {
     using DstFloat2 = typename qcu::Float2Wrapper<DstFloat>::Float2;
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
@@ -70,7 +70,7 @@ void colorSpinorGather(void* __restrict__ global_dst_ptr, void* __restrict__ glo
     // printf("DEBUG file %s, line %d, global_src_array = %p, global_dst_ptr = %p\n", __FILE__, __LINE__,global_src_array, global_dst_ptr);
     device::color_spinor_gather_kernel<DstFloat2, SrcFloat2>
         <<<grid_size, block_size>>>(static_cast<DstFloat2*>(global_dst_ptr), static_cast<SrcFloat2**>(global_src_array),
-                                    latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color, m_input);
+                                    latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color, m_input, nspin);
     CHECK_CUDA(cudaGetLastError());
     CHECK_CUDA(cudaStreamSynchronize(stream));
 }
@@ -98,20 +98,17 @@ template <typename DstFloat>
 static void instantiate_colorSpinorScatter_SrcFloat(void* __restrict__ global_dst_array,
                                                     void* __restrict__ global_src_ptr,
                                                     QcuPrecision srcPrec, const qcu::QcuLattDesc& latt_desc,
-                                                    int n_color, int m_input, cudaStream_t stream)
+                                                    int n_color, int m_input, cudaStream_t stream, int nspin)
 {
     switch (srcPrec) {
         case QcuPrecision::kPrecisionHalf:
-            colorSpinorScatter<DstFloat, half>(global_dst_array, global_src_ptr, latt_desc, n_color, m_input,
-                                               stream);
+            colorSpinorScatterKernel<DstFloat, half>(global_dst_array, global_src_ptr, latt_desc, n_color, m_input, stream, nspin);
             break;
         case QcuPrecision::kPrecisionSingle:
-            colorSpinorScatter<DstFloat, float>(global_dst_array, global_src_ptr, latt_desc, n_color, m_input,
-                                                stream);
+            colorSpinorScatterKernel<DstFloat, float>(global_dst_array, global_src_ptr, latt_desc, n_color, m_input, stream, nspin);
             break;
         case QcuPrecision::kPrecisionDouble:
-            colorSpinorScatter<DstFloat, double>(global_dst_array, global_src_ptr, latt_desc, n_color, m_input,
-                                                 stream);
+            colorSpinorScatterKernel<DstFloat, double>(global_dst_array, global_src_ptr, latt_desc, n_color, m_input, stream, nspin);
             break;
         default:
             errorQcu("Unsupported Source Float precision\n");
@@ -122,16 +119,16 @@ template <typename DstFloat>
 static void instantiate_colorSpinorGather_SrcFloat(void* __restrict__ global_dst_ptr,
                                                    void* __restrict__ global_src_array, QcuPrecision srcPrec,
                                                    const qcu::QcuLattDesc& latt_desc, int n_color, int m_input,
-                                                   cudaStream_t stream) {
+                                                   cudaStream_t stream, int nspin) {
     switch (srcPrec) {
         case QcuPrecision::kPrecisionHalf:
-            colorSpinorGather<DstFloat, half>(global_dst_ptr, global_src_array, latt_desc, n_color, m_input, stream);
+            colorSpinorGatherKernel<DstFloat, half>(global_dst_ptr, global_src_array, latt_desc, n_color, m_input, stream, nspin);
             break;
         case QcuPrecision::kPrecisionSingle:
-            colorSpinorGather<DstFloat, float>(global_dst_ptr, global_src_array, latt_desc, n_color, m_input, stream);
+            colorSpinorGatherKernel<DstFloat, float>(global_dst_ptr, global_src_array, latt_desc, n_color, m_input, stream, nspin);
             break;
         case QcuPrecision::kPrecisionDouble:
-            colorSpinorGather<DstFloat, double>(global_dst_ptr, global_src_array, latt_desc, n_color, m_input, stream);
+            colorSpinorGatherKernel<DstFloat, double>(global_dst_ptr, global_src_array, latt_desc, n_color, m_input, stream, nspin);
             break;
         default:
             errorQcu("Unsupported Destination Float precision\n");
@@ -162,19 +159,16 @@ void copyComplexVector_interface(void* __restrict__ dest, QcuPrecision destPrec,
 
 void colorSpinorScatter(void* __restrict__ global_dst_array, QcuPrecision dstPrec, void* __restrict__ global_src_ptr,
                         QcuPrecision srcPrec, const QcuLattDesc& latt_desc, int n_color, int m_input,
-                        cudaStream_t stream) {
+                        cudaStream_t stream, int nspin) {
     switch (dstPrec) {
         case QcuPrecision::kPrecisionHalf:
-            instantiate_colorSpinorScatter_SrcFloat<half>(global_dst_array, global_src_ptr, srcPrec, latt_desc,
-                                                          n_color, m_input, stream);
+            instantiate_colorSpinorScatter_SrcFloat<half>(global_dst_array, global_src_ptr, srcPrec, latt_desc, n_color, m_input, stream, nspin);
             break;
         case QcuPrecision::kPrecisionSingle:
-            instantiate_colorSpinorScatter_SrcFloat<float>(global_dst_array, global_src_ptr, srcPrec, latt_desc,
-                                                           n_color, m_input, stream);
+            instantiate_colorSpinorScatter_SrcFloat<float>(global_dst_array, global_src_ptr, srcPrec, latt_desc, n_color, m_input, stream, nspin);
             break;
         case QcuPrecision::kPrecisionDouble:
-            instantiate_colorSpinorScatter_SrcFloat<double>(global_dst_array, global_src_ptr, srcPrec, latt_desc,
-                                                            n_color, m_input, stream);
+            instantiate_colorSpinorScatter_SrcFloat<double>(global_dst_array, global_src_ptr, srcPrec, latt_desc, n_color, m_input, stream, nspin);
             break;
         default:
             errorQcu("Unsupported Destination Float precision\n");
@@ -184,19 +178,19 @@ void colorSpinorScatter(void* __restrict__ global_dst_array, QcuPrecision dstPre
 
 void colorSpinorGather(void* __restrict__ global_dst_ptr, QcuPrecision dstPrec, void* __restrict__ global_src_array,
                        QcuPrecision srcPrec, const qcu::QcuLattDesc& latt_desc, int n_color, int m_input,
-                       cudaStream_t stream) {
+                       cudaStream_t stream, int nspin) {
     switch (dstPrec) {
         case QcuPrecision::kPrecisionHalf:
             instantiate_colorSpinorGather_SrcFloat<half>(global_dst_ptr, global_src_array, srcPrec, latt_desc,
-                                                         n_color, m_input, stream);
+                                                         n_color, m_input, stream, nspin);
             break;
         case QcuPrecision::kPrecisionSingle:
             instantiate_colorSpinorGather_SrcFloat<float>(global_dst_ptr, global_src_array, srcPrec, latt_desc,
-                                                          n_color, m_input, stream);
+                                                          n_color, m_input, stream, nspin);
             break;
         case QcuPrecision::kPrecisionDouble:
             instantiate_colorSpinorGather_SrcFloat<double>(global_dst_ptr, global_src_array, srcPrec, latt_desc,
-                                                           n_color, m_input, stream);
+                                                           n_color, m_input, stream, nspin);
             break;
         default:
             errorQcu("Unsupported Destination Float precision\n");

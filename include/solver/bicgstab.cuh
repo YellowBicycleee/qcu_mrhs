@@ -13,6 +13,8 @@ struct BiCGStabParam {
     int nColor;
     int mInput;
     int Nspin;
+    int t_boudary;   // add attribute
+    QcuStaggeredPhase staggered_phase = QcuStaggeredPhase::kQcuStaggeredPhaseCps;  // add attribute
     double kappa;
     void* output_x_mrhs;
     void* input_b_mrhs;

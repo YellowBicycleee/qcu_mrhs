@@ -1,17 +1,21 @@
 #pragma once
 
-#include "qcu_config/qcu_config.h"
+#include <cuda_runtime.h>
+#include <qcu_helper_macro.h>
+
+#include <memory>
+
+#include "data_format/fermion.cuh"
 #include "desc/qcu_desc.h"
 #include "qcu_public.h"
-#include "data_format/fermion.cuh"
-#include <cuda_runtime.h>
-#include <memory>
 namespace qcu {
 
 // clang-format off
 struct DslashParam {
     bool dagger_flag;
     QcuPrecision dslash_precision;
+    QcuStaggeredPhase staggered_phase = QcuStaggeredPhase::kQcuStaggeredPhaseNo;  // add attribute
+    int t_boudary = 1;                                                                  // add attribute
     int n_color;
     int m_input;
     int parity;
@@ -28,6 +32,8 @@ struct DslashParam {
     DslashParam(
         bool dagger_flag_,
         QcuPrecision dslash_precision_,
+        QcuStaggeredPhase staggered_phase_,
+        int t_boudary_,
         int n_color_,
         int m_input_,
         int parity_,
@@ -44,6 +50,8 @@ struct DslashParam {
 
     : dagger_flag(dagger_flag_)
     , dslash_precision(dslash_precision_)
+    , staggered_phase(staggered_phase_)
+    , t_boudary(t_boudary_)
     , n_color(n_color_)
     , m_input(m_input_)
     , parity(parity_)
