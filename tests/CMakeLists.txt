@@ -38,7 +38,9 @@ add_executable       (test_norm ${PROJECT_SOURCE_DIR}/test_norm/test_norm.cu)
 target_link_libraries(test_norm qcu cudart cublas)
 target_include_directories(test_norm PUBLIC ${PROJECT_SOURCE_DIR}/../src/qcu_blas)
 
-
+add_executable       (test_norm_stride ${PROJECT_SOURCE_DIR}/test_norm/test_norm_stride.cu)
+target_link_libraries(test_norm_stride qcu cudart cublas)
+target_include_directories(test_norm_stride PUBLIC ${PROJECT_SOURCE_DIR}/../src/qcu_blas)
 
 # ========================
 add_executable       (test_transpose ${PROJECT_SOURCE_DIR}/test_transpose/test_transpose.cu)
