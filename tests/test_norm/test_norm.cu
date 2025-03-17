@@ -9,7 +9,8 @@
 #include "timer/timer.h"
 // #include <complex>
 #include "check_error/check_cuda.cuh"
-
+#include "qcu_config/qcu_config.h"
+#include <mpi.h>
 using namespace std;
 
 using InputFloat  = double;
@@ -158,6 +159,8 @@ void my_function (vector<OutputFloat> & h_gpu_res,
 
 
 int main () {
+    MPI_Init(NULL, NULL);
+  qcu::config::set_config(2,2,2,2,1,1,1,1);
 
   constexpr int num_vecs          = 12;
   const     int single_vec_length = 1024 * 1024;
@@ -252,5 +255,5 @@ int main () {
   
   QCU_CHECK_CUBLAS (cublasDestroy(cublas_handle));
   delete[] cpu_in;
-
+    MPI_Finalize();
 }
