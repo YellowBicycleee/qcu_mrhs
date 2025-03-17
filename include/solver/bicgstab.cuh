@@ -21,8 +21,9 @@ struct BiCGStabParam {
     void* gauge;
     const QcuLattDesc* lattDesc;
     const QcuProcDesc* procDesc;
-    cudaStream_t stream1;
-    cudaStream_t stream2;
+    // cudaStream_t stream1;
+    // cudaStream_t stream2;
+    std::vector<cudaStream_t>& streams;
     std::shared_ptr<qcu::FermionGhost<Nd>> fermion_ghost_;
 };
 

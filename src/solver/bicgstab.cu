@@ -77,7 +77,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
     InitArgument output_elementwise_init_arg (
         static_cast<Complex<OutputFloat>*>(output_prec_kappa),
         Complex<OutputFloat>{static_cast<OutputFloat>(param_.kappa), 0},
-        param_.mInput, param_.stream1
+        param_.mInput, param_.streams[8]
     );
     interior_operator_.output_elementwise_init(output_elementwise_init_arg);
 
@@ -93,7 +93,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
                                                         * static_cast<OutputFloat>(param_.kappa), 0};
     interior_operator_.output_elementwise_init(output_elementwise_init_arg);
 
-    CHECK_CUDA(cudaStreamSynchronize(param_.stream1));
+    CHECK_CUDA(cudaStreamSynchronize(param_.streams[8]));
     bufferAllocated_ = true;
 
     return true;
@@ -171,8 +171,9 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
     /*param.gauge           */   param_.gauge,
     /*param.lattDesc        */   param_.lattDesc,
     /*param.procDesc        */   param_.procDesc,
-    /*param.stream1         */   param_.stream1,
-    /*param.stream2         */   param_.stream2,
+    // /*param.stream1         */   param_.stream1,
+    // /*param.stream2         */   param_.stream2,
+    param_.streams,
     param_.fermion_ghost_
   );
 
@@ -189,7 +190,7 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
     static_cast<Complex<OutputFloat>*>(new_even_b),        // y = new_even_b = D_{oe} b_{e}
     single_vec_len * vol / 2,
     param->m_input,
-    param->stream1
+    param->streams[8]
   );
   interior_operator_.output_xpay(output_xpay_arg);
   return new_even_b;

@@ -13,7 +13,7 @@
 #include "check_error/check_mpi.h"
 
 namespace qcu::simt {
-
+// unpack走8流
 template <typename Float_>
 inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int ghost_dim) {
     using BlockShape = gemm::GemmShape<8, 8, 8>;
@@ -26,8 +26,8 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
     int blk_x = BlockShape::kM;
     int blk_y = BlockShape::kN;
 
-    cudaStream_t fwd_stream = dslash_param.stream1;
-    cudaStream_t bwd_stream = dslash_param.stream1;
+    cudaStream_t fwd_stream = dslash_param.streams[8];
+    cudaStream_t bwd_stream = dslash_param.streams[8];
 
     void* fwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, FWD);
     void* bwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, BWD);
@@ -101,23 +101,6 @@ void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) 
     CHECK_CUDA(cudaMemcpy(device_unpack_buf_fwd, host_unpack_buf_fwd, byte_size, cudaMemcpyHostToDevice));
     CHECK_CUDA(cudaMemcpy(device_unpack_buf_bwd, host_unpack_buf_bwd, byte_size, cudaMemcpyHostToDevice));
 
-    // // DEBUG
-    // printf("mpirank : %d, dim %d, fwd = %d, bwd = %d\n",
-    //     config::get_mpi_rank(), ghost_dim,
-    //     mpi_coord_forward.getReversedIdx1D(mpi_desc),
-    //     mpi_coord_backward.getReversedIdx1D(mpi_desc));
-
-    const int m_input = dslash_param.m_input;
-    const int n_color = dslash_param.n_color;
-    const int half_vol = config::lattice_volume_local() / 2;
-    double num_operations = static_cast<double>(half_vol * m_input * (
-        2.0 * Nd * Nspin_ * n_color   // project
-        + 2.0 * Nd * Nspin_ / 2 * (8.0 * n_color  - 2.0) * n_color  // GEMV
-        + (2.0 * Nd - 1.0) * Nspin_ * n_color  // reconstruct
-    ));
-    operations_cur_ += num_operations;
-    operations_total_ += num_operations;
-
     switch (dslash_param.dslash_precision) {
         case QcuPrecision::kPrecisionHalf:
             {   apply_sun_mrhs_dslash_ghost_unpack<half>(dslash_param, ghost_dim);  }
@@ -132,6 +115,6 @@ void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) 
             {   errorQcu("Precision must be one of {half, single, double}\n"); }
             break;
     }
-    CHECK_CUDA(cudaStreamSynchronize(dslash_param.stream1));
+    CHECK_CUDA(cudaStreamSynchronize(dslash_param.streams[8]));
 }
 }

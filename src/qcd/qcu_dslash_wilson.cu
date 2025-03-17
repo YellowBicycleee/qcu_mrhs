@@ -3,6 +3,7 @@
 // #define ENABLE_TENSOR_CORE_COMPILE
 #ifdef ENABLE_TENSOR_CORE_COMPILE
 #include "kernel/su_n_m_rhs_dslash.cuh"
+#include "kernel/sun_mrhs_wilson_dslash_tensorop.cuh"
 #endif // ENABLE_TENSOR_CORE_COMPILE
 
 #include "qcd/qcu_dslash_wilson.h"
@@ -45,8 +46,8 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
         + 2 * Nd * Nspin_ / 2 * (8 * n_color  - 2) * n_color  // GEMV
         + (2 * Nd - 1) * Nspin_ * n_color  // reconstruct
     ));
-    operations_cur_ = num_operations;
-    operations_total_ += num_operations;
+    // operations_cur_ = num_operations;
+    // operations_total_ += num_operations;
 
     switch (dslash_param->dslash_precision) {
         case QcuPrecision::kPrecisionHalf:
@@ -72,7 +73,7 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
             }
             break;
     }
-    CHECK_CUDA(cudaStreamSynchronize(dslash_param->stream1));
+    CHECK_CUDA(cudaStreamSynchronize(dslash_param->streams[8]));
 
 
 
@@ -84,9 +85,9 @@ void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
 void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
     errorQcu("Not implemented yet\n");  // TODO
 }
-// TODO : calc flops
-double WilsonDslash::flops() {
-    errorQcu("Not implemented yet\n");  // TODO
-}
+// // TODO : calc flops
+// double WilsonDslash::flops() {
+//     errorQcu("Not implemented yet\n");  // TODO
+// }
 
 }  // namespace qcu

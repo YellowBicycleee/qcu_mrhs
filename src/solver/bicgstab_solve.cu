@@ -1,5 +1,4 @@
 #include <qcu_config/qcu_config.h>
-#include <thrust/system/cuda/detail/par.h>
 #include <iostream>
 #include <type_traits>
 #include <vector>
@@ -35,8 +34,8 @@ static inline void fused_x_sub_Doe_Deo_x (
     const int n_color = param->n_color;
     const int single_vec_len = Nd * n_color;
 
-    cudaStream_t stream1 = param->stream1;
-    cudaStream_t stream2 = param->stream2;
+    cudaStream_t stream1 = param->streams[8];
+    cudaStream_t stream2 = param->streams[7];
     // temp = Deo in
     param->fermion_out_MRHS = temp;
     param->fermion_in_MRHS = input;
@@ -113,8 +112,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
     const int single_complex_vec_len = param_.nColor * param_.Nspin;
     const int complex_vec_len =   param_.mInput * single_complex_vec_len; // m-rhs on single point
 
-    cudaStream_t stream1 = param_.stream1;
-    cudaStream_t stream2 = param_.stream2;
+    cudaStream_t stream1 = param_.streams[8]; // param_.stream1;
+    cudaStream_t stream2 = param_.streams[7]; // param_.stream2;
     // prelogue
     // solve x_o
     // get new B
@@ -187,8 +186,9 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
         param_.gauge,               // gauge,
         param_.lattDesc,            // lattDesc,
         param_.procDesc,            // procDesc,
-        stream1,                    // stream1 = NULL,
-        stream2,                     // stream2 = NULL
+        // stream1,                    // stream1 = NULL,
+        // stream2,                     // stream2 = NULL
+        param_.streams,
         param_.fermion_ghost_
     );
 
@@ -266,8 +266,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
 
         // vj = Ap = Ap_{j} = Doe Deo * p_{j} ----> outputBuffer_[1];
         fused_x_sub_Doe_Deo_x<OutputFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
-        cudaStreamSynchronize(dslashParam->stream1);
-        cudaStreamSynchronize(dslashParam->stream2);
+        cudaStreamSynchronize(stream1);
+        cudaStreamSynchronize(stream2);
 
         // r0_dot_vj = <r0, vj> = <r0, Ap_j>
         // , norm <r0, Ap>
@@ -410,8 +410,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
   const int single_complex_vec_len = param_.nColor * param_.Nspin;
   const int complex_vec_len =   param_.mInput * single_complex_vec_len; // m-rhs on single point
 
-  cudaStream_t stream1 = param_.stream1;
-  cudaStream_t stream2 = param_.stream2;
+  cudaStream_t stream1 = param_.streams[8]; // param_.stream1;
+  cudaStream_t stream2 = param_.streams[7]; // stream2;
   // prelogue
   // solve x_o
   // get new B
@@ -481,8 +481,9 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
     param_.gauge,               // gauge,
     param_.lattDesc,            // lattDesc,
     param_.procDesc,            // procDesc,
-    stream1,                    // stream1 = NULL,
-    stream2,                     // stream2 = NULL
+    // stream1,                    // stream1 = NULL,
+    // stream2,                     // stream2 = NULL
+    param_.streams,
     param_.fermion_ghost_
   );
 
@@ -555,8 +556,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
 
     // vj = Ap = Ap_{j} = Doe Deo * p_{j} ----> outputBuffer_[1];
     fused_x_sub_Doe_Deo_x<OutputFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
-    cudaStreamSynchronize(dslashParam->stream1);
-    cudaStreamSynchronize(dslashParam->stream2);
+    cudaStreamSynchronize(stream1);
+    cudaStreamSynchronize(stream2);
 
     // r0_dot_vj = <r0, vj> = <r0, Ap_j>
     // , norm <r0, Ap>
@@ -724,8 +725,9 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
         param_.gauge,               // void* p_gauge,
         param_.lattDesc,            // const QcuLattDesc* p_lattDesc,
         param_.procDesc,            // const QcuProcDesc* p_procDesc,
-        param_.stream1,             // cudaStream_t p_stream1 = NULL,
-        param_.stream2,              // cudaStream_t p_stream2 = NULL)
+        // param_.stream1,             // cudaStream_t p_stream1 = NULL,
+        // param_.stream2,              // cudaStream_t p_stream2 = NULL)
+        param_.streams,
         param_.fermion_ghost_
     );
 
@@ -745,10 +747,10 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
         static_cast<Complex<OutputFloat>*>(x_e),          // Complex<_Float>* y,
         vol / 2 * single_complex_vec_len,                 // int single_vec_len,
         mInput,                                           // int inc_idx,
-        param_.stream1
+        param_.streams[8]
     };
     interior_operator_.output_xpay(output_xpay_arg); // x_e = b_e + kappa x_e
-    CHECK_CUDA(cudaStreamSynchronize(param_.stream1));
+    CHECK_CUDA(cudaStreamSynchronize(param_.streams[8]));
     return true;
 }
 
@@ -775,7 +777,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve() {
     printf("QCU BICGStab solve success, %d iterations\n", currentIteration_);
     const int vol = param_.lattDesc->lattice_volume();
     const int mrhs_vec_len = param_.mInput * param_.nColor * param_.Nspin; // on single point
-    const cudaStream_t cuda_stream = param_.stream1;
+    const cudaStream_t cuda_stream = param_.streams[8];
     // copy x to outputBuffer
     copyComplexVector_interface(
         param_.output_x_mrhs, OutputPrecision,

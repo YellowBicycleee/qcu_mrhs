@@ -17,7 +17,7 @@
 #include "qcu_wmma_constant.h"  // use this to debug
 #include "solver/bicgstab.cuh"
 #include "timer/timer.h"
-
+#include "data_format/gauge.cuh"
 namespace qcu {
 
 void Qcu::allocateMemory() {
@@ -115,7 +115,9 @@ void Qcu::get_dslash(DslashType dslashType, double mass, bool anti_periodic_t) {
                         n_colors_, m_input_,
                         QCU_PARITY::EVEN_PARITY, kappa_, fermion_in_mrhs_, fermion_out_mrhs_,
                         gauge, &(underlying_args_.lattice_desc_ptr), &(underlying_args_.process_desc_ptr),
-                        nullptr, nullptr, fermion_ghost_ptr
+                        // nullptr, nullptr,
+                        config::get_qcu_streams(),
+                        fermion_ghost_ptr
                     );
 
     switch (dslashType) {
@@ -140,7 +142,16 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
     if (fermion_in_vec_.size() != m_input_ || fermion_out_vec_.size() != m_input_) {
         errorQcu("Fermion queue is not full\n");
     }
-
+    // dslash_param_ = std::make_shared<DslashParam>
+    //             (
+    //                 dagger_flag, underlying_args_.compute_float_precision,
+    //                 staggered_phase_, t_boundary_,
+    //                 n_colors_, m_input_,
+    //                 parity, kappa_, fermion_in_mrhs_, fermion_out_mrhs_,
+    //                 gauge, &(underlying_args_.lattice_desc_ptr), &(underlying_args_.process_desc_ptr),
+    //                 nullptr, nullptr, fermion_ghost_ptr_
+    //             );
+    dslash_param_->staggered_phase = staggered_phase_;
     dslash_param_->parity = parity;
     dslash_param_->dagger_flag = dagger_flag;
 
@@ -340,8 +351,9 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
         .gauge          = gauge,
         .lattDesc       = &(underlying_args_.lattice_desc_ptr),
         .procDesc       = &(underlying_args_.process_desc_ptr),
-        .stream1        = nullptr,
-        .stream2        = nullptr,
+        // .stream1        = nullptr,
+        // .stream2        = nullptr,
+        .streams = config::get_qcu_streams(),
         .fermion_ghost_ = fermion_ghost_ptr
     };
     solver::ApplyBicgStab(param, underlying_args_.out_float_precision,

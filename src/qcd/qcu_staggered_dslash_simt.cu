@@ -23,7 +23,7 @@ inline void ApplyStaggeredDslash_Mrhs(DslashParam& dslash_param)
     dim3 block_size(blk_x, blk_y, 1);
 
     qcu::device::staggered_dslash_su_n_mrhs <Float, BlockShape>
-        <<<grid_size, block_size, 0, dslash_param.stream1>>> 
+        <<<grid_size, block_size, 0, dslash_param.streams[8]>>>
     (
         static_cast<Float*>(dslash_param.fermion_out_MRHS),
         static_cast<Float*>(dslash_param.fermion_in_MRHS),
@@ -31,14 +31,16 @@ inline void ApplyStaggeredDslash_Mrhs(DslashParam& dslash_param)
         latt_desc, multiprocess_mask,
         dslash_param.parity, dslash_param.dagger_flag,
         dslash_param.n_color, dslash_param.m_input,
-        /* kappa*/ 0, /* mat_flag */ false,
-        /* t_boundary */ 1, /* staggered_phase */ QcuStaggeredPhase::kQcuStaggeredPhaseNo
+        /* kappa*/ 0,
+        /* mat_flag */ false,
+        /* t_boundary */ 1,
+        /* staggered_phase */dslash_param.staggered_phase
     );
     CHECK_CUDA(cudaDeviceSynchronize());
 }
 
 void StaggeredDslash::apply(const std::shared_ptr<DslashParam> dslash_param) {
-
+    printf("Staggered Phase = %d\n", dslash_param->staggered_phase);
     int m_input = dslash_param->m_input;
     int n_color = dslash_param->n_color;
     int half_vol = config::lattice_volume_local() / 2;
@@ -47,8 +49,8 @@ void StaggeredDslash::apply(const std::shared_ptr<DslashParam> dslash_param) {
         + 2 * Nd * Nspin_ / 2 * (8 * n_color  - 2) * n_color  // GEMV
         + (2 * Nd - 1) * Nspin_ * n_color  // reconstruct
     ));
-    operations_cur_ += num_operations;
-    operations_total_ += num_operations;
+    // operations_cur_ += num_operations;
+    // operations_total_ += num_operations;
 
     switch (dslash_param->dslash_precision) {
         case QcuPrecision::kPrecisionHalf:
@@ -67,13 +69,13 @@ void StaggeredDslash::apply(const std::shared_ptr<DslashParam> dslash_param) {
         }
         break;
     }
-    CHECK_CUDA(cudaStreamSynchronize(dslash_param->stream1));
+    CHECK_CUDA(cudaStreamSynchronize(dslash_param->streams[8]));
     // post_apply(dslash_param);
 }
 
-double StaggeredDslash::flops() {
-    return 0.0;
-}
+// double StaggeredDslash::flops() {
+//     return 0.0;
+// }
 
 void StaggeredDslash::pre_apply(const std::shared_ptr<DslashParam>) {
     errorQcu("Not implemented yet\n");
