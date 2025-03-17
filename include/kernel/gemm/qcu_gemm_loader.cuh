@@ -1,6 +1,6 @@
 #pragma once
 
-#include <base/datatype/qcu_complex.cuh>
+#include <complex/qcu_complex.cuh>
 namespace qcu::gemm {
 
 // new function
@@ -83,9 +83,7 @@ void ldg_fermion (Float_* glb1, Float_* glb2, int M, int N,
 template <typename Tp_,
     typename MatShape_ = MatShape<16, 8>,
     typename BlockShape_ = GemmShape<16, 16, 8>, // K is not used
-    typename WarpShape_ = GemmShape<8, 8, 4>,
-    int WarpRow_ = 4,
-    int WarpCol = 8
+    typename WarpShape_ = GemmShape<8, 8, 4>
 >
 QCU_DEVICE void sts_direct (Tp_* smem, Tp_* reg) {
     int row = threadIdx.y;
@@ -93,16 +91,28 @@ QCU_DEVICE void sts_direct (Tp_* smem, Tp_* reg) {
     if (row < MatShape_::kM && col < MatShape_::kN) {
         smem[row * MatShape_::kN + col] = * reg;
     }
-    // smem[row * BlockShape_::kN + col] = * reg;
-    // __syncthreads();
+}
+
+template <
+    typename Float_,
+    typename MatShape_ = MatShape<16, 8>,
+    typename BlockShape_ = GemmShape<16, 16, 8>, // K is not used
+    typename WarpShape_ = GemmShape<8, 8, 4>,
+    typename Complex_ = qcu::Complex<Float_>
+>
+QCU_DEVICE void sts_direct (Float_* smem_r, Float_* smem_i, Complex_* reg) {
+    int row = threadIdx.y;
+    int col = threadIdx.x;
+    if (row < MatShape_::kM && col < MatShape_::kN) {
+        smem_r[row * MatShape_::kN + col] = reg->real();
+        smem_i[row * MatShape_::kN + col] = reg->imag();
+    }
 }
 
 template <typename Float_,
     typename MatShape_ = MatShape<16, 8>,
     typename BlockShape_ = GemmShape<16, 16, 8>,
-    typename WarpShape_ = GemmShape<8, 8, 4>,
-    int WarpRow_ = 4,
-    int WarpCol = 8
+    typename WarpShape_ = GemmShape<8, 8, 4>
 >
 QCU_DEVICE void sts_transpose (Float_* smem, Float_* reg) {
     int row = threadIdx.y;
@@ -110,8 +120,22 @@ QCU_DEVICE void sts_transpose (Float_* smem, Float_* reg) {
     if (row < MatShape_::kM && col < MatShape_::kN) {
         smem[col * MatShape_::kM + row] = * reg;
     }
-    // smem[col * BlockShape_::kM + row] = * reg; // reduce bank conflict
-    // __syncthreads();
+}
+
+template <typename Float_,
+    typename MatShape_ = MatShape<16, 8>,
+    typename BlockShape_ = GemmShape<16, 16, 8>,
+    typename WarpShape_ = GemmShape<8, 8, 4>,
+    typename Complex_ = qcu::Complex<Float_>
+>
+QCU_DEVICE void sts_transpose (Float_* smem_r, Float_* smem_i, Float_* reg) {
+    int row = threadIdx.y;
+    int col = threadIdx.x;
+    if (row < MatShape_::kM && col < MatShape_::kN) {
+        // smem[col * MatShape_::kM + row] = * reg;
+        smem_r[col * MatShape_::kM + row] = reg->real();
+        smem_i[col * MatShape_::kM + row] = reg->imag();
+    }
 }
 
 
