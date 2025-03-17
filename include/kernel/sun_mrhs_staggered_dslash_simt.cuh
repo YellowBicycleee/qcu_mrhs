@@ -86,7 +86,9 @@ public:
 
 #pragma unroll
                 for (int dim = X_DIM; dim < Nd; ++dim) {
-                    phase = qcu::device::get_phase<FloatType_>(dim, 2 * coord.X() + coord.Parity(), coord.Y(), coord.Z(), coord.T(), arg.staggered_phase, FloatType_(arg.t_boundary), latt_half_desc.T());
+                    int cb_yzt = (coord.Y() + coord.Z() + coord.T()) % 2;
+                    int origin_x = 2 * coord.X() + (coord.Parity() != cb_yzt);
+                    phase = qcu::device::get_phase<FloatType_>(dim, origin_x, coord.Y(), coord.Z(), coord.T(), arg.staggered_phase, latt_half_desc.T(),FloatType_(arg.t_boundary));
                     for (int dir = 0; dir < DIRECTIONS; ++dir) {
                         // for boundary check
                         if (arg.multiprocess & (1 << dim)) {
@@ -162,9 +164,15 @@ public:
                                     res[i][0] += temp_res[i][0];
                                 }
                             }
-                            // if (threadIdx.x == 0 && threadIdx.y == 0 && blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 && arg.coord_1dim == 0 && arg.parity == 0) {
+                            // if (threadIdx.x == 0 && threadIdx.y == 0 && blockIdx.x == 0 && blockIdx.y == 0
+                            //     && coord.X() == 1 && coord.Y() == 1 && coord.Z() == 0 && coord.T() == 0
+                            //     && arg.parity == 0) {
                             //     // printf("test : (%lf %lf)==============\n", ldg_B[0].real(), ldg_B[0].imag());
+                            //     printf("origin_x = %d\n", origin_x);
                             //     printf("phase = %e==========staggered phase = %d\n", phase, arg.staggered_phase);
+                            //
+                            //     printf("coord = (%d %d %d %d), parity = %d\n", coord.X(), coord.Y(), coord.Z(), coord.T(), coord.Parity());
+                            //     printf("move_coord = (%d %d %d %d). parity = %d\n", move_coord.X(), move_coord.Y(), move_coord.Z(), move_coord.T(), move_coord.Parity());
                             //     printf("gauge: \n");
                             //     for (int m_i = 0; m_i < arg.n_color; ++m_i) {
                             //         for (int m_j = 0; m_j < arg.n_color; ++m_j) {
