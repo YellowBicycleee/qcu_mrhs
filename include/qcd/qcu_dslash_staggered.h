@@ -13,7 +13,7 @@ public:
 
     virtual void apply(const std::shared_ptr<DslashParam>) override;
 
-    virtual double flops() override;
+    // virtual double flops() override;
 
 private:
     void pre_apply(const std::shared_ptr<DslashParam>);

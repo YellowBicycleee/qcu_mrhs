@@ -12,15 +12,19 @@ public:
 
     virtual void apply(const std::shared_ptr<DslashParam>) override;
 
-    virtual double flops() override;
 
 protected:
     static constexpr int Nspin_ = 4;
+
+    inline static double flop_ = 0.0;
+
+    inline static double time_ = 0.0;
 
 private:
     void pre_apply(const std::shared_ptr<DslashParam>);
 
     void post_apply(const std::shared_ptr<DslashParam>);
+
 
 };
 
@@ -34,15 +38,20 @@ public:
 
     virtual void apply(const std::shared_ptr<DslashParam>) override;
 
-    virtual double flops() override;
-
 protected:
     static constexpr int Nspin_ = 4;
+
+    inline static double flop_ = 0.0;
+
+    inline static double time_ = 0.0;
+
 private:
     void pre_apply(const std::shared_ptr<DslashParam>);
 
     void post_apply(const std::shared_ptr<DslashParam>);
+
     void apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim);
+
     void apply_ghost_pack(DslashParam& dslash_param, int ghost_dim);
 };
 
