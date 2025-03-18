@@ -2,7 +2,7 @@
 
 #define ENABLE_TENSOR_CORE_COMPILE
 #ifdef ENABLE_TENSOR_CORE_COMPILE
-#include "kernel/su_n_m_rhs_dslash.cuh"
+// #include "kernel/su_n_m_rhs_dslash.cuh"
 #include "kernel/sun_mrhs_wilson_dslash_tensorop.cuh"
 #endif // ENABLE_TENSOR_CORE_COMPILE
 
@@ -36,7 +36,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     //     dslash_param.parity, dslash_param.dagger_flag, dslash_param.n_color, dslash_param.m_input);
     if constexpr (std::is_same_v<Float, double>) {
         // tensor
-        using BlockShape = gemm::GemmShape<8, 8, 8>;
+        using BlockShape = gemm::GemmShape<8, 16, 4>;
         using WarpShape = gemm::GemmShape<8, 8, 4>;
         // dim3 block_size(BlockShape::kN /2 * BlockShape::kM / 2);
         dim3 block_size(32 * BlockShape::kMN / WarpShape::kMN);
