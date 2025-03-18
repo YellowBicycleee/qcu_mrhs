@@ -10,6 +10,8 @@
 namespace qcu::config {
 
 bool is_last_process_t();
+std::vector<MPI_Request>& get_mpi_request_pack_vec ();
+std::vector<MPI_Request>& get_mpi_request_unpack_vec ();
 MPI_Request& get_mpi_request_pack(int dim, int dir);
 MPI_Request& get_mpi_request_unpack(int dim, int dir);
 
