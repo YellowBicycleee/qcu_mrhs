@@ -1,7 +1,5 @@
 #include <cuda_fp16.h>
 
-#include <kernel/sun_mrhs_wilson_dslash_tensorop.cuh>
-
 #include "check_error/check_cuda.cuh"
 #include "cuda_utils.cuh"
 #include "kernel/gemm/qcu_gemm_configure.cuh"
@@ -9,7 +7,6 @@
 #include "kernel/sun_mrhs_wilson_dslash_simt.cuh"
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_base/qcu_alloc.h"
-#include "qcu_base/qcu_base.h"
 #include "qcu_config/qcu_config.h"
 #include "qcu_public.h"
 #include "qcu_utils.h"
@@ -33,42 +30,16 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(half_vol, 65535));
     dim3 block_size(blk_x, blk_y, 1);
 
-    // // printf("SIMT dslash Beginning\n");
-    // qcu::device::wilson_dslash_su_n_mrhs<Float, BlockShape>
-    //     <<<grid_size, block_size, 0, dslash_param.streams[8]>>>
-    //     (   static_cast<Float*>(dslash_param.fermion_out_MRHS),
-    //         static_cast<Float*>(dslash_param.fermion_in_MRHS),
-    //         static_cast<Float*>(dslash_param.gauge),
-    //         latt_desc, multiprocess_mask,
-    //         dslash_param.parity, dslash_param.dagger_flag,
-    //         dslash_param.n_color, dslash_param.m_input);
-    if constexpr (std::is_same_v<Float, double>) {
-        // tensor
-        using BlockShape = gemm::GemmShape<8, 8, 4>;
-        using WarpShape = gemm::GemmShape<8, 8, 4>;
-        // dim3 block_size(BlockShape::kN /2 * BlockShape::kM / 2);
-        dim3 block_size(32);
-        dim3 grid_size(div_ceil(dslash_param.m_input, BlockShape::kN),
-            div_ceil(dslash_param.n_color, BlockShape::kM),
-            std::min(half_vol, 65535));
-        qcu::device::tensorop::wilson_dslash_su_n_mrhs<
-                double,
-                BlockShape,
-                WarpShape
-            ><<<grid_size, block_size, 0, dslash_param.streams[8]>>>(
-            static_cast<Float*>(dslash_param.fermion_out_MRHS),
+    // printf("SIMT dslash Beginning\n");
+    qcu::device::wilson_dslash_su_n_mrhs<Float, BlockShape>
+        <<<grid_size, block_size, 0, dslash_param.streams[8]>>>
+        (   static_cast<Float*>(dslash_param.fermion_out_MRHS),
             static_cast<Float*>(dslash_param.fermion_in_MRHS),
             static_cast<Float*>(dslash_param.gauge),
-            latt_desc,
-            multiprocess_mask,
-            dslash_param.parity,
-            dslash_param.dagger_flag,
-            dslash_param.n_color,
-            dslash_param.m_input,
-            0,
-            false,
-            1);
-    }
+            latt_desc, multiprocess_mask,
+            dslash_param.parity, dslash_param.dagger_flag,
+            dslash_param.n_color, dslash_param.m_input);
+
     CHECK_CUDA(cudaDeviceSynchronize());
     // printf("SIMT dslash Ending, config = grid(%d, %d, %d), block(%d, %d, %d)\n", grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z);
 }

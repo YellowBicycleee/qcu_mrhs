@@ -20,20 +20,72 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 
 #ifdef ENABLE_TENSOR_CORE_COMPILE
     int half_vol = config::lattice_volume_local() / 2;
-    int warp_num_per_block = kWarpPerBlock;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
-    const qcu::QcuProcDesc& proc_desc = *(dslash_param.proc_desc);
-    dim3 block_size(kWarpSize, warp_num_per_block);
-    dim3 grid_size(half_vol);
 
-    qcu::device::wilson_dslash_su_n_mrhs<Float> <<<grid_size, block_size, 0, dslash_param.streams[8]>>>(
-        static_cast<Float*>(dslash_param.fermion_out_MRHS),
-        static_cast<Float*>(dslash_param.fermion_in_MRHS),
-        static_cast<Float*>(dslash_param.gauge),
-        latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T(),
-        proc_desc.X(), proc_desc.Y(), proc_desc.Z(), proc_desc.T(),
-        dslash_param.parity, dslash_param.dagger_flag, dslash_param.n_color, dslash_param.m_input);
+    // using BlockShape = gemm::GemmShape<8, 8, 8>;
+    // using BlockShape = gemm::GemmShape<16, 16, 16>;
+    unsigned int multiprocess_mask = config::get_mpi_separated_mask();
+
+    // qcu::device::wilson_dslash_su_n_mrhs<Float> <<<grid_size, block_size, 0, dslash_param.streams[8]>>>(
+    //     static_cast<Float*>(dslash_param.fermion_out_MRHS),
+    //     static_cast<Float*>(dslash_param.fermion_in_MRHS),
+    //     static_cast<Float*>(dslash_param.gauge),
+    //     latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T(),
+    //     proc_desc.X(), proc_desc.Y(), proc_desc.Z(), proc_desc.T(),
+    //     dslash_param.parity, dslash_param.dagger_flag, dslash_param.n_color, dslash_param.m_input);
+    if constexpr (std::is_same_v<Float, double>) {
+        // tensor
+        using BlockShape = gemm::GemmShape<8, 8, 8>;
+        using WarpShape = gemm::GemmShape<8, 8, 4>;
+        // dim3 block_size(BlockShape::kN /2 * BlockShape::kM / 2);
+        dim3 block_size(32 * BlockShape::kMN / WarpShape::kMN);
+        dim3 grid_size(div_ceil(dslash_param.m_input, BlockShape::kN),
+            div_ceil(dslash_param.n_color, BlockShape::kM),
+            std::min(half_vol, 65535));
+        qcu::device::tensorop::wilson_dslash_su_n_mrhs<
+                double,
+                BlockShape,
+                WarpShape
+            ><<<grid_size, block_size, 0, dslash_param.streams[8]>>>(
+            static_cast<Float*>(dslash_param.fermion_out_MRHS),
+            static_cast<Float*>(dslash_param.fermion_in_MRHS),
+            static_cast<Float*>(dslash_param.gauge),
+            latt_desc,
+            multiprocess_mask,
+            dslash_param.parity,
+            dslash_param.dagger_flag,
+            dslash_param.n_color,
+            dslash_param.m_input,
+            0,
+            false,
+            1);
+    } else if constexpr (std::is_same_v<Float, __half>) {
+        // tensor
+        using BlockShape = gemm::GemmShape<16, 16, 16>;
+        using WarpShape = gemm::GemmShape<16, 16, 16>;
+        dim3 block_size(32* BlockShape::kMN / WarpShape::kMN);
+        dim3 grid_size(div_ceil(dslash_param.m_input, BlockShape::kN),
+            div_ceil(dslash_param.n_color, BlockShape::kM),
+            std::min(half_vol, 65535));
+        qcu::device::tensorop::wilson_dslash_su_n_mrhs<
+                __half,
+                BlockShape,
+                WarpShape
+            ><<<grid_size, block_size, 0, dslash_param.streams[8]>>>(
+            static_cast<Float*>(dslash_param.fermion_out_MRHS),
+            static_cast<Float*>(dslash_param.fermion_in_MRHS),
+            static_cast<Float*>(dslash_param.gauge),
+            latt_desc,
+            multiprocess_mask,
+            dslash_param.parity,
+            dslash_param.dagger_flag,
+            dslash_param.n_color,
+            dslash_param.m_input,
+            0,
+            false,
+            1);
+    }
 #endif // ENABLE_TENSOR_CORE_COMPILE
 }
 

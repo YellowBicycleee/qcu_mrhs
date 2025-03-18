@@ -144,7 +144,12 @@ public:
         __shared__ Float_ B_tile_imag[2][BlockShape_::kKN];
 
         Complex_ ldg_A, ldg_B;
-        Complex_ result[4][kElemsPerThread] = {0}; // Nspin
+        Complex_ result[4][kElemsPerThread];// = {0}; // Nspin
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < kElemsPerThread; j++) {
+                result[i][j] = Complex_(0, 0);
+            }
+        }
 
         QcuLattDesc latt_half_desc{arg.latt_desc.X() >> 1, arg.latt_desc.Y(), arg.latt_desc.Z(), arg.latt_desc.T()};
 
@@ -161,7 +166,6 @@ public:
 
         int blocks_m = div_ceil(arg.n_color, BlockShape_::kM);
         int blocks_n = div_ceil(arg.m_rhs, BlockShape_::kN);
-        // int warp_rank = arch::warp_id();
         int warp_rank = (threadIdx.y * blockDim.x + threadIdx.x) / kWarpSize;
         int lane_id = (threadIdx.y * blockDim.x + threadIdx.x) % kWarpSize;
         int warp_rank_row = warp_rank / kWarpNumCol;
@@ -172,9 +176,6 @@ public:
             for (int loop_blk_n = blockIdx.x; loop_blk_n < blocks_n; loop_blk_n += gridDim.x) {
 
                 int block_row = loop_blk_m * BlockShape_::kM, block_col = loop_blk_n * BlockShape_::kN;
-
-                // for (int i = 0; i < Nspin_; ++i) { res[i] = 0; }
-
                 for (int dim = X_DIM; dim < Nd; ++dim) {
 
 #pragma unroll
@@ -204,6 +205,12 @@ public:
                         Float2_* glb_B = reinterpret_cast<Float2_ *>(move_coord.getGatheredColorSpinorAddr(arg.in_half, latt_half_desc, arg.n_color, arg.m_rhs));
 
 
+                        wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_r[2];
+                        wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_i[2];
+                        for (int pos = 0; pos < 2; ++pos) {
+                            wmma::fill_fragment(temp_r[pos], 0.0f);
+                            wmma::fill_fragment(temp_i[pos], 0.0f);
+                        }
                         // k-loop
                         for (int k = 0; k < arg.n_color; k += WarpShape_::kK) {
                             // ldg Gauge
@@ -223,11 +230,7 @@ public:
                                     scale = kernel::Gamma<Float_>::get_projection_scale(dim, mat1_pos, dir);
                                     if (arg.dagger_flag) { scale = -scale; }
                                 }
-                                // debug
-                                // bool flag = false;
-                                // if (arg.parity == 0 && arg.coord_1dim == 0 && dim == 0 && dir == FWD && arg.parity == 0 && pos == 0) {
-                                //     flag = true;
-                                // }
+
                                 ldg_fermion_sts<Float_, FermionMatShape>(
                                     glb_B + mat1_pos * fermion_site_length,
                                     glb_B + mat2_pos * fermion_site_length,
@@ -238,38 +241,10 @@ public:
                             }
                             __syncthreads();
 
-                            // // test
-                            // if (threadIdx.x == 0 && threadIdx.y ==0 && arg.coord_1dim == 0 && dim == 0 && dir == FWD && arg.parity == 0) {
-                            //     // printf("gauge content: \n");
-                            //     // for (int i = 0; i < BlockShape_::kM; ++i) {
-                            //     //     for (int j = 0; j < BlockShape_::kK; ++j) {
-                            //     //         printf("[%.3f + %.3fi], ", A_tile_real[i * BlockShape_::kK + j], A_tile_imag[i * BlockShape_::kK + j]);
-                            //     //     }
-                            //     //     printf("\n");
-                            //     // }
-                            //     printf("fermion");
-                            //     for (int pos = 0; pos < 2; ++pos) {
-                            //         printf("pos = %d\n", pos);
-                            //         for (int i = 0; i < FermionMatShape::kM; ++i) {
-                            //             for (int j = 0; j < FermionMatShape::kN; ++j) {
-                            //                 printf("[%.3f + %.3fi], ", B_tile_real[pos][i * FermionMatShape::kN + j], B_tile_imag[pos][i * FermionMatShape::kN + j]);
-                            //             }
-                            //             printf("\n");
-                            //         }
-                            //     }
-                            //
-                            // }
-                            // __syncthreads();
-
                             // mma
-                            wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_r[2];
-                            wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_i[2];
                             wmma::fragment<wmma::matrix_a, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_, wmma::row_major> a_r_frag;
                             wmma::fragment<wmma::matrix_a, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_, wmma::row_major> a_i_frag;
-                            for (int pos = 0; pos < 2; ++pos) {
-                                wmma::fill_fragment(temp_r[pos], 0.0f);
-                                wmma::fill_fragment(temp_i[pos], 0.0f);
-                            }
+
 
                             int warp_row_in_blk_left = warp_rank_row * WarpShape_::kM;
                             int warp_col_in_blk_left = k;
@@ -293,43 +268,53 @@ public:
                                 wmma::mma_sync(temp_r[pos], a_i_frag, b_i_frag, temp_r[pos]);
                             }
                             __syncthreads();
-                            // add to result;
-                            if (block_row < arg.n_color && block_col < arg.m_rhs) {
-                                for (mat1_pos = 0; mat1_pos < 2; ++mat1_pos) {
-                                    mat2_pos = kernel::Gamma<Float_>::get_reconstruct_mat_id(dim, mat1_pos);
-                                    scale = kernel::Gamma<Float_>::get_reconstruct_scale(dim, mat1_pos, dir);
+                        } // end k-loop
+                        // add to result;
+                        if (block_row < arg.n_color && block_col < arg.m_rhs) {
+                            for (mat1_pos = 0; mat1_pos < 2; ++mat1_pos) {
+                                mat2_pos = kernel::Gamma<Float_>::get_reconstruct_mat_id(dim, mat1_pos);
+                                scale = kernel::Gamma<Float_>::get_reconstruct_scale(dim, mat1_pos, dir);
 
-                                    if (arg.dagger_flag) { scale = -scale; }
+                                if (arg.dagger_flag) { scale = -scale; }
 
-                                    for (int elem_idx = 0; elem_idx < kElemsPerThread; ++elem_idx) {
-                                        Complex_ temp_res(temp_r[mat1_pos].x[elem_idx], temp_i[mat1_pos].x[elem_idx]);
-                                        result[mat1_pos][elem_idx] += temp_res;
-                                        result[mat2_pos][elem_idx] += scale * temp_res; // scale calculated from 1 + gamma, so need to add '-'
-                                    }
+                                for (int elem_idx = 0; elem_idx < kElemsPerThread; ++elem_idx) {
+                                    Complex_ temp_res(temp_r[mat1_pos].x[elem_idx], temp_i[mat1_pos].x[elem_idx]);
+                                    result[mat1_pos][elem_idx] += temp_res;
+                                    result[mat2_pos][elem_idx] += scale * temp_res; // scale calculated from 1 + gamma, so need to add '-'
                                 }
                             }
-
-                        } // end k-loop
+                        }
                     } // end dir-loop
 
                 } // end dim-loop
-
+                int warp_row_offset = warp_rank_row * WarpShape_::kM;
+                int warp_col_offset = warp_rank_col * WarpShape_::kN;
                 Float2_* glb_out = reinterpret_cast<Float2_ *>(coord.getGatheredColorSpinorAddr(arg.out_half, latt_half_desc, arg.n_color, arg.m_rhs));
                 #pragma unroll
                 // store thread result to global memory
                 for (int i = 0; i < Nspin_; ++i) { // store global memory
                     Float2_* start = reinterpret_cast<Float2_*>(glb_out) + i * arg.n_color * arg.m_rhs;
-                    if constexpr(std::is_same_v<Float_, double>) {
-                        // A_frag:{a0}  B_frag:{b0}  C_frag:{c0, c1}, FP64
-                        int thread_row_in_warp = lane_id / 4;
-                        int thread_col_in_warp = lane_id % 4;
-                        int row_in_global = block_row + warp_rank_row * WarpShape_::kM + thread_row_in_warp;
-                        int col_in_global = block_col + warp_rank_col * WarpShape_::kN + thread_col_in_warp * kElemsPerThread;
-                        for (int idx = 0; idx < kElemsPerThread; ++idx) {
-                            if (row_in_global < arg.n_color && col_in_global + idx < arg.m_rhs) {
-                                start[row_in_global * arg.m_rhs + col_in_global + idx]
+                    int groupId = (lane_id >> 2);
+                    int threadID_in_group = lane_id % 4;
+                    //
+                    int row, col;
+                    for (int idx = 0; idx < kElemsPerThread; ++idx) {
+                        if (idx < 2) {
+                            row = groupId;
+                        } else {
+                            row = groupId + 8;
+                        }
+                        if (idx < 4) {
+                            col = (threadID_in_group * 2) + (idx & 0x1);
+                        }
+                        else {
+                            col = (threadID_in_group * 2) + (idx & 0x1) + 8;
+                        }
+                        int row_in_global = block_row + warp_row_offset + row;
+                        int col_in_global = block_col + warp_col_offset + col;
+                        if (row_in_global < arg.n_color && col_in_global < arg.m_rhs) {
+                            start[row_in_global * arg.m_rhs + col_in_global]
                                     = reinterpret_cast<Float2_*>(&(result[i][0]))[idx];
-                            }
                         }
                     }
                 }
@@ -364,8 +349,7 @@ template <
     typename BlockShape_ = gemm::GemmShape<16, 16, 8>,
     typename WarpShape_ = gemm::GemmShape<8, 8, 4>,
     int Nspin_ = 4,
-    bool TensorOpEnabled_ = true,
-    typename TensorCoreShape_ = gemm::GemmShape<16, 16, 16>
+    bool TensorOpEnabled_ = true
 >
 QCU_GLOBAL
 void wilson_dslash_su_n_mrhs(
