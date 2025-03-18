@@ -299,7 +299,7 @@ public:
                     //
                     int row, col;
                     for (int idx = 0; idx < kElemsPerThread; ++idx) {
-                        if (idx < 2) {
+                        if (idx < 2 || (idx >= 4 && idx < 6)) {
                             row = groupId;
                         } else {
                             row = groupId + 8;
