@@ -3,7 +3,7 @@
 #include "check_error/check_cuda.cuh"
 #include "cuda_utils.cuh"
 #include "kernel/gemm/qcu_gemm_configure.cuh"
-#include "kernel/sun_mrhs_wilson_dslash_pack_simt.cuh"
+#include "kernel/sun_mrhs_wilson_dslash_simt_pack.cuh"
 #include "kernel/sun_mrhs_wilson_dslash_simt.cuh"
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_base/qcu_alloc.h"

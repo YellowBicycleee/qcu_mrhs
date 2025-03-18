@@ -5,7 +5,7 @@
 
 #include "check_error/check_cuda.cuh"
 #include "check_error/check_mpi.h"
-#include "kernel/sun_mrhs_wilson_dslash_pack_simt.cuh"
+#include "kernel/sun_mrhs_wilson_dslash_simt_pack.cuh"
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_config/qcu_config.h"
 

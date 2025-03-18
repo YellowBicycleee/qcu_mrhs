@@ -7,7 +7,7 @@
 #include <mpi.h>
 #include "qcd/qcu_dslash_wilson.h"
 
-#include "kernel/sun_mrhs_wilson_dslash_unpack_simt.cuh"
+#include "kernel/sun_mrhs_wilson_dslash_simt_unpack.cuh"
 #include "qcu_config/qcu_config.h"
 #include "check_error/check_cuda.cuh"
 #include "check_error/check_mpi.h"
