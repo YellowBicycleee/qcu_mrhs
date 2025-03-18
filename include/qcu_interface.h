@@ -117,6 +117,12 @@ public:
     void set_staggered_phase (QcuStaggeredPhase staggered_phase);
     QcuPrecision io_precision() const { return underlying_args_.out_float_precision; }
     QcuPrecision compute_precision() const { return underlying_args_.compute_float_precision; }
+
+    // 启动scatter
+    void begin_scatter();
+    // 启动gather
+    void begin_gather();
+
 };
 
 

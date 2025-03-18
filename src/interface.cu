@@ -155,3 +155,8 @@ void read_gauge_from_file (void* gauge, const char* file_path_prefix) {
         errorQcu("Unkown precision\n");
     }
 }
+
+// 启动scatter
+void begin_scatter() {}
+// 启动gather
+void begin_gather() {}

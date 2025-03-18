@@ -22,6 +22,13 @@ static qcu::QcuProcDesc process_desc;
 static std::vector<MPI_Request> mpi_request_pack = std::vector<MPI_Request>(8);
 static std::vector<MPI_Request> mpi_request_unpack = std::vector<MPI_Request>(8);
 
+std::vector<MPI_Request>& get_mpi_request_pack_vec () {
+    return mpi_request_pack;
+}
+std::vector<MPI_Request>& get_mpi_request_unpack_vec () {
+    return mpi_request_unpack;
+}
+
 MPI_Request& get_mpi_request_pack(int dim, int dir) {
     return mpi_request_pack[2 * dim + dir];
 }

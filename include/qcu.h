@@ -26,6 +26,11 @@ void gauge_reverse_eo_precondition(void* non_prec_gauge, void* prec_gauge, int p
 
 // 文件读取接口
 void read_gauge_from_file (void* gauge, const char* file_path_prefix);
+
+// 启动scatter
+void begin_scatter();
+// 启动gather
+void begin_gather();
 #ifdef __cplusplus
 }
 #endif

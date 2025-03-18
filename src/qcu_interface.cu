@@ -143,15 +143,7 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
     if (fermion_in_vec_.size() != m_input_ || fermion_out_vec_.size() != m_input_) {
         errorQcu("Fermion queue is not full\n");
     }
-    // dslash_param_ = std::make_shared<DslashParam>
-    //             (
-    //                 dagger_flag, underlying_args_.compute_float_precision,
-    //                 staggered_phase_, t_boundary_,
-    //                 n_colors_, m_input_,
-    //                 parity, kappa_, fermion_in_mrhs_, fermion_out_mrhs_,
-    //                 gauge, &(underlying_args_.lattice_desc_ptr), &(underlying_args_.process_desc_ptr),
-    //                 nullptr, nullptr, fermion_ghost_ptr_
-    //             );
+
     dslash_param_->staggered_phase = staggered_phase_;
     dslash_param_->parity = parity;
     dslash_param_->dagger_flag = dagger_flag;
@@ -159,24 +151,10 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
     dslash_param_->fermion_in_MRHS = fermion_in_mrhs_;
     dslash_param_->fermion_out_MRHS = fermion_out_mrhs_;
 
-    CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermion_in_vec_.data(),
-        sizeof(void*) * fermion_in_vec_.size(), cudaMemcpyHostToDevice));
-    CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(),
-        sizeof(void*) * fermion_in_vec_.size(), cudaMemcpyHostToDevice));
 
-    TIMER_EVENT(colorSpinorGather(fermion_in_mrhs_, underlying_args_.compute_float_precision,
-        d_lookup_table_in_, underlying_args_.out_float_precision, *qcu::config::get_lattice_desc_ptr(),
-        n_colors_, m_input_, NULL, n_spin_), 0, "gather");
-    CHECK_CUDA(cudaDeviceSynchronize());
-
+    begin_gather();
     TIMER_EVENT(dslash_->apply(dslash_param_), dslash_->operations(), "wilson dslash");
-    TIMER_EVENT(
-        colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision, fermion_out_mrhs_,
-            underlying_args_.compute_float_precision, *config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_), 0, "scatter");
-    CHECK_CUDA(cudaDeviceSynchronize());
-
-    fermion_in_vec_.clear();
-    fermion_out_vec_.clear();
+    begin_scatter();
 }
 
 void Qcu::mat_qcu (bool dagger_flag) {
@@ -417,6 +395,30 @@ void Qcu::read_gauge_from_file (const char* file_path, void* data_ptr) {
 void Qcu::set_staggered_phase (QcuStaggeredPhase staggered_phase) {
     staggered_phase_ = staggered_phase;
 }
+
+// 启动scatter
+void Qcu::begin_scatter() {
+    cudaStream_t stream = config::get_qcu_streams()[8];
+
+    colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision, fermion_out_mrhs_,
+            underlying_args_.compute_float_precision, *config::get_lattice_desc_ptr(), n_colors_, m_input_, stream, n_spin_);
+    CHECK_CUDA(cudaDeviceSynchronize());
+
+    fermion_in_vec_.clear();
+    fermion_out_vec_.clear();
+}
+// 启动gather
+void Qcu::begin_gather() {
+    cudaStream_t stream = config::get_qcu_streams()[8];
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermion_in_vec_.data(), sizeof(void*) * fermion_in_vec_.size(), cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(), sizeof(void*) * fermion_in_vec_.size(), cudaMemcpyHostToDevice));
+
+    colorSpinorGather(fermion_in_mrhs_, underlying_args_.compute_float_precision,
+        d_lookup_table_in_, underlying_args_.out_float_precision, *qcu::config::get_lattice_desc_ptr(),
+        n_colors_, m_input_, stream, n_spin_);
+    CHECK_CUDA(cudaStreamSynchronize(stream));
+}
+
 
 template void Qcu::read_gauge_from_file<double> (const char* file_path, void* data_ptr);
 template void Qcu::read_gauge_from_file<float> (const char* file_path, void* data_ptr);
