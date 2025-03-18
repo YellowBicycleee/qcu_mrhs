@@ -40,6 +40,8 @@ public:
     };
 
     QCU_DEVICE void operator ()(Argument& arg, bool mat_flag = false) {
+
+
         assert(BlockShape_::kMN / kWarpSize == blockDim.x * blockDim.y);
         assert(BlockShape_::kM >= WarpShape_::kM && BlockShape_::kN >= WarpShape_::kN && BlockShape_::kK >= WarpShape_::kK);
         const int fermion_site_length = arg.n_color * arg.m_rhs;
@@ -49,7 +51,7 @@ public:
         __shared__ Float_ B_tile_real[2][BlockShape_::kKN]; // Ns / 2
         __shared__ Float_ B_tile_imag[2][BlockShape_::kKN];
 
-        Complex_ ldg_A, ldg_B;
+        // Complex_ ldg_A, ldg_B;
         Complex_ result[4][kElemsPerThread];// = {0}; // Nspin
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < kElemsPerThread; j++) {
@@ -118,7 +120,7 @@ public:
                             wmma::fill_fragment(temp_i[pos], 0.0f);
                         }
                         // k-loop
-                        for (int k = 0; k < arg.n_color; k += WarpShape_::kK) {
+                        for (int k = 0; k < arg.n_color; k += BlockShape_::kK) {
                             // ldg Gauge
                             if (dir == FWD) { // global memory is row-major, col-major in smem
                                 ldg_and_sts<Float_, GaugeMatShape>(glb_A, block_row, k, arg.n_color, arg.n_color, A_tile_real, A_tile_imag);
