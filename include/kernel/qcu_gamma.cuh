@@ -4,7 +4,7 @@
 
 #pragma once
 #include "cuda_utils.cuh"
-
+#include "complex/qcu_complex.cuh"
 namespace qcu::kernel {
 
 // calculate 1 + gamma, if dagger, just set col(1) = -col(1)
