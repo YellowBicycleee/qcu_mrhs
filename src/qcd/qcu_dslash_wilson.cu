@@ -1,6 +1,6 @@
 #include <cuda_fp16.h>
 
-// #define ENABLE_TENSOR_CORE_COMPILE
+#define ENABLE_TENSOR_CORE_COMPILE
 #ifdef ENABLE_TENSOR_CORE_COMPILE
 #include "kernel/su_n_m_rhs_dslash.cuh"
 #include "kernel/sun_mrhs_wilson_dslash_tensorop.cuh"
@@ -26,7 +26,8 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
     const qcu::QcuProcDesc& proc_desc = *(dslash_param.proc_desc);
     dim3 block_size(kWarpSize, warp_num_per_block);
     dim3 grid_size(half_vol);
-    qcu::device::wilson_dslash_su_n_mrhs<Float> <<<grid_size, block_size, 0, dslash_param.stream1>>>(
+
+    qcu::device::wilson_dslash_su_n_mrhs<Float> <<<grid_size, block_size, 0, dslash_param.streams[8]>>>(
         static_cast<Float*>(dslash_param.fermion_out_MRHS),
         static_cast<Float*>(dslash_param.fermion_in_MRHS),
         static_cast<Float*>(dslash_param.gauge),

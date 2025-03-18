@@ -1,3 +1,4 @@
+#include <check_error/check_mpi.h>
 #include <cuda_fp16.h>
 #include <qcu_config/qcu_config.h>
 
@@ -7,6 +8,7 @@
 #include "../tests/public_complex_vector.h"
 #include "check_error/check_cuda.cuh"
 #include "data_format/fermion.cuh"
+#include "data_format/gauge.cuh"
 #include "data_format/qcu_data_format_shift.cuh"
 #include "io/lqcd_read_write.h"
 #include "precondition/even_odd_precondition.h"
@@ -17,7 +19,6 @@
 #include "qcu_wmma_constant.h"  // use this to debug
 #include "solver/bicgstab.cuh"
 #include "timer/timer.h"
-#include "data_format/gauge.cuh"
 namespace qcu {
 
 void Qcu::allocateMemory() {
@@ -122,7 +123,7 @@ void Qcu::get_dslash(DslashType dslashType, double mass, bool anti_periodic_t) {
 
     switch (dslashType) {
         case DslashType::kDslashWilson:
-            dslash_ = std::make_shared<qcu::simt::WilsonDslash>(); // new WilsonDslash(dslash_param_);
+            dslash_ = std::make_shared<qcu::WilsonDslash>(); // new WilsonDslash(dslash_param_);
             break;
         case DslashType::kDslashStaggered:
             dslash_ = std::make_shared<qcu::simt::StaggeredDslash>(); // new StaggeredDslash(dslash_param_);
@@ -382,55 +383,42 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
     fermion_out_vec_.clear();
 }
 
+template <typename Float_>
 void Qcu::read_gauge_from_file (const char* file_path, void* data_ptr) {
-    const int Lx = underlying_args_.lattice_desc_ptr.data[X_DIM];
-    const int Ly = underlying_args_.lattice_desc_ptr.data[Y_DIM];
-    const int Lz = underlying_args_.lattice_desc_ptr.data[Z_DIM];
-    const int Lt = underlying_args_.lattice_desc_ptr.data[T_DIM];
-
-    const int Gx = underlying_args_.process_desc_ptr.data[X_DIM];
-    const int Gy = underlying_args_.process_desc_ptr.data[Y_DIM];
-    const int Gz = underlying_args_.process_desc_ptr.data[Z_DIM];
-    const int Gt = underlying_args_.process_desc_ptr.data[T_DIM];
-
-    std::string file = file_path;
-    qcu::FourDimDesc latt_desc {Lx, Ly, Lz, Lt};
-
-    qcu::FourDimDesc mpi_desc{Gx, Gy, Gz, Gt};
-    // qcu::FourDimDesc latt_desc;
-
-#pragma unroll 
-    for (int i = 0; i < Nd; ++i) {
-        mpi_desc.data[i] = underlying_args_.process_desc_ptr.data[i];
-        latt_desc.data[i] = underlying_args_.lattice_desc_ptr.data[i];
-    }
-
-    std::vector<int> dims{Nd, latt_desc.data[T_DIM], latt_desc.data[Z_DIM],
-        latt_desc.data[Y_DIM], latt_desc.data[X_DIM], n_colors_, n_colors_ * 2};
-
-    qcu::io::Gauge4Dim<std::complex<double>> gauge(0, 0, 0, 0, 0);
-    qcu::io::GaugeReader<double> reader(config::get_mpi_rank(), mpi_desc);
-    reader.read(file_path, dims, gauge);
+    int mpi_rank;
+    CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank));
+    std::vector<int> global_latt_desc_vec = config::get_latt_desc();
+    std::vector<int> mpi_desc_vec = config::get_mpi_desc();
+    assert(global_latt_desc_vec.size() == mpi_desc_vec.size());
+    std::vector<int> local_latt_desc_vec{
+        global_latt_desc_vec[X_DIM] / mpi_desc_vec[X_DIM],
+        global_latt_desc_vec[Y_DIM] / mpi_desc_vec[Y_DIM],
+        global_latt_desc_vec[Z_DIM] / mpi_desc_vec[Z_DIM],
+        global_latt_desc_vec[T_DIM] / mpi_desc_vec[T_DIM]
+    };
+    qcu::io::GaugeStorage<std::complex<double>> gauge(global_latt_desc_vec, n_colors_);
+    qcu::io::GaugeReader<double> reader(mpi_rank, mpi_desc_vec);
+    reader.read(file_path, gauge);
 
     size_t gauge_length = config::lattice_volume_local() * Nd * n_colors_ * n_colors_;
 
-    Complex<double>* unpreconditioned = nullptr;
-    CHECK_CUDA(cudaMalloc(&unpreconditioned, sizeof(Complex<double>) * gauge_length));
-
-    std::shared_ptr<Complex<double>> unpreconditioned_ptr(unpreconditioned, [](Complex<double>* ptr){ CHECK_CUDA(cudaFree(ptr)); });
-
-    CHECK_CUDA(cudaMemcpy(unpreconditioned_ptr.get(), gauge.data_ptr(), sizeof(Complex<double>) * gauge_length, cudaMemcpyHostToDevice));
-    qcu::GaugeEOPreconditioner<double> preconditioner;
-    preconditioner.reverse(static_cast<Complex<double>*>(data_ptr),
-                            unpreconditioned, 
-                            latt_desc, 
+    Complex<Float_>* d_unpreconditioned = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_unpreconditioned, sizeof(Complex<Float_>) * gauge_length));
+    CHECK_CUDA(cudaMemcpy(d_unpreconditioned, gauge.data_ptr(), sizeof(Complex<Float_>) * gauge_length, cudaMemcpyHostToDevice));
+    qcu::GaugeEOPreconditioner<Float_> preconditioner;
+    preconditioner.reverse(static_cast<Complex<Float_>*>(data_ptr),
+                            d_unpreconditioned,
+                            local_latt_desc_vec,
                             n_colors_ * n_colors_,
                             4,
                             nullptr);
-    //
-    // CHECK_CUDA(cudaFree(unpreconditioned));
+    CHECK_CUDA(cudaFree(d_unpreconditioned));
 }
 void Qcu::set_staggered_phase (QcuStaggeredPhase staggered_phase) {
     staggered_phase_ = staggered_phase;
 }
+
+template void Qcu::read_gauge_from_file<double> (const char* file_path, void* data_ptr);
+template void Qcu::read_gauge_from_file<float> (const char* file_path, void* data_ptr);
+template void Qcu::read_gauge_from_file<half> (const char* file_path, void* data_ptr);
 }  // namespace qcu
