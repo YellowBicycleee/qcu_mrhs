@@ -9,6 +9,7 @@
 #include "qcu_helper_macro.h"
 #include "qcu_public.h"
 #include "qcd/qcu_dslash_staggered.h"
+#include <cuda_fp16.h>
 namespace qcu {
 class Qcu {
 public:
@@ -72,7 +73,7 @@ private:
 public:
     Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt,
         QcuPrecision outputFloatPrecision,
-        QcuPrecision iterateFloatPrecision = QcuPrecision::kPrecisionDouble,
+        QcuPrecision computeFloatPrecision = QcuPrecision::kPrecisionDouble,
         int nColors = 3, int mInputs = 1, double mass = 0.0,
         bool inverterEnabled = false)
         : n_colors_(nColors)
@@ -82,7 +83,7 @@ public:
         , underlying_args_(nColors, mInputs, mass,
                                 1.0 / (2.0 * (4.0 + mass)),
                                 outputFloatPrecision,
-                                iterateFloatPrecision,
+                                computeFloatPrecision,
                                 qcu::QcuLattDesc{Lx, Ly, Lz, Lt},
                                 qcu::QcuProcDesc{Gx, Gy, Gz, Gt}
             )
@@ -110,9 +111,15 @@ public:
     // solve Ax = b
     void solve_fermions (int max_iteration, double p_max_prec);
     // IO
+    template <typename Float_>
     void read_gauge_from_file (const char* file_path, void* data_ptr);
 
     void set_staggered_phase (QcuStaggeredPhase staggered_phase);
+    QcuPrecision io_precision() const { return underlying_args_.out_float_precision; }
+    QcuPrecision compute_precision() const { return underlying_args_.compute_float_precision; }
 };
+
+
+
 
 }  // namespace qcu

@@ -80,13 +80,13 @@ void qcuInvert(int max_iteration, double max_precison) {
 void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision) {
     check_qcu_ptr();
     assert(prec_gauge != non_prec_gauge);
-    qcu::FourDimDesc total_latt_desc = qcu::config::get_latt_desc();
-    qcu::FourDimDesc mpi_desc = qcu::config::get_mpi_desc();
-    qcu::FourDimDesc local_latt_desc;
+    std::vector<int> total_latt_desc = qcu::config::get_latt_desc();
+    std::vector<int> mpi_desc = qcu::config::get_mpi_desc();
+    std::vector<int> local_latt_desc;
 
 #pragma unroll
     for (int i = X_DIM; i < Nd; ++i) {
-        local_latt_desc.data[i] = total_latt_desc.data[i] / mpi_desc.data[i];
+        local_latt_desc[i] = total_latt_desc[i] / mpi_desc[i];
     }
 
     int site_vec_len = qcu_ptr->color() * qcu_ptr->color();
@@ -112,13 +112,13 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
     check_qcu_ptr();
     assert(prec_gauge != non_prec_gauge);
 
-    qcu::FourDimDesc total_latt_desc = qcu::config::get_latt_desc();
-    qcu::FourDimDesc mpi_desc = qcu::config::get_mpi_desc();
+    std::vector<int> total_latt_desc = qcu::config::get_latt_desc();
+    std::vector<int> mpi_desc = qcu::config::get_mpi_desc();
 
-    qcu::FourDimDesc local_latt_desc;
+    std::vector<int> local_latt_desc;
 #pragma unroll
     for (int i = X_DIM; i < Nd; ++i) {
-        local_latt_desc.data[i] = total_latt_desc.data[i] / mpi_desc.data[i];
+        local_latt_desc[i] = total_latt_desc[i] / mpi_desc[i];
     }
 
     int site_vec_len = qcu_ptr->color() * qcu_ptr->color();
@@ -142,5 +142,16 @@ void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int p
 
 void read_gauge_from_file (void* gauge, const char* file_path_prefix) {
     check_qcu_ptr();
-    qcu_ptr->read_gauge_from_file(file_path_prefix, gauge);
+    if (qcu_ptr->io_precision() == kPrecisionDouble) {
+        qcu_ptr->read_gauge_from_file<double>(file_path_prefix, gauge);
+    }
+    else if (qcu_ptr->io_precision() == kPrecisionSingle) {
+        qcu_ptr->read_gauge_from_file<float>(file_path_prefix, gauge);
+    }
+    else if (qcu_ptr->io_precision() == kPrecisionHalf) {
+        qcu_ptr->read_gauge_from_file<half>(file_path_prefix, gauge);
+    }
+    else {
+        errorQcu("Unkown precision\n");
+    }
 }

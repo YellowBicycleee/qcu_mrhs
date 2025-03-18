@@ -131,15 +131,20 @@ qcu::FourDimCoordinate get_mpi_coord() {
     return qcu_configuration->get_mpi_coord();
 }
 
-qcu::FourDimDesc get_mpi_desc() {
-    return qcu::FourDimDesc{
-        process_desc.data[X_DIM], process_desc.data[Y_DIM],
-        process_desc.data[Z_DIM], process_desc.data[T_DIM]};
+// qcu::FourDimDesc get_mpi_desc() {
+//     return qcu::FourDimDesc{
+//         process_desc.data[X_DIM], process_desc.data[Y_DIM],
+//         process_desc.data[Z_DIM], process_desc.data[T_DIM]};
+// }
+
+std::vector<int> get_mpi_desc() {
+    qcu::QcuProcDesc process_desc = qcu_configuration->get_mpi_desc();
+    return {
+        process_desc.X(), process_desc.Y(), process_desc.Z(), process_desc.T()};
 }
-qcu::FourDimDesc get_latt_desc() {
-    return qcu::FourDimDesc{
-        lattice_desc.data[X_DIM], lattice_desc.data[Y_DIM],
-        lattice_desc.data[Z_DIM], lattice_desc.data[T_DIM]};
+std::vector<int> get_latt_desc() {
+    qcu::QcuLattDesc latt_desc = qcu_configuration->get_latt_desc();
+    return {latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T()};
 }
 
 int get_mpi_rank() {
