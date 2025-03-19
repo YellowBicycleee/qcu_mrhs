@@ -3,6 +3,7 @@
 #include "qcd/qcu_dslash.h"
 
 namespace qcu {
+namespace tensorop {
 class WilsonDslash : public Dslash {
 
 public:
@@ -25,8 +26,13 @@ private:
 
     void post_apply(const std::shared_ptr<DslashParam>);
 
+    void apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim);
+
+    void apply_ghost_pack(DslashParam& dslash_param, int ghost_dim);
+
 
 };
+}
 
 namespace simt {
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <complex>
 
 namespace qcu::device {
 template <
@@ -89,6 +90,81 @@ void ldg_fermion_sts (Float2_* glb1, Float2_* glb2, int start_m, int start_n, in
             else { // padding with 0
                 smem_b_real[v_tid] = 0;
                 smem_b_imag[v_tid] = 0;
+            }
+        }
+    }
+}
+
+
+template <typename Float_,
+    typename MatrixShape_ = gemm::MatShape<16, 8>,
+    typename Float2_ = Float2_t<Float_>,
+    typename Complex_ = qcu::Complex<Float_>
+>
+QCU_DEVICE
+void store_matrix_sts (
+    Float2_* glb,
+    int start_m, int start_n,
+    int M, int N,
+    Float_* smem_b_real, Float_* smem_b_imag)
+{
+    {
+        int tid = threadIdx.x + threadIdx.y * blockDim.x;
+
+        for (int v_tid = tid; v_tid < MatrixShape_::kMN; v_tid += blockDim.x * blockDim.y) {
+            int m = v_tid / MatrixShape_::kN;
+            int n = v_tid % MatrixShape_::kN;
+
+            // the idx to load
+            int glb_row = start_m + m;
+            int glb_col = start_n + n;
+            if (glb_row < M && glb_col < N) {
+                int glb_idx = glb_row * N + glb_col;
+                Float_ real = smem_b_real[v_tid];
+                Float_ imag = smem_b_imag[v_tid];
+                Float2_ temp;
+                temp.x = real;
+                temp.y = real;
+                glb[glb_idx] = temp;
+            }
+        }
+    }
+}
+
+template <typename Float_,
+    typename MatrixShape_ = gemm::MatShape<16, 8>,
+    typename Float2_ = Float2_t<Float_>,
+    typename Complex_ = qcu::Complex<Float_>
+>
+QCU_DEVICE
+void store_matrix_from_smem_with_epilogue (
+    Float2_* glb1, Float2_* glb2,
+    int start_m, int start_n,
+    int M, int N,
+    Float_* smem_b_real, Float_* smem_b_imag,
+    Complex_ scale2
+    )
+{
+    {
+        int tid = threadIdx.x + threadIdx.y * blockDim.x;
+
+        for (int v_tid = tid; v_tid < MatrixShape_::kMN; v_tid += blockDim.x * blockDim.y) {
+            int m = v_tid / MatrixShape_::kN;
+            int n = v_tid % MatrixShape_::kN;
+
+            // the idx to load
+            int glb_row = start_m + m;
+            int glb_col = start_n + n;
+            if (glb_row < M && glb_col < N) {
+                int glb_idx = glb_row * N + glb_col;
+                Float_ real = smem_b_real[v_tid];
+                Float_ imag = smem_b_imag[v_tid];
+                Complex_ temp1{glb1[glb_idx]};
+                Complex_ temp2{glb2[glb_idx]};
+                temp1 += Complex_(real, imag);
+                temp2 += (scale2 * Complex_(real, imag));
+                glb1[glb_idx] = *(reinterpret_cast<Float2_*>(&temp1));
+                glb2[glb_idx] = *(reinterpret_cast<Float2_*>(&temp2));
             }
         }
     }

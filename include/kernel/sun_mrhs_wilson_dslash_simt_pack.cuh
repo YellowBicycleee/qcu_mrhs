@@ -207,7 +207,7 @@ void single_point_wilson_dslash_xdim_backward_ghost_pack(
             int row = loop_blk_m * BlockShape_::kM;
             int col = loop_blk_n * BlockShape_::kN;
 
-            // FWD in pack, BWD in unpack
+            // BWD in pack, FWD in unpack
             Float2* glb_B = reinterpret_cast<Float2 *>(coord.getGatheredColorSpinorAddr(in, latt_half_desc, n_color, m_rhs));
             Float2* glb_out = reinterpret_cast<Float2 *>(sub_latt_coord.getGatheredHalfColorSpinorAddr(temp_out, sub_space_half_desc, n_color, m_rhs));
 #pragma unroll
