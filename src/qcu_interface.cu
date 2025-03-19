@@ -123,7 +123,7 @@ void Qcu::get_dslash(DslashType dslashType, double mass, bool anti_periodic_t) {
 
     switch (dslashType) {
         case DslashType::kDslashWilson:
-            dslash_ = std::make_shared<qcu::WilsonDslash>(); // new WilsonDslash(dslash_param_);
+            dslash_ = std::make_shared<qcu::tensorop::WilsonDslash>(); // new WilsonDslash(dslash_param_);
             break;
         case DslashType::kDslashStaggered:
             dslash_ = std::make_shared<qcu::simt::StaggeredDslash>(); // new StaggeredDslash(dslash_param_);

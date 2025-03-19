@@ -11,7 +11,7 @@
 #include "check_error/check_cuda.cuh"
 #include "qcu_config/qcu_config.h"
 
-namespace qcu {
+namespace qcu::tensorop {
 
 // clang-format off
 template <typename Float>
