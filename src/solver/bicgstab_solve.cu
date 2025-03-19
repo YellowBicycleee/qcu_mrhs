@@ -31,7 +31,12 @@ template <
     QcuPrecision IteratePrecision
 >
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
-    return solve_odd_policy2();
+    if (param_.use_combined_residual) {
+        return solve_odd_combined_residual();
+    }
+    else {
+        return solve_odd_separated_residual();
+    }
 }
 template <
     QcuPrecision OutputPrecision,

@@ -157,6 +157,21 @@ void read_gauge_from_file (void* gauge, const char* file_path_prefix) {
 }
 
 // 启动scatter
-void begin_scatter() {}
+void begin_scatter() {
+    check_qcu_ptr();
+    qcu_ptr->begin_scatter();
+}
 // 启动gather
-void begin_gather() {}
+void begin_gather() {
+    check_qcu_ptr();
+    qcu_ptr->begin_gather();
+}
+
+void set_tensor_core_flag(int tensor_core_flag) {
+    check_qcu_ptr();
+    qcu_ptr->set_tensor_core_flag(tensor_core_flag);
+}
+void set_residual_combine_flag(int residual_combine_flag) {
+    check_qcu_ptr();
+    qcu_ptr->set_residual_combine_flag(residual_combine_flag);
+}

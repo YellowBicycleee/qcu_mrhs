@@ -58,11 +58,15 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
     CHECK_CUDA(cudaMalloc(&omega_array, param_.mInput * output_float_size * 2));
 
     // dslash运算符构造
-    dslash_operator_ = std::make_shared<qcu::simt::WilsonDslash>(false);
+    if (param_.use_tensor_core) {
+        dslash_operator_ = std::make_shared<qcu::tensorop::WilsonDslash>(false);
+    }else {
+        dslash_operator_ = std::make_shared<qcu::simt::WilsonDslash>(false);
+    }
     // cublasHandler申请
     if (const cublasStatus_t stat = cublasCreate(&cublasHandle_); stat != CUBLAS_STATUS_SUCCESS) {
-    printf("IN file %s, line %d, error happened\n", __FILE__, __LINE__);
-    abort();
+        printf("IN file %s, line %d, error happened\n", __FILE__, __LINE__);
+        abort();
     }
 
     // 初始化kappa序列和1序列

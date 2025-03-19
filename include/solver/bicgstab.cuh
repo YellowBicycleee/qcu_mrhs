@@ -21,10 +21,10 @@ struct BiCGStabParam {
     void* gauge;
     const QcuLattDesc* lattDesc;
     const QcuProcDesc* procDesc;
-    // cudaStream_t stream1;
-    // cudaStream_t stream2;
     std::vector<cudaStream_t>& streams;
     std::shared_ptr<qcu::FermionGhost<Nd>> fermion_ghost_;
+    bool use_combined_residual = false;
+    bool use_tensor_core = false;
 };
 
 // OutputPrecision     既表示输入又表示输出精度，
@@ -94,8 +94,8 @@ public:
     }
 private:
     bool solve_odd();
-    bool solve_odd_policy1(); // 单独计算norm和内积
-    bool solve_odd_policy2(); // 所有残差按一个计算
+    bool solve_odd_separated_residual(); // 单独计算norm和内积
+    bool solve_odd_combined_residual(); // 所有残差按一个计算
     bool solve_even();
     using OutputFloat  = typename qcu::Float2WrapperFromPrecision<OutputPrecision>::Float;
     using OutputFloat2 = typename qcu::Float2_t<OutputFloat>;

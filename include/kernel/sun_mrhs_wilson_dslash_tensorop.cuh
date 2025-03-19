@@ -2,6 +2,7 @@
 #include "qcu_helper.h"
 #include "kernel/gemm/qcu_gemm_configure.cuh"
 #include "kernel/qcu_gamma.cuh"
+#include "kernel/qcu_float4.cuh"
 #include "point/qcu_point.cuh"
 #include "qcu_utils.h"
 #include "complex/qcu_complex.cuh"
@@ -202,11 +203,14 @@ public:
                 // store thread result to global memory
                 for (int i = 0; i < Nspin_; ++i) { // store global memory
                     Float2_* start = reinterpret_cast<Float2_*>(glb_out) + i * arg.n_color * arg.m_rhs;
+                    // using F4 = Float4::Float4_t<Float_>;
+
                     int groupId = (lane_id >> 2);
                     int threadID_in_group = lane_id % 4;
                     //
                     int row, col;
                     for (int idx = 0; idx < kElemsPerThread; ++idx) {
+                    // for (int idx = 0; idx < kElemsPerThread; idx += 2) {
                         if (idx < 2 || (idx >= 4 && idx < 6)) {
                             row = groupId;
                         } else {

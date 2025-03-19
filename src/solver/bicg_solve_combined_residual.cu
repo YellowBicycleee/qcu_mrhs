@@ -13,10 +13,10 @@ template <typename _Float,
     std::enable_if_t<std::is_same_v<_Float, float> || std::is_same_v<_Float, double>>* = nullptr
 >
 inline bool isConverged_policy2 (const _Float norm_r, const _Float norm_b, _Float target_diff) {
-    std::cout
-        << "norm_r = " << norm_r << ", norm_b = " << norm_b
-        << ", cur = " << norm_r / norm_b
-        << ", required = " << target_diff << "\n";
+    // std::cout
+    //     << "norm_r = " << norm_r << ", norm_b = " << norm_b
+    //     << ", cur = " << norm_r / norm_b
+    //     << ", required = " << target_diff << "\n";
     return norm_r / norm_b <= target_diff;
 }
 
@@ -24,7 +24,7 @@ template <
     QcuPrecision OutputPrecision,
     QcuPrecision IteratePrecision
 >
-bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy2() {
+bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_combined_residual() {
   std::cout << "POLICY2 BICGStab: Combined Residual" << std::endl;
   OutputFloat norm_r = OutputFloat(1.0);
   OutputFloat norm_b = OutputFloat(1.0);

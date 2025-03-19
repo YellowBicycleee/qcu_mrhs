@@ -41,6 +41,8 @@ private:
     bool anti_periodic_t_ = false;
     double mass_;
     double kappa_;
+    bool tensor_core_flag_ = false;
+    bool residual_combine_flag_ = false;
     QcuStaggeredPhase staggered_phase_ = QcuStaggeredPhase::kQcuStaggeredPhaseNo;
 
     std::shared_ptr<DslashParam> dslash_param_ = nullptr;
@@ -122,7 +124,20 @@ public:
     void begin_scatter();
     // 启动gather
     void begin_gather();
-
+    void set_tensor_core_flag(int tensor_core_flag) {
+        if (tensor_core_flag) {
+            tensor_core_flag_ = true;
+        } else {
+            tensor_core_flag_ = false;
+        }
+    }
+    void set_residual_combine_flag(int residual_combine_flag) {
+        if (residual_combine_flag) {
+            residual_combine_flag_ = true;
+        } else {
+            residual_combine_flag_ = false;
+        }
+    }
 };
 
 

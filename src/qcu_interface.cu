@@ -123,10 +123,17 @@ void Qcu::get_dslash(DslashType dslashType, double mass, bool anti_periodic_t) {
 
     switch (dslashType) {
         case DslashType::kDslashWilson:
-            dslash_ = std::make_shared<qcu::tensorop::WilsonDslash>(); // new WilsonDslash(dslash_param_);
-            break;
+            if (tensor_core_flag_) {
+                dslash_ = std::make_shared<qcu::tensorop::WilsonDslash>();
+                printf("Use tensor core\n");
+            }
+            else {
+                dslash_ = std::make_shared<qcu::simt::WilsonDslash>();
+                printf("Use SIMT\n");
+            }
+                break;
         case DslashType::kDslashStaggered:
-            dslash_ = std::make_shared<qcu::simt::StaggeredDslash>(); // new StaggeredDslash(dslash_param_);
+            dslash_ = std::make_shared<qcu::simt::StaggeredDslash>();
             break;
         default: {
             errorQcu("Unsupported dslash type\n");
@@ -152,9 +159,9 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
     dslash_param_->fermion_out_MRHS = fermion_out_mrhs_;
 
 
-    begin_gather();
+    // begin_gather();
     TIMER_EVENT(dslash_->apply(dslash_param_), dslash_->operations(), "wilson dslash");
-    begin_scatter();
+    // begin_scatter();
 }
 
 void Qcu::mat_qcu (bool dagger_flag) {
@@ -330,10 +337,10 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
         .gauge          = gauge,
         .lattDesc       = &(underlying_args_.lattice_desc_ptr),
         .procDesc       = &(underlying_args_.process_desc_ptr),
-        // .stream1        = nullptr,
-        // .stream2        = nullptr,
         .streams = config::get_qcu_streams(),
-        .fermion_ghost_ = fermion_ghost_ptr
+        .fermion_ghost_ = fermion_ghost_ptr,
+        .use_combined_residual = residual_combine_flag_,
+        .use_tensor_core = tensor_core_flag_
     };
     solver::ApplyBicgStab(param, underlying_args_.out_float_precision,
         underlying_args_.compute_float_precision, max_iteration, max_precision);

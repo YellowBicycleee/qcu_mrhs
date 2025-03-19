@@ -31,7 +31,7 @@ template <
     QcuPrecision OutputPrecision,
     QcuPrecision IteratePrecision
 >
-bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_policy1() {
+bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residual() {
     std::cout << "POLICY1 BICGStab: separated residual" << std::endl;
     std::vector<OutputFloat> norm_r_array  (param_.mInput, 1.0);
     std::vector<OutputFloat> norm_b_array  (param_.mInput, 1.0);  // 计算b的模长
