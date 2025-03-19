@@ -5,7 +5,7 @@
 #include <cassert>
 #include <cstdlib>
 
-#include "../tests/public_complex_vector.h"
+// #include "../tests/public_complex_vector.h"
 #include "check_error/check_cuda.cuh"
 #include "data_format/fermion.cuh"
 #include "data_format/gauge.cuh"
@@ -164,7 +164,9 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
     // begin_scatter();
 }
 
-void Qcu::mat_qcu (bool dagger_flag) {
+
+template <typename ComputeFloat>
+void Qcu::mat_qcu_template_function (bool dagger_flag) {
     if (nullptr == dslash_) {
         errorQcu("Dslash is not initialized\n");
     }
@@ -177,22 +179,22 @@ void Qcu::mat_qcu (bool dagger_flag) {
     dslash_param_->fermion_in_MRHS = fermion_in_mrhs_;
     dslash_param_->fermion_out_MRHS = fermion_out_mrhs_;
 
-    Complex<OutputFloat> host_kappa = Complex<OutputFloat>(kappa_, 0);
-    CHECK_CUDA(cudaMalloc(&device_kappa_, sizeof(Complex<OutputFloat>) ));
-    CHECK_CUDA(cudaMemcpy(device_kappa_, &host_kappa, sizeof(Complex<OutputFloat>), cudaMemcpyHostToDevice));
+    Complex<ComputeFloat> host_kappa = Complex<ComputeFloat>(kappa_, 0);
+    CHECK_CUDA(cudaMalloc(&device_kappa_, sizeof(Complex<ComputeFloat>) ));
+    CHECK_CUDA(cudaMemcpy(device_kappa_, &host_kappa, sizeof(Complex<ComputeFloat>), cudaMemcpyHostToDevice));
 
-    vector<void*> fermion_in_half (m_input_);
-    vector<void*> fermion_out_half (m_input_);
+    std::vector<void*> fermion_in_half (m_input_);
+    std::vector<void*> fermion_out_half (m_input_);
     const int vol = underlying_args_.lattice_desc_ptr.lattice_volume();
     const int fermion_half_len = (vol / 2) * n_spin_ * n_colors_ * m_input_;
     // mat_qcu = fermionIn - kappa fermionOut   
-    qcu::qcu_blas::Complex_xsay<OutputFloat> xsay_op;
+    qcu::qcu_blas::Complex_xsay<ComputeFloat> xsay_op;
 
     for (int parity = 0; parity < 2; ++parity) {
         dslash_param_->parity = parity;
         for (int i = 0; i < m_input_; ++i) {
-            fermion_out_half[i] = static_cast<Complex<OutputFloat>*>(fermion_out_vec_[i]) + parity * vol / 2 * n_spin_ * n_colors_;
-            fermion_in_half[i] = static_cast<Complex<OutputFloat>*>(fermion_in_vec_[i]) + (1 - parity) * vol / 2 * n_spin_ * n_colors_;
+            fermion_out_half[i] = static_cast<Complex<ComputeFloat>*>(fermion_out_vec_[i]) + parity * vol / 2 * n_spin_ * n_colors_;
+            fermion_in_half[i] = static_cast<Complex<ComputeFloat>*>(fermion_in_vec_[i]) + (1 - parity) * vol / 2 * n_spin_ * n_colors_;
         }
         CHECK_CUDA(
             cudaMemcpy(d_lookup_table_in_, fermion_in_half.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
@@ -228,11 +230,11 @@ void Qcu::mat_qcu (bool dagger_flag) {
     colorSpinorGather(fermion_out_mrhs_, underlying_args_.compute_float_precision,
         d_lookup_table_out_, underlying_args_.out_float_precision,
             latt_desc_temp, n_colors_, m_input_, nullptr, n_spin_);
-    qcu::qcu_blas::Complex_xsay<OutputFloat>::Complex_xsayArgument arg (
-        static_cast<Complex<OutputFloat>*>(fermion_out_mrhs_),   // Complex<_Float>* res,
-        static_cast<Complex<OutputFloat>*>(fermion_in_mrhs_),    // Complex<_Float>* x,
-        static_cast<Complex<OutputFloat>*>(device_kappa_),      // Complex<_Float>* a,
-        static_cast<Complex<OutputFloat>*>(fermion_out_mrhs_),   // Complex<_Float>* y,
+    typename qcu_blas::Complex_xsay<ComputeFloat>::Complex_xsayArgument arg (
+        static_cast<Complex<ComputeFloat>*>(fermion_out_mrhs_),   // Complex<_Float>* res,
+        static_cast<Complex<ComputeFloat>*>(fermion_in_mrhs_),    // Complex<_Float>* x,
+        static_cast<Complex<ComputeFloat>*>(device_kappa_),      // Complex<_Float>* a,
+        static_cast<Complex<ComputeFloat>*>(fermion_out_mrhs_),   // Complex<_Float>* y,
         fermion_half_len * 2,                                       // int single_vec_len,
         1,                                                      // int inc_idx,
         nullptr                                                 // cudaStream_t stream = nullptr
@@ -247,6 +249,18 @@ void Qcu::mat_qcu (bool dagger_flag) {
     fermion_in_vec_.clear();
     fermion_out_vec_.clear();
 }
+void Qcu::mat_qcu (bool dagger_flag) {
+    if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionDouble) {
+        mat_qcu_template_function<double>(dagger_flag);
+    } else if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionSingle) {
+        mat_qcu_template_function<float>(dagger_flag);
+    } else if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionHalf) {
+        mat_qcu_template_function<half>(dagger_flag);
+    } else {
+        errorQcu("Unsupported float precision\n");
+    }
+}
+
 void Qcu::load_gauge(void* gauge, QcuPrecision floatPrecision) {
     gauge_external_ = gauge;
 
@@ -268,49 +282,88 @@ void Qcu::push_back_fermion(void* fermionOut, void* fermionIn) {
     fermion_out_vec_.push_back(fermionOut);
 }
 
+// void Qcu::solve_fermions(int max_iteration, double max_precision) {
+//     if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionDouble) {
+//         solve_fermions_template_function<double>(max_iteration, max_precision);
+//     } else if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionSingle) {
+//         solve_fermions_template_function<float>(max_iteration, max_precision);
+//     } else if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionHalf) {
+//         solve_fermions_template_function<half>(max_iteration, max_precision);
+//     } else {
+//         errorQcu("Unsupported float precision\n");
+//     }
+// }
 
-
+// template <typename OutputFloat>
+// void Qcu::solve_fermions_template_function(int max_iteration, double max_precision) {
+//
 void Qcu::solve_fermions(int max_iteration, double max_precision) {
     const int vol = qcu::config::lattice_volume_local();
     const int colorSpinor_len = n_spin_ * n_colors_;
+
+    size_t io_float_size;
+    size_t compute_float_size;
+    if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionHalf) {
+        compute_float_size = sizeof(half);
+    } else if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionSingle) {
+        compute_float_size = sizeof(float);
+    } else if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionDouble) {
+        compute_float_size = sizeof(double);
+    } else {
+            errorQcu("Unsupported float precision\n");
+    }
+    if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionHalf) {
+        io_float_size = sizeof(half);
+    } else if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionSingle) {
+        io_float_size = sizeof(float);
+    } else if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionDouble) {
+        io_float_size = sizeof(double);
+    } else {
+            errorQcu("Unsupported float precision\n");
+    }
 
     if (m_input_ != fermion_in_vec_.size()) {
         errorQcu("number of fermion is different from mInput\n");
     } else {
         printf("numbers matched, now begin bicg\n");
     }
-
-    vector<void*> fermionIn_queue_odd(fermion_in_vec_.size());
-    vector<void*> fermionOut_queue_odd(fermion_out_vec_.size());
+    std::vector<void*> fermionIn_queue_odd(fermion_in_vec_.size());
+    std::vector<void*> fermionOut_queue_odd(fermion_out_vec_.size());
     for (int i = 0; i < fermion_in_vec_.size(); i++) {
-        fermionIn_queue_odd[i] = static_cast<Complex<OutputFloat>*>(fermion_in_vec_[i]) + colorSpinor_len * vol / 2;
-        fermionOut_queue_odd[i] = static_cast<Complex<OutputFloat>*>(fermion_out_vec_[i]) + colorSpinor_len * vol / 2;
+        fermionIn_queue_odd[i] = static_cast<char*>(fermion_in_vec_[i]) + colorSpinor_len * vol / 2 * io_float_size * 2;
+        fermionOut_queue_odd[i] = static_cast<char*>(fermion_out_vec_[i]) + colorSpinor_len * vol / 2 * io_float_size * 2;
     }
 
     void* fermionIn_MRHS_even = fermion_in_mrhs_;
-    void* fermionIn_MRHS_odd = static_cast<Complex<OutputFloat>*>(fermion_in_mrhs_) + colorSpinor_len * m_input_ * vol / 2;
+    void* fermionIn_MRHS_odd = static_cast<char*>(fermion_in_mrhs_) + colorSpinor_len * m_input_ * vol / 2 * compute_float_size * 2;
 
+    QcuPrecision compute_precision = underlying_args_.compute_float_precision;
+    QcuPrecision reduction_precision = compute_precision;
+    if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionHalf) {
+        reduction_precision = QcuPrecision::kPrecisionSingle;
+    }
     // gather even
     CHECK_CUDA(cudaMemcpy(d_lookup_table_in_,  fermion_in_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
-    TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_even, underlying_args_.compute_float_precision,
-        d_lookup_table_in_,   underlying_args_.out_float_precision, *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_)
-        , 0, "gather");
+    colorSpinorGather(
+        fermionIn_MRHS_even,
+        compute_precision,
+        d_lookup_table_in_,
+        underlying_args_.out_float_precision,
+        *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_);
 
     // gather odd
     CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermionIn_queue_odd.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
-    TIMER_EVENT(colorSpinorGather(fermionIn_MRHS_odd, underlying_args_.compute_float_precision,
-                                d_lookup_table_in_, underlying_args_.out_float_precision,
-                                *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_)
-                                , 0, "gather");
-
-
+    colorSpinorGather(
+        fermionIn_MRHS_odd, underlying_args_.compute_float_precision,
+        d_lookup_table_in_, underlying_args_.out_float_precision,
+        *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_);
 
     // SOLVE
     void* gauge;
-    if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionDouble) {
+    if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionDouble) {
         gauge = fp64_gauge_;
     }
-    else if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionSingle) {
+    else if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionSingle) {
         gauge = fp32_gauge_;
     }
     else {
@@ -342,27 +395,22 @@ void Qcu::solve_fermions(int max_iteration, double max_precision) {
         .use_combined_residual = residual_combine_flag_,
         .use_tensor_core = tensor_core_flag_
     };
-    solver::ApplyBicgStab(param, underlying_args_.out_float_precision,
-        underlying_args_.compute_float_precision, max_iteration, max_precision);
 
+    solver::ApplyBicgStab(param, reduction_precision, compute_precision, max_iteration, max_precision);
     // scatter
     void* fermionOut_MRHS_even = fermion_out_mrhs_;
-    void* fermionOut_MRHS_odd =
-        static_cast<Complex<OutputFloat>*>(fermion_out_mrhs_) + colorSpinor_len * m_input_ * vol / 2;
+    void* fermionOut_MRHS_odd = static_cast<char*>(fermion_out_mrhs_) + colorSpinor_len * m_input_ * vol / 2 * compute_float_size * 2;
     // scatter even
     CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
-    TIMER_EVENT(
-        colorSpinorScatter( d_lookup_table_out_,   underlying_args_.out_float_precision,
-                            fermionOut_MRHS_even, underlying_args_.compute_float_precision,
-                            *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_),
-        0, "scatter");
+
+    colorSpinorScatter( d_lookup_table_out_,   underlying_args_.out_float_precision,
+                        fermionOut_MRHS_even, underlying_args_.compute_float_precision,
+                        *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_);
     // scatter odd
     CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermionOut_queue_odd.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
-    TIMER_EVENT(
-    colorSpinorScatter( d_lookup_table_out_,  underlying_args_.out_float_precision,
-                        fermionOut_MRHS_odd, underlying_args_.compute_float_precision,
-                        *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_),
-    0, "scatter");
+        colorSpinorScatter( d_lookup_table_out_,  underlying_args_.out_float_precision,
+                            fermionOut_MRHS_odd, underlying_args_.compute_float_precision,
+                            *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_);
     CHECK_CUDA(cudaStreamSynchronize(NULL));
     fermion_in_vec_.clear();
     fermion_out_vec_.clear();

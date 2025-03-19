@@ -68,6 +68,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
         printf("IN file %s, line %d, error happened\n", __FILE__, __LINE__);
         abort();
     }
+    cublasSetPointerMode(cublasHandle_, CUBLAS_POINTER_MODE_DEVICE); // 或CUBLAS_POINTER_MODE_HOST
 
     // 初始化kappa序列和1序列
     // init output_scala_array_[0] with Complex(kappa, 0) and init  output_scala_array_[1] with Complex(1, 0)
@@ -201,9 +202,6 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
 }
 // donnot use HALF to be the output precision
 template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionDouble>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionSingle>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionHalf>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionDouble>;
 template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionSingle>;
 template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionHalf>;
 }

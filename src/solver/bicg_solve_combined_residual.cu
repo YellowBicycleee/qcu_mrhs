@@ -13,10 +13,10 @@ template <typename _Float,
     std::enable_if_t<std::is_same_v<_Float, float> || std::is_same_v<_Float, double>>* = nullptr
 >
 inline bool isConverged_policy2 (const _Float norm_r, const _Float norm_b, _Float target_diff) {
-    // std::cout
-    //     << "norm_r = " << norm_r << ", norm_b = " << norm_b
-    //     << ", cur = " << norm_r / norm_b
-    //     << ", required = " << target_diff << "\n";
+    std::cout
+        << "norm_r = " << norm_r << ", norm_b = " << norm_b
+        << ", cur = " << norm_r / norm_b
+        << ", required = " << target_diff << "\n";
     return norm_r / norm_b <= target_diff;
 }
 
@@ -86,9 +86,12 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_combined_residua
     stream1,
     cublasHandle_
   };
+    printf("compute precision: %d, reduction precision: %d===========\n", OutputPrecision, IteratePrecision);
 
   interior_operator_.output_norm(output_norm_arg);
   // 计算norm，一次性保存到host端
+    printf("compute precision: %d, reduction precision: %d===========\n", OutputPrecision, IteratePrecision);
+
   CHECK_CUDA(cudaMemcpyAsync(&norm_b, output_new_b_even_norm, sizeof(OutputFloat), cudaMemcpyDeviceToHost, stream1));
   CHECK_CUDA(cudaStreamSynchronize(stream1));
 
@@ -312,10 +315,6 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_combined_residua
 }
 // donnot use HALF to be the output precision
 template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionDouble>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionSingle>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionHalf>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionDouble>;
 template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionSingle>;
 template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionHalf>;
-
 }

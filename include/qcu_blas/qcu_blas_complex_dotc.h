@@ -35,7 +35,7 @@ struct ComplexDotc {
         input2(input2),
         resArr(resArr),
         stream(stream),
-        handle(handle) {} 
+        handle(handle) {}
   };
 
   // methods

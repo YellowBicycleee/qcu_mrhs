@@ -326,9 +326,6 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
 
 // donnot use HALF to be the output precision
 template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionDouble>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionSingle>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionHalf>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionDouble>;
 template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionSingle>;
 template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionHalf>;
 

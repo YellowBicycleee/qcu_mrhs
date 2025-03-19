@@ -113,6 +113,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve() {
         printf("QCU BICGStab solve odd failed, %d iterations\n", currentIteration_);
         return false;
     }
+
     if (!solve_even()) {
         printf("QCU BICGStab solve even failed, %d iterations\n", currentIteration_);
         return false;
@@ -134,9 +135,6 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve() {
 
 // donnot use HALF to be the output precision
 template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionDouble>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionSingle>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionHalf>;
-template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionDouble>;
 template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionSingle>;
 template class BiCGStabImpl<QcuPrecision::kPrecisionSingle, QcuPrecision::kPrecisionHalf>;
 }

@@ -32,10 +32,10 @@ void ComplexNorm<OutputFloat, InputFloat>::operator()(ComplexNormArgument param)
                         reinterpret_cast<float*>(param.resArr))
         );
     }
-    else if constexpr(std::is_same_v<InputFloat, float>) {
+    else if constexpr(std::is_same_v<InputFloat, double>) {
         QCU_CHECK_CUBLAS (
             cublasDznrm2(param.handle, 
-                        param.single_vec_length, 
+                        param.single_vec_len,
                         reinterpret_cast<cuDoubleComplex*>(param.input), 
                         param.stride, 
                         reinterpret_cast<double*>(param.resArr))

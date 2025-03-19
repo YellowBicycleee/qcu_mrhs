@@ -70,8 +70,14 @@ private:
     void* gpu_allocator_ = nullptr; // TODO: add allocator, reserved for future use
 
     void allocateMemory();
+
     void freeMemory();
 
+    // template<typename OutputFloat>
+    // void solve_fermions_template_function (int max_iteration, double p_max_prec);
+
+    template <typename OutputFloat>
+    void mat_qcu_template_function (bool dagger_flag);
 public:
     Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt,
         QcuPrecision outputFloatPrecision,
@@ -111,6 +117,7 @@ public:
 
     void push_back_fermion (void *fermionOut, void *fermionIn);
     // solve Ax = b
+
     void solve_fermions (int max_iteration, double p_max_prec);
     // IO
     template <typename Float_>
