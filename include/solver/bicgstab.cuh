@@ -6,7 +6,7 @@
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_blas/qcu_blas.h"
 #include "qcu_public.h"
-
+#include "qcu_config/qcu_config.h"
 namespace qcu::solver {
 
 struct BiCGStabParam {
@@ -47,6 +47,51 @@ public:
         tempBufferFree();
     }
     bool solve();  // return true if converged
+    // out = in - a DoeDeo in
+    template <typename _Float>
+    inline void fused_x_sub_Doe_Deo_x (
+        void* output, void* input, void* temp, void* a,
+        std::shared_ptr<qcu::Dslash> dslash,
+        std::shared_ptr<qcu::DslashParam> param)
+    {
+        const int vol = qcu::config::lattice_volume_local();
+        const int m_input = param->m_input;
+        const int n_color = param->n_color;
+        const int single_vec_len = Nd * n_color;
+
+        cudaStream_t stream1 = param->streams[8];
+        cudaStream_t stream2 = param->streams[7];
+        // temp = Deo in
+        param->fermion_out_MRHS = temp;
+        param->fermion_in_MRHS = input;
+        param->parity = EVEN_PARITY;
+        dslash->apply(param);
+        CHECK_CUDA(cudaStreamSynchronize(stream1));
+        CHECK_CUDA(cudaStreamSynchronize(stream2));
+
+        // out = Doe temp
+        param->fermion_out_MRHS = output;
+        param->fermion_in_MRHS = temp;
+        param->parity = ODD_PARITY;
+
+        dslash->apply(param);
+        CHECK_CUDA(cudaStreamSynchronize(stream1));
+        CHECK_CUDA(cudaStreamSynchronize(stream2));
+
+        typename qcu::qcu_blas::Complex_xsay<_Float>::template Complex_xsayArgument
+            xsay_argument {
+                static_cast<Complex<_Float>*>(output),
+                static_cast<Complex<_Float>*>(input),   // Complex<_Float>* x,
+                static_cast<Complex<_Float>*>(a),       // Complex<_Float>* a,
+                static_cast<Complex<_Float>*>(output),  // Complex<_Float>* y,
+                single_vec_len * vol / 2,               // int single_vec_len,
+                m_input,                                 // int inc_idx,
+                stream1                                 // cudaStream_t stream = nullptr
+            };
+        qcu::qcu_blas::Complex_xsay<_Float> xsay_op;
+        xsay_op(xsay_argument);
+        CHECK_CUDA(cudaStreamSynchronize(stream1));
+    }
 private:
     bool solve_odd();
     bool solve_odd_policy1(); // 单独计算norm和内积
