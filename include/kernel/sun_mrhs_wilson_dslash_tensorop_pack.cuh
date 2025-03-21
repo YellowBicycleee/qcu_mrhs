@@ -52,6 +52,7 @@ public:
         int lane_id = (threadIdx.y * blockDim.x + threadIdx.x) % kWarpSize;
         int warp_rank_row = warp_rank / kWarpNumCol;
         int warp_rank_col = warp_rank % kWarpNumCol;
+
         // 4-dim lattice desc
         QcuLattDesc latt_half_desc{arg.latt_desc.X() >> 1, arg.latt_desc.Y(), arg.latt_desc.Z(), arg.latt_desc.T()};
 
@@ -65,7 +66,7 @@ public:
             sub_space_half_desc.at(ghost_dim) = 1; // a 3-dim desc hyperplane of 4 dim space
         }
 
-        Point sub_latt_coord {
+        Point<Nspin_> sub_latt_coord {
             arg.coord_1dim % sub_space_half_desc.X()
             , arg.coord_1dim % (sub_space_half_desc.Y() * sub_space_half_desc.X()) / sub_space_half_desc.X()
             , arg.coord_1dim % (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X()) / (sub_space_half_desc.Y() * sub_space_half_desc.X())
@@ -73,9 +74,9 @@ public:
             , arg.parity
         };
 
-        Point coord {sub_latt_coord}; // coord of whole lattice
+        Point<Nspin_> coord {sub_latt_coord}; // coord of whole lattice
         if (ghost_dim == X_DIM) {
-            int cb_xzt = 1 - (sub_latt_coord.Z() + sub_latt_coord.T()) % 2;
+            int cb_xzt = (sub_latt_coord.Z() + sub_latt_coord.T()) % 2;
             coord.at(Y_DIM) = 2 * sub_latt_coord.Y() + (cb_xzt == arg.parity);
         }
         coord.at(ghost_dim) = 0;
@@ -169,7 +170,7 @@ public:
             sub_space_half_desc.at(ghost_dim) = 1; // a 3-dim desc hyperplane of 4 dim space
         }
 
-        Point sub_latt_coord {
+        Point<Nspin_> sub_latt_coord {
             arg.coord_1dim % sub_space_half_desc.X()
             , arg.coord_1dim % (sub_space_half_desc.Y() * sub_space_half_desc.X()) / sub_space_half_desc.X()
             , arg.coord_1dim % (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X()) / (sub_space_half_desc.Y() * sub_space_half_desc.X())
@@ -177,7 +178,7 @@ public:
             , arg.parity
         };
 
-        Point coord {sub_latt_coord}; // coord of whole lattice
+        Point<Nspin_> coord {sub_latt_coord}; // coord of whole lattice
         if (ghost_dim == X_DIM) {
             int cb_xzt = 1 - (sub_latt_coord.Z() + sub_latt_coord.T()) % 2;
             coord.at(Y_DIM) = 2 * sub_latt_coord.Y() + (cb_xzt == arg.parity);
