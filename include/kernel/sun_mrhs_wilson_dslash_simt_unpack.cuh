@@ -64,9 +64,8 @@ void single_point_wilson_dslash_xdim_forward_ghost_unpack(
         , coord_1dim / (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X())
         , parity
     };
-
-    int cb_xzt = 1 - (sub_latt_coord.Z() + sub_latt_coord.T()) % 2;
     Point<Nspin_> coord {sub_latt_coord};
+    int cb_xzt = 1 - (sub_latt_coord.Z() + sub_latt_coord.T()) % 2;
     coord.at(X_DIM) = latt_half_desc.X() - 1; // recv from forward
     coord.at(Y_DIM) = 2 * sub_latt_coord.Y() + (parity != cb_xzt);
 

@@ -39,22 +39,120 @@ public:
         int t_boundary = 1;
     };
 
-    QCU_DEVICE void forward_pack(Argument& arg, int ghost_dim) {
+    QCU_DEVICE void backward_pack(Argument& arg, int ghost_dim) {
         constexpr int kElemsPerThread = WarpShape_::kMN / kWarpSize;
-        constexpr int dir = BWD; // send to backward, but from unpack process, it is from forward
+        constexpr int dir = FWD; // send to backward, but from unpack process, it is from forward
         if (ghost_dim < 0 || ghost_dim >= Nd) {
             printf("Error: ghost_dim is out of range\n");
             cuda_abort();
         }
         const int fermion_site_length = arg.n_color * arg.m_rhs;
 
+        int warp_rank = (threadIdx.y * blockDim.x + threadIdx.x) / kWarpSize;
+        int lane_id = (threadIdx.y * blockDim.x + threadIdx.x) % kWarpSize;
+        int warp_rank_row = warp_rank / kWarpNumCol;
+        int warp_rank_col = warp_rank % kWarpNumCol;
+        // 4-dim lattice desc
+        QcuLattDesc latt_half_desc{arg.latt_desc.X() >> 1, arg.latt_desc.Y(), arg.latt_desc.Z(), arg.latt_desc.T()};
+
+        // 3-dim sub-space lattice desc
+        QcuLattDesc sub_space_half_desc;
+        if (ghost_dim == X_DIM) {
+            sub_space_half_desc = QcuLattDesc{1, arg.latt_desc.Y() >> 1, arg.latt_desc.Z(), arg.latt_desc.T()};
+        }
+        else {
+            sub_space_half_desc = QcuLattDesc {latt_half_desc};
+            sub_space_half_desc.at(ghost_dim) = 1; // a 3-dim desc hyperplane of 4 dim space
+        }
+
+        Point sub_latt_coord {
+            arg.coord_1dim % sub_space_half_desc.X()
+            , arg.coord_1dim % (sub_space_half_desc.Y() * sub_space_half_desc.X()) / sub_space_half_desc.X()
+            , arg.coord_1dim % (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X()) / (sub_space_half_desc.Y() * sub_space_half_desc.X())
+            , arg.coord_1dim / (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X())
+            , arg.parity
+        };
+
+        Point coord {sub_latt_coord}; // coord of whole lattice
+        if (ghost_dim == X_DIM) {
+            int cb_xzt = 1 - (sub_latt_coord.Z() + sub_latt_coord.T()) % 2;
+            coord.at(Y_DIM) = 2 * sub_latt_coord.Y() + (cb_xzt == arg.parity);
+        }
+        coord.at(ghost_dim) = 0;
+        coord.setParity(1 - arg.parity);
+
+        int mat1_pos;
+        int mat2_pos;
+
+        int blocks_m = div_ceil(arg.n_color, BlockShape_::kM);
+        int blocks_n = div_ceil(arg.m_rhs, BlockShape_::kN);
+        int groupId = (lane_id >> 2);
+        int threadID_in_group = lane_id % 4;
+        Complex_ scale; // when read B, use B1 + scale B2
+        // calculate start addr of global and B
+        Float2_* glb_B = reinterpret_cast<Float2_ *>(coord.getGatheredColorSpinorAddr(arg.in_half, latt_half_desc, arg.n_color, arg.m_rhs));
+        Float2_* glb_out = reinterpret_cast<Float2_ *>(coord.getGatheredHalfColorSpinorAddr(arg.out_half, latt_half_desc, arg.n_color, arg.m_rhs));
+        int warp_row_offset = warp_rank_row * WarpShape_::kM;
+        int warp_col_offset = warp_rank_col * WarpShape_::kN;
+
+        for (int loop_blk_m = blockIdx.y; loop_blk_m < blocks_m; loop_blk_m += gridDim.y) {
+            for (int loop_blk_n = blockIdx.x; loop_blk_n < blocks_n; loop_blk_n += gridDim.x) {
+
+                int block_row = loop_blk_m * BlockShape_::kM;
+                int block_col = loop_blk_n * BlockShape_::kN;
+
+                // projection scale
+                for (mat1_pos = 0; mat1_pos < 2; mat1_pos++) {
+
+                    mat2_pos = kernel::Gamma<Float_>::get_reconstruct_mat_id(ghost_dim, mat1_pos);
+                    // get scale
+                    scale = kernel::Gamma<Float_>::get_projection_scale(ghost_dim, mat1_pos, dir);
+                    if (arg.dagger_flag) { scale = -scale; }
+
+                    // load and store
+                    Float2_* start = reinterpret_cast<Float2_*>(glb_out) + mat1_pos * arg.n_color * arg.m_rhs;
+
+                    int row, col;
+                    for (int idx = 0; idx < kElemsPerThread; ++idx) {
+                        // for (int idx = 0; idx < kElemsPerThread; idx += 2) {
+                        if (idx < 2 || (idx >= 4 && idx < 6)) { row = groupId; }
+                        else { row = groupId + 8; }
+                        if (idx < 4) { col = (threadID_in_group * 2) + (idx & 0x1); }
+                        else { col = (threadID_in_group * 2) + (idx & 0x1) + 8; }
+
+                        int row_in_global = block_row + warp_row_offset + row;
+                        int col_in_global = block_col + warp_col_offset + col;
+
+                        if (row_in_global < arg.n_color && col_in_global < arg.m_rhs) {
+                            Complex_ temp1 = Complex_(glb_B[mat1_pos * fermion_site_length + row_in_global * arg.m_rhs + col_in_global]);
+                            Complex_ temp2 = Complex_(glb_B[mat2_pos * fermion_site_length + row_in_global * arg.m_rhs + col_in_global]);
+                            Complex_ res = temp1 + scale * temp2;
+                            start[row_in_global * arg.m_rhs + col_in_global] = *reinterpret_cast<Float2_*>(&res);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    QCU_DEVICE void forward_pack(Argument& arg, int ghost_dim) {
+        constexpr int kElemsPerThread = WarpShape_::kMN / kWarpSize;
+        constexpr int dir = BWD; // send to forward, but from unpack process, it is from backward
+        if (ghost_dim < 0 || ghost_dim >= Nd) {
+            printf("Error: ghost_dim is out of range\n");
+            cuda_abort();
+        }
+        const int fermion_site_length = arg.n_color * arg.m_rhs;
+
+        __shared__ Float_ A_tile_real[BlockShape_::kMK];
+        __shared__ Float_ A_tile_imag[BlockShape_::kMK];
         __shared__ Float_ B_tile_real[2][BlockShape_::kKN]; // Ns / 2
         __shared__ Float_ B_tile_imag[2][BlockShape_::kKN];
 
-        Complex_ result[2][kElemsPerThread];// = {0}; // Nspin / 2
-        for (int i = 0; i < 4; i++) {
+        Complex_ temp_result[2][kElemsPerThread];  // Nspin / 2
+        for (int i = 0; i < 2; i++) {
             for (int j = 0; j < kElemsPerThread; j++) {
-                result[i][j] = Complex_(0, 0);
+                temp_result[i][j] = Complex_(0, 0);
             }
         }
 
@@ -87,117 +185,6 @@ public:
         coord.at(ghost_dim) = latt_half_desc.at(ghost_dim) - 1;
         coord.setParity(1 - arg.parity);
 
-        int mat1_pos;
-        int mat2_pos;
-
-        int blocks_m = div_ceil(arg.n_color, BlockShape_::kM);
-        int blocks_n = div_ceil(arg.m_rhs, BlockShape_::kN);
-
-        Complex_ scale; // when read B, use B1 + scale B2
-        Float2_* glb_out = reinterpret_cast<Float2_ *>(coord.getGatheredHalfColorSpinorAddr(arg.out_half, latt_half_desc, arg.n_color, arg.m_rhs));
-
-        for (int loop_blk_m = blockIdx.y; loop_blk_m < blocks_m; loop_blk_m += gridDim.y) {
-            for (int loop_blk_n = blockIdx.x; loop_blk_n < blocks_n; loop_blk_n += gridDim.x) {
-
-                int block_row = loop_blk_m * BlockShape_::kM;
-                int block_col = loop_blk_n * BlockShape_::kN;
-
-                // calculate start addr of global A and B
-                Float2_* glb_B = reinterpret_cast<Float2_ *>(coord.getGatheredColorSpinorAddr(arg.in_half, latt_half_desc, arg.n_color, arg.m_rhs));
-                wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_r[2];
-                wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_i[2];
-                for (int pos = 0; pos < 2; ++pos) {
-                    wmma::fill_fragment(temp_r[pos], 0.0f);
-                    wmma::fill_fragment(temp_i[pos], 0.0f);
-                }
-                // main loop
-                for (int k = 0; k < arg.n_color; k += BlockShape_::kK) {
-                    // ldg Fermion
-                    #pragma unroll
-                    for (int pos = 0; pos < 2; ++pos) {
-                        if (block_row < arg.n_color && block_col < arg.m_rhs) {
-                            mat1_pos = pos;
-                            mat2_pos = kernel::Gamma<Float_>::get_reconstruct_mat_id(ghost_dim, mat1_pos);
-                            // get scale
-                            scale = kernel::Gamma<Float_>::get_projection_scale(ghost_dim, mat1_pos, dir);
-                            if (arg.dagger_flag) { scale = -scale; }
-                        }
-
-                        ldg_fermion_sts<Float_, FermionMatShape>(
-                            glb_B + mat1_pos * fermion_site_length,
-                            glb_B + mat2_pos * fermion_site_length,
-                            k, block_col, arg.n_color, arg.m_rhs,
-                            scale, &(B_tile_real[pos][0]), &(B_tile_imag[pos][0])
-                            );
-                        __syncthreads();
-                        store_matrix_sts<Float_, FermionMatShape>(
-                                glb_out + pos * fermion_site_length,
-                                k, block_col,
-                                arg.n_color, arg.m_rhs,
-                                &(B_tile_real[pos][0]), &(B_tile_imag[pos][0])
-                            );
-                    }
-                    __syncthreads();
-                } // end main loop for
-            }
-        }
-    }
-
-    QCU_DEVICE void backward_pack(Argument& arg, int ghost_dim) {
-        constexpr int kElemsPerThread = WarpShape_::kMN / kWarpSize;
-        constexpr int dir = FWD; // send to forward, but from unpack process, it is from backward
-        if (ghost_dim < 0 || ghost_dim >= Nd) {
-            printf("Error: ghost_dim is out of range\n");
-            cuda_abort();
-        }
-        const int fermion_site_length = arg.n_color * arg.m_rhs;
-
-        __shared__ Float_ A_tile_real[BlockShape_::kMK];
-        __shared__ Float_ A_tile_imag[BlockShape_::kMK];
-        __shared__ Float_ B_tile_real[2][BlockShape_::kKN]; // Ns / 2
-        __shared__ Float_ B_tile_imag[2][BlockShape_::kKN];
-
-        Complex_ result[2][kElemsPerThread];// = {0}; // Nspin / 2
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < kElemsPerThread; j++) {
-                result[i][j] = Complex_(0, 0);
-            }
-        }
-
-        // 4-dim lattice desc
-        QcuLattDesc latt_half_desc{arg.latt_desc.X() >> 1, arg.latt_desc.Y(), arg.latt_desc.Z(), arg.latt_desc.T()};
-
-        // 3-dim sub-space lattice desc
-        QcuLattDesc sub_space_half_desc;
-        if (ghost_dim == X_DIM) {
-            sub_space_half_desc = QcuLattDesc{1, arg.latt_desc.Y() >> 1, arg.latt_desc.Z(), arg.latt_desc.T()};
-        }
-        else {
-            sub_space_half_desc = QcuLattDesc {latt_half_desc};
-            sub_space_half_desc.at(ghost_dim) = 1; // a 3-dim desc hyperplane of 4 dim space
-        }
-
-        Point sub_latt_coord {
-            arg.coord_1dim % sub_space_half_desc.X()
-            , arg.coord_1dim % (sub_space_half_desc.Y() * sub_space_half_desc.X()) / sub_space_half_desc.X()
-            , arg.coord_1dim % (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X()) / (sub_space_half_desc.Y() * sub_space_half_desc.X())
-            , arg.coord_1dim / (sub_space_half_desc.Z() * sub_space_half_desc.Y() * sub_space_half_desc.X())
-            , arg.parity
-        };
-
-        Point coord {sub_latt_coord}; // coord of whole lattice
-        if (ghost_dim == X_DIM) {
-            int cb_xzt = 1 - (sub_latt_coord.Z() + sub_latt_coord.T()) % 2;
-            coord.at(X_DIM) = latt_half_desc.at(X_DIM) - 1;
-            coord.at(Y_DIM) = 2 * sub_latt_coord.Y() + (cb_xzt == arg.parity);
-            coord.setParity(1 - arg.parity);
-        }
-        else {
-            // send to forward
-            coord.at(ghost_dim) = 0;
-            coord.setParity(1 - arg.parity);
-        }
-
         int32_t mat1_pos;
         int32_t mat2_pos;
 
@@ -207,7 +194,15 @@ public:
         int lane_id = (threadIdx.y * blockDim.x + threadIdx.x) % kWarpSize;
         int warp_rank_row = warp_rank / kWarpNumCol;
         int warp_rank_col = warp_rank % kWarpNumCol;
+        int warp_row_offset = warp_rank_row * WarpShape_::kM;
+        int warp_col_offset = warp_rank_col * WarpShape_::kN;
         Complex_ scale; // when read B, use B1 + scale B2
+
+        // calculate start addr of global A and B
+        // FWD in pack, BWD in unpack
+        Float2_* glb_A = reinterpret_cast<Float2_ *>(coord.getGaugeAddr(arg.gauge, ghost_dim, latt_half_desc, arg.n_color));
+        Float2_* glb_B = reinterpret_cast<Float2_ *>(coord.getGatheredColorSpinorAddr(arg.in_half, latt_half_desc, arg.n_color, arg.m_rhs));
+        Float2_* glb_out = reinterpret_cast<Float2_ *>(coord.getGatheredHalfColorSpinorAddr(arg.out_half, latt_half_desc, arg.n_color, arg.m_rhs));
 
         for (int loop_blk_m = blockIdx.y; loop_blk_m < blocks_m; loop_blk_m += gridDim.y) {
             for (int loop_blk_n = blockIdx.x; loop_blk_n < blocks_n; loop_blk_n += gridDim.x) {
@@ -215,16 +210,13 @@ public:
                 int block_row = loop_blk_m * BlockShape_::kM;
                 int block_col = loop_blk_n * BlockShape_::kN;
 
-                // calculate start addr of global A and B
-                // FWD in pack, BWD in unpack
-                Float2_* glb_A = reinterpret_cast<Float2_ *>(coord.getGaugeAddr(arg.gauge, ghost_dim, latt_half_desc, arg.n_color));
-                Float2_* glb_B = reinterpret_cast<Float2_ *>(coord.getGatheredColorSpinorAddr(arg.in_half, latt_half_desc, arg.n_color, arg.m_rhs));
                 wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_r[2];
                 wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_i[2];
                 for (int pos = 0; pos < 2; ++pos) {
                     wmma::fill_fragment(temp_r[pos], 0.0f);
                     wmma::fill_fragment(temp_i[pos], 0.0f);
                 }
+
                 // main loop
                 for (int k = 0; k < arg.n_color; k += BlockShape_::kK) {
                     /// load Gauge
@@ -278,16 +270,22 @@ public:
                     __syncthreads();
                 } // end main loop for
 
-                int warp_row_offset = warp_rank_row * WarpShape_::kM;
-                int warp_col_offset = warp_rank_col * WarpShape_::kN;
-                Float2_* glb_out = reinterpret_cast<Float2_ *>(coord.getGatheredHalfColorSpinorAddr(arg.out_half, latt_half_desc, arg.n_color, arg.m_rhs));
+                // add to result
+                if (block_row < arg.n_color && block_col < arg.m_rhs) {
+                    for (mat1_pos = 0; mat1_pos < 2; ++mat1_pos) {
+                        for (int elem_idx = 0; elem_idx < kElemsPerThread; ++elem_idx) {
+                            Complex_ temp_res(temp_r[mat1_pos].x[elem_idx], temp_i[mat1_pos].x[elem_idx]);
+                            temp_result[mat1_pos][elem_idx] += temp_res;
+                        }
+                    }
+                }
+
 #pragma unroll
                 // store thread result to global memory
                 for (int i = 0; i < Nspin_ / 2; ++i) { // store global memory
                     Float2_* start = reinterpret_cast<Float2_*>(glb_out) + i * arg.n_color * arg.m_rhs;
                     int groupId = (lane_id >> 2);
                     int threadID_in_group = lane_id % 4;
-                    //
                     int row, col;
                     for (int idx = 0; idx < kElemsPerThread; ++idx) {
                         if (idx < 2 || (idx >= 4 && idx < 6)) {
@@ -305,7 +303,7 @@ public:
                         int col_in_global = block_col + warp_col_offset + col;
                         if (row_in_global < arg.n_color && col_in_global < arg.m_rhs) {
                             start[row_in_global * arg.m_rhs + col_in_global]
-                                    = reinterpret_cast<Float2_*>(&(result[i][0]))[idx];
+                                    = reinterpret_cast<Float2_*>(&(temp_result[i][0]))[idx];
                         }
                     }
                 }
