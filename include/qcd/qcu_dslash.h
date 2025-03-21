@@ -8,6 +8,8 @@
 #include "data_format/fermion.cuh"
 #include "desc/qcu_desc.h"
 #include "qcu_public.h"
+#include "qcu_extern_macro.h"
+
 namespace qcu {
 
 // clang-format off

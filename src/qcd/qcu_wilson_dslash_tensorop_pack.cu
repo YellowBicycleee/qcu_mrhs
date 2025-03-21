@@ -1,17 +1,17 @@
-#include "kernel/sun_mrhs_wilson_dslash_tensorop_pack.cuh"
-//
-// Created by wangj on 2024/12/18.
-//
 #include <mpi.h>
 #include "check_error/check_cuda.cuh"
 #include "check_error/check_mpi.h"
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_config/qcu_config.h"
 
+#ifdef COMPILE_TENSOR_CORE_CODE
+#include "kernel/sun_mrhs_wilson_dslash_tensorop_pack.cuh"
+#endif
 namespace qcu::tensorop {
 // pack 使用独立的8个流
 template <typename Float_>
 inline void apply_sun_mrhs_dslash_ghost_pack (DslashParam& dslash_param, int ghost_dim) {
+#ifdef COMPILE_TENSOR_CORE_CODE
     unsigned int multiprocess = config::get_mpi_separated_mask();
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
@@ -85,6 +85,9 @@ inline void apply_sun_mrhs_dslash_ghost_pack (DslashParam& dslash_param, int gho
                 dslash_param.n_color, dslash_param.m_input);
     }
     CHECK_CUDA(cudaDeviceSynchronize());
+#else
+    errorQcu("TensorOp not supported\n");
+#endif
 }
 
 void WilsonDslash::apply_ghost_pack(DslashParam& dslash_param, int ghost_dim) {

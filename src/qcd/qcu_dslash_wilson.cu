@@ -1,16 +1,12 @@
 #include <cuda_fp16.h>
-
-#define ENABLE_TENSOR_CORE_COMPILE
-#ifdef ENABLE_TENSOR_CORE_COMPILE
-// #include "kernel/su_n_m_rhs_dslash.cuh"
-#include "kernel/sun_mrhs_wilson_dslash_tensorop.cuh"
-#endif // ENABLE_TENSOR_CORE_COMPILE
-
 #include "qcd/qcu_dslash_wilson.h"
 #include "qcu_public.h"
 #include "check_error/check_cuda.cuh"
 #include "qcu_config/qcu_config.h"
 
+#ifdef COMPILE_TENSOR_CORE_CODE
+#include "kernel/sun_mrhs_wilson_dslash_tensorop.cuh"
+#endif
 namespace qcu::tensorop {
 
 // clang-format off
@@ -18,25 +14,14 @@ template <typename Float>
 inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 {
 
-#ifdef ENABLE_TENSOR_CORE_COMPILE
+#ifdef COMPILE_TENSOR_CORE_CODE
     int half_vol = config::lattice_volume_local() / 2;
 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
-
-    // using BlockShape = gemm::GemmShape<8, 8, 8>;
-    // using BlockShape = gemm::GemmShape<16, 16, 16>;
     unsigned int multiprocess_mask = config::get_mpi_separated_mask();
-
-    // qcu::device::wilson_dslash_su_n_mrhs<Float> <<<grid_size, block_size, 0, dslash_param.streams[8]>>>(
-    //     static_cast<Float*>(dslash_param.fermion_out_MRHS),
-    //     static_cast<Float*>(dslash_param.fermion_in_MRHS),
-    //     static_cast<Float*>(dslash_param.gauge),
-    //     latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T(),
-    //     proc_desc.X(), proc_desc.Y(), proc_desc.Z(), proc_desc.T(),
-    //     dslash_param.parity, dslash_param.dagger_flag, dslash_param.n_color, dslash_param.m_input);
     if constexpr (std::is_same_v<Float, double>) {
         // tensor
-        using BlockShape = gemm::GemmShape<8, 16, 4>;
+        using BlockShape = gemm::GemmShape<8, 8, 8>;
         using WarpShape = gemm::GemmShape<8, 8, 4>;
         // dim3 block_size(BlockShape::kN /2 * BlockShape::kM / 2);
         dim3 block_size(32 * BlockShape::kMN / WarpShape::kMN);
@@ -86,7 +71,9 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
             false,
             1);
     }
-#endif // ENABLE_TENSOR_CORE_COMPILE
+#else
+    errorQcu("Tensor Op not supported\n");
+#endif // COMPILE_TENSOR_CORE_CODE
 }
 
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {

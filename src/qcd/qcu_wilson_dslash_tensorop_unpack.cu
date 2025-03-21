@@ -6,15 +6,18 @@
  */
 #include <mpi.h>
 #include "qcd/qcu_dslash_wilson.h"
-#include "kernel/sun_mrhs_wilson_dslash_tensorop_unpack.cuh"
 #include "qcu_config/qcu_config.h"
 #include "check_error/check_cuda.cuh"
 #include "check_error/check_mpi.h"
+#ifdef COMPILE_TENSOR_CORE_CODE
+#include "kernel/sun_mrhs_wilson_dslash_tensorop_unpack.cuh"
+#endif
 
 namespace qcu::tensorop {
 // unpack走8流
 template <typename Float_>
 inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int ghost_dim) {
+#ifdef COMPILE_TENSOR_CORE_CODE
     unsigned int multiprocess = config::get_mpi_separated_mask();
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
 
@@ -80,6 +83,9 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
                 dslash_param.n_color, dslash_param.m_input);
     }
     CHECK_CUDA(cudaDeviceSynchronize());
+#else
+    errorQcu("TensorOp not supported\n");
+#endif // COMPILE_TENSOR_CORE_CODE
 }
 
 void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) {
