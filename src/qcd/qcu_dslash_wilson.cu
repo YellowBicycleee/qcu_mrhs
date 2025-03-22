@@ -77,7 +77,13 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
 }
 
 void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
+    timer_.reset();
+    timer_.start();
+
+    pre_apply(dslash_param);
+
     assert(dslash_param->fermion_ghost != nullptr);
+
     int m_input = dslash_param->m_input;
     int n_color = dslash_param->n_color;
     int half_vol = config::lattice_volume_local() / 2;
@@ -116,14 +122,22 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
     CHECK_CUDA(cudaStreamSynchronize(dslash_param->streams[8]));
 
 
-
+    post_apply(dslash_param);
 
 }
 void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
-    errorQcu("Not implemented yet\n");  // TODO
+    for (int i = 0; i < Nd; ++i) {
+        if (dslash_param->proc_desc->at(i) > 1) {
+            apply_ghost_pack(*dslash_param, i);
+        }
+    }
 }
 void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
-    errorQcu("Not implemented yet\n");  // TODO
+    for (int i = 0; i < Nd; ++i) {
+        if (dslash_param->proc_desc->at(i) > 1) {
+            apply_ghost_unpack(*dslash_param, i);
+        }
+    }
 }
 // // TODO : calc flops
 // double WilsonDslash::flops() {

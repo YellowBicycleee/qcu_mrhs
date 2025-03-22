@@ -125,6 +125,7 @@ public:
                             Complex_ origin2 = Complex_(start2[row_in_global * arg.m_rhs + col_in_global]);
 
                             Complex_ projected_ghost = Complex_(glb_B[mat1_pos * fermion_site_length + row_in_global * arg.m_rhs + col_in_global]);
+
                             origin1 += projected_ghost;
                             origin2 += (scale * projected_ghost);
                             start1[row_in_global * arg.m_rhs + col_in_global] = *reinterpret_cast<Float2_*>(&origin1);
@@ -191,16 +192,22 @@ public:
 
         int blocks_m = div_ceil(arg.n_color, BlockShape_::kM);
         int blocks_n = div_ceil(arg.m_rhs, BlockShape_::kN);
+
         int warp_rank = (threadIdx.y * blockDim.x + threadIdx.x) / kWarpSize;
         int lane_id = (threadIdx.y * blockDim.x + threadIdx.x) % kWarpSize;
+
         int warp_rank_row = warp_rank / kWarpNumCol;
         int warp_rank_col = warp_rank % kWarpNumCol;
+
         int groupId = (lane_id >> 2);
         int threadID_in_group = lane_id % 4;
+
         int warp_row_offset = warp_rank_row * WarpShape_::kM;
         int warp_col_offset = warp_rank_col * WarpShape_::kN;
 
         Complex_ scale; // when read B, use B1 + scale B2
+        Float2_* glb_A = reinterpret_cast<Float2_ *>(coord.getGaugeAddr(arg.gauge, ghost_dim, latt_half_desc, arg.n_color));
+        Float2_* glb_B = reinterpret_cast<Float2_ *>(sub_latt_coord.getGatheredHalfColorSpinorAddr(arg.in_half, sub_space_half_desc, arg.n_color, arg.m_rhs));
         Float2_* glb_out = reinterpret_cast<Float2_ *>(coord.getGatheredColorSpinorAddr(arg.out_half, latt_half_desc, arg.n_color, arg.m_rhs));
 
         for (int loop_blk_m = blockIdx.y; loop_blk_m < blocks_m; loop_blk_m += gridDim.y) {
@@ -208,9 +215,6 @@ public:
 
                 int block_row = loop_blk_m * BlockShape_::kM;
                 int block_col = loop_blk_n * BlockShape_::kN;
-
-                Float2_* glb_A = reinterpret_cast<Float2_ *>(coord.getGaugeAddr(arg.gauge, ghost_dim, latt_half_desc, arg.n_color));
-                Float2_* glb_B = reinterpret_cast<Float2_ *>(sub_latt_coord.getGatheredHalfColorSpinorAddr(arg.in_half, sub_space_half_desc, arg.n_color, arg.m_rhs));
 
                 wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_r[2];
                 wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_i[2];
@@ -226,14 +230,7 @@ public:
                     // ldg Fermion
                     #pragma unroll
                     for (int pos = 0; pos < 2; ++pos) {
-                        if (block_row < arg.n_color && block_col < arg.m_rhs) {
-                            mat1_pos = pos;
-                            mat2_pos = kernel::Gamma<Float_>::get_reconstruct_mat_id(ghost_dim, mat1_pos);
-                            // get projection scale
-                            scale = kernel::Gamma<Float_>::get_projection_scale(ghost_dim, mat1_pos, dir);
-                            if (arg.dagger_flag) { scale = -scale; }
-                        }
-                        ldg_and_sts<Float_, FermionMatShape>(glb_B, k, block_col, arg.n_color, arg.n_color, &(B_tile_real[pos][0]),  &(B_tile_imag[pos][0]));
+                        ldg_and_sts<Float_, FermionMatShape>(glb_B + pos * fermion_site_length, k, block_col, arg.n_color, arg.m_rhs, &(B_tile_real[pos][0]),  &(B_tile_imag[pos][0]));
                     }
                     __syncthreads();
 
@@ -264,7 +261,15 @@ public:
                     }
                     __syncthreads();
                 } // end main loop for
-
+                // add to result
+                if (block_row < arg.n_color && block_col < arg.m_rhs) {
+                    for (mat1_pos = 0; mat1_pos < 2; ++mat1_pos) {
+                        for (int elem_idx = 0; elem_idx < kElemsPerThread; ++elem_idx) {
+                            Complex_ temp_res(temp_r[mat1_pos].x[elem_idx], temp_i[mat1_pos].x[elem_idx]);
+                            temp_result[mat1_pos][elem_idx] += temp_res;
+                        }
+                    }
+                }
                 #pragma unroll
                 // store thread result to global memory
                 for (mat1_pos = 0; mat1_pos < Nspin_ / 2; ++mat1_pos) { // store global memory
@@ -273,8 +278,8 @@ public:
                     scale = kernel::Gamma<Float_>::get_reconstruct_scale(ghost_dim, mat1_pos, dir);
                     if (arg.dagger_flag) { scale = -scale; }
 
-                    Float2_* start1 = reinterpret_cast<Float2_*>(glb_out) + mat1_pos * fermion_site_length;
-                    Float2_* start2 = reinterpret_cast<Float2_*>(glb_out) + mat2_pos * fermion_site_length;
+                    Float2_* start1 = glb_out + mat1_pos * fermion_site_length;
+                    Float2_* start2 = glb_out + mat2_pos * fermion_site_length;
 
                     int row, col;
                     for (int idx = 0; idx < kElemsPerThread; ++idx) {
