@@ -32,7 +32,7 @@ inline void apply_sun_mrhs_dslash_ghost_pack (DslashParam& dslash_param, int gho
         dim3 block_size(32 * BlockShape::kMN / WarpShape::kMN);
         dim3 grid_size(div_ceil(dslash_param.m_input, BlockShape::kN),
             div_ceil(dslash_param.n_color, BlockShape::kM),
-            std::min(half_vol, 65535));
+            std::min(num_threads, 65535));
         qcu::device::tensorop::wilson_dslash_sun_mrhs_forward_ghost_pack
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, fwd_stream>>> (
@@ -59,7 +59,7 @@ inline void apply_sun_mrhs_dslash_ghost_pack (DslashParam& dslash_param, int gho
         dim3 block_size(32 * BlockShape::kMN / WarpShape::kMN);
         dim3 grid_size(div_ceil(dslash_param.m_input, BlockShape::kN),
             div_ceil(dslash_param.n_color, BlockShape::kM),
-            std::min(half_vol, 65535));
+            std::min(num_threads, 65535));
         qcu::device::tensorop::wilson_dslash_sun_mrhs_forward_ghost_pack
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, fwd_stream>>> (

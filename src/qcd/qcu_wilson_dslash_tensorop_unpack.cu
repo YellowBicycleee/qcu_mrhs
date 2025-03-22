@@ -22,7 +22,7 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
 
     int half_vol = config::lattice_volume_local() / 2;
-
+    int num_threads = half_vol / latt_desc.at(ghost_dim);
 
     void* fwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, FWD);
     void* bwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, BWD);
@@ -36,7 +36,7 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
         dim3 block_size(32 * BlockShape::kMN / WarpShape::kMN);
         dim3 grid_size(div_ceil(dslash_param.m_input, BlockShape::kN),
             div_ceil(dslash_param.n_color, BlockShape::kM),
-            std::min(half_vol, 65535));
+            std::min(num_threads, 65535));
         qcu::device::tensorop::wilson_dslash_sun_mrhs_forward_ghost_unpack
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, fwd_stream>>> (
@@ -45,7 +45,8 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
                 static_cast<Float_*>(dslash_param.gauge),
                 ghost_dim, latt_desc, multiprocess,
                 dslash_param.parity, dslash_param.dagger_flag,
-                dslash_param.n_color, dslash_param.m_input);
+                dslash_param.n_color, dslash_param.m_input, 0,
+                false, 1);
 
         qcu::device::tensorop::wilson_dslash_sun_mrhs_backward_ghost_unpack
         <Float_, BlockShape, WarpShape>
@@ -63,7 +64,7 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
         dim3 block_size(32 * BlockShape::kMN / WarpShape::kMN);
         dim3 grid_size(div_ceil(dslash_param.m_input, BlockShape::kN),
             div_ceil(dslash_param.n_color, BlockShape::kM),
-            std::min(half_vol, 65535));
+            std::min(num_threads, 65535));
         qcu::device::tensorop::wilson_dslash_sun_mrhs_forward_ghost_unpack
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, fwd_stream>>> (

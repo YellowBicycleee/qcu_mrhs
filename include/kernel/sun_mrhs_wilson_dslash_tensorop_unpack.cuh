@@ -186,7 +186,6 @@ public:
         }
         coord.at(ghost_dim) = latt_half_desc.at(ghost_dim) - 1;
         coord.setParity(arg.parity);
-
         int mat1_pos;
         int mat2_pos;
 
@@ -270,7 +269,6 @@ public:
                         }
                     }
                 }
-                #pragma unroll
                 // store thread result to global memory
                 for (mat1_pos = 0; mat1_pos < Nspin_ / 2; ++mat1_pos) { // store global memory
                     // reconstruct mat2_pos and scale
@@ -293,8 +291,10 @@ public:
                         if (row_in_global < arg.n_color && col_in_global < arg.m_rhs) {
                             Complex_ origin1 = Complex_(start1[row_in_global * arg.m_rhs + col_in_global]);
                             Complex_ origin2 = Complex_(start2[row_in_global * arg.m_rhs + col_in_global]);
+
                             origin1 += temp_result[mat1_pos][idx];
                             origin2 += (scale * temp_result[mat1_pos][idx]);
+
                             start1[row_in_global * arg.m_rhs + col_in_global] = *reinterpret_cast<Float2_*>(&origin1);
                             start2[row_in_global * arg.m_rhs + col_in_global] = *reinterpret_cast<Float2_*>(&origin2);
                         }
@@ -357,7 +357,7 @@ void wilson_dslash_sun_mrhs_forward_ghost_unpack(
     // z 轴切分矩阵坐标点，(x,y)切分单个矩阵
     int block_id = blockIdx.z;
     int grid_size = gridDim.z;  // 1D grid
-    int half_vol = latt_desc.half_lattice_volume();
+    int half_vol = latt_desc.half_lattice_volume() / latt_desc.at(ghost_dim);
 
     WilsonDslashDeviceUnpack<FloatType_, BlockShape_, WarpShape_, Nspin_, TensorOpEnabled_> wilson_op(n_color, m_rhs);
     for (int i = block_id; i < half_vol; i += grid_size) {
@@ -373,7 +373,7 @@ void wilson_dslash_sun_mrhs_forward_ghost_unpack(
             .m_rhs = m_rhs,
             .coord_1dim = i,
             .kappa = kappa,
-            .t_boundary = t_boundary
+            .t_boundary = t_boundary,
         };
 
         wilson_op.forward_unpack(arg, ghost_dim);
@@ -410,7 +410,7 @@ void wilson_dslash_sun_mrhs_backward_ghost_unpack(
     // z 轴切分矩阵坐标点，(x,y)切分单个矩阵
     int block_id = blockIdx.z;
     int grid_size = gridDim.z;  // 1D grid
-    int half_vol = latt_desc.half_lattice_volume();
+    int half_vol = latt_desc.half_lattice_volume() / latt_desc.at(ghost_dim);
 
     WilsonDslashDeviceUnpack<FloatType_, BlockShape_, WarpShape_, Nspin_, TensorOpEnabled_> wilson_op(n_color, m_rhs);
     for (int i = block_id; i < half_vol; i += grid_size) {

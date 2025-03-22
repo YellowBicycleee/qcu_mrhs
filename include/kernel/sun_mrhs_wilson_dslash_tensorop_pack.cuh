@@ -364,7 +364,7 @@ void wilson_dslash_sun_mrhs_forward_ghost_pack(
     // z 轴切分矩阵坐标点，(x,y)切分单个矩阵
     int block_id = blockIdx.z;
     int grid_size = gridDim.z;  // 1D grid
-    int half_vol = latt_desc.half_lattice_volume();
+    int half_vol = latt_desc.half_lattice_volume() / latt_desc.at(ghost_dim);
 
     WilsonDslashDevicePack<FloatType_, BlockShape_, WarpShape_, Nspin_, TensorOpEnabled_> wilson_op(n_color, m_rhs);
     for (int i = block_id; i < half_vol; i += grid_size) {
@@ -417,7 +417,7 @@ void wilson_dslash_sun_mrhs_backward_ghost_pack(
     // z 轴切分矩阵坐标点，(x,y)切分单个矩阵
     int block_id = blockIdx.z;
     int grid_size = gridDim.z;  // 1D grid
-    int half_vol = latt_desc.half_lattice_volume();
+    int half_vol = latt_desc.half_lattice_volume() / latt_desc.at(ghost_dim);
 
     WilsonDslashDevicePack<FloatType_, BlockShape_, WarpShape_, Nspin_, TensorOpEnabled_> wilson_op(n_color, m_rhs);
     for (int i = block_id; i < half_vol; i += grid_size) {
