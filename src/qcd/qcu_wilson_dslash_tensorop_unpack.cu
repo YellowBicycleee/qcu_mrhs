@@ -24,8 +24,8 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
     int half_vol = config::lattice_volume_local() / 2;
 
 
-    void* fwd_pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, FWD);
-    void* bwd_pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, BWD);
+    void* fwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, FWD);
+    void* bwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, BWD);
 
     cudaStream_t fwd_stream = dslash_param.streams[8];
     cudaStream_t bwd_stream = dslash_param.streams[8];
@@ -40,8 +40,8 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
         qcu::device::tensorop::wilson_dslash_sun_mrhs_forward_ghost_unpack
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, fwd_stream>>> (
-                static_cast<Float_*>(fwd_pack_buf),
-                static_cast<Float_*>(dslash_param.fermion_in_MRHS),
+                static_cast<Float_*>(dslash_param.fermion_out_MRHS),
+                static_cast<Float_*>(fwd_unpack_buf),
                 static_cast<Float_*>(dslash_param.gauge),
                 ghost_dim, latt_desc, multiprocess,
                 dslash_param.parity, dslash_param.dagger_flag,
@@ -50,8 +50,8 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
         qcu::device::tensorop::wilson_dslash_sun_mrhs_backward_ghost_unpack
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, bwd_stream>>> (
-                static_cast<Float_*>(bwd_pack_buf),
-                static_cast<Float_*>(dslash_param.fermion_in_MRHS),
+                static_cast<Float_*>(dslash_param.fermion_out_MRHS),
+                static_cast<Float_*>(bwd_unpack_buf),
                 static_cast<Float_*>(dslash_param.gauge),
                 ghost_dim, latt_desc, multiprocess,
                 dslash_param.parity, dslash_param.dagger_flag,
@@ -67,18 +67,20 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
         qcu::device::tensorop::wilson_dslash_sun_mrhs_forward_ghost_unpack
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, fwd_stream>>> (
-                static_cast<Float_*>(fwd_pack_buf), static_cast<Float_*>(dslash_param.fermion_in_MRHS),
-                static_cast<Float_*>(dslash_param.gauge), ghost_dim, latt_desc,
-                multiprocess,
+                static_cast<Float_*>(dslash_param.fermion_out_MRHS),
+                static_cast<Float_*>(fwd_unpack_buf),
+                static_cast<Float_*>(dslash_param.gauge),
+                ghost_dim, latt_desc, multiprocess,
                 dslash_param.parity, dslash_param.dagger_flag,
                 dslash_param.n_color, dslash_param.m_input);
 
         qcu::device::tensorop::wilson_dslash_sun_mrhs_backward_ghost_unpack
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, bwd_stream>>> (
-                static_cast<Float_*>(bwd_pack_buf), static_cast<Float_*>(dslash_param.fermion_in_MRHS),
-                static_cast<Float_*>(dslash_param.gauge), ghost_dim, latt_desc,
-                multiprocess,
+                static_cast<Float_*>(dslash_param.fermion_out_MRHS),
+                static_cast<Float_*>(bwd_unpack_buf),
+                static_cast<Float_*>(dslash_param.gauge),
+                ghost_dim, latt_desc, multiprocess,
                 dslash_param.parity, dslash_param.dagger_flag,
                 dslash_param.n_color, dslash_param.m_input);
     }

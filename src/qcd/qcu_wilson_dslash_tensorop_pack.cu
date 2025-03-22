@@ -19,14 +19,8 @@ inline void apply_sun_mrhs_dslash_ghost_pack (DslashParam& dslash_param, int gho
     int half_vol = config::lattice_volume_local() / 2;
     int num_threads = half_vol / latt_desc.at(ghost_dim);
 
-    // int blk_x = BlockShape::kM;
-    // int blk_y = BlockShape::kN;
-
     void* fwd_pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, FWD);
     void* bwd_pack_buf = dslash_param.fermion_ghost->get_pack_buf_at(ghost_dim, BWD);
-
-    // dim3 grid_size(div_ceil(dslash_param.n_color, blk_x), div_ceil(dslash_param.m_input, blk_y), std::min(num_threads, 65535));
-    // dim3 block_size(blk_x, blk_y, 1);
 
     cudaStream_t fwd_stream = dslash_param.streams[ghost_dim * 2 + FWD];
     cudaStream_t bwd_stream = dslash_param.streams[ghost_dim * 2 + BWD];
