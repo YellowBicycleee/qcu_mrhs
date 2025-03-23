@@ -104,7 +104,7 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
 
         case QcuPrecision::kPrecisionSingle:
             {
-                errorQcu("Not implemented yet\n");  // TODO
+                errorQcu("Single Precision Dslash not supported\n");
             }
             break;
         case QcuPrecision::kPrecisionDouble:
