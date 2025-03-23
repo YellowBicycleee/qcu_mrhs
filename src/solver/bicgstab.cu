@@ -34,7 +34,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
     else                                                         { return false; }
 
     CHECK_CUDA(cudaMalloc(&tmpReduceMem_,      vol * complex_vec_len * output_float_size  * 2));
-    CHECK_CUDA(cudaMalloc(&new_b_iter_prec_,   vol * complex_vec_len * iterate_float_size * 2));
+    CHECK_CUDA(cudaMalloc(&new_b_iter_prec_,   vol * complex_vec_len * output_float_size * 2));
     CHECK_CUDA(cudaMalloc(&new_b_output_prec_, vol * complex_vec_len * output_float_size  * 2));
     CHECK_CUDA(cudaMalloc(&result_x_output_prec_, vol * complex_vec_len * output_float_size * 2)); // full-length
     for (auto& buffer : outputBuffer_) {
@@ -42,11 +42,11 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
     }
 
     for (auto& buffer : tmpFermionMrhs_) {
-        CHECK_CUDA(cudaMalloc(&buffer, vol / 2 * complex_vec_len * iterate_float_size * 2)); // half-vol
+        CHECK_CUDA(cudaMalloc(&buffer, vol / 2 * complex_vec_len * output_float_size * 2)); // half-vol
     }
 
     for (auto& buffer : iter_scala_array_) {
-        CHECK_CUDA(cudaMalloc(&buffer, param_.mInput * iterate_float_size * 2));  // length: m-rhs * complex(2)
+        CHECK_CUDA(cudaMalloc(&buffer, param_.mInput * output_float_size * 2));  // length: m-rhs * complex(2)
     }
 
     for (auto& buffer : output_scala_array_) {
