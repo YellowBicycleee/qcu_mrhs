@@ -24,22 +24,26 @@ using ComplexNormArgument = typename qcu::qcu_blas::ComplexNorm<OutputFloat, Inp
 template <typename OutputFloat, typename InputFloat>
 void ComplexNorm<OutputFloat, InputFloat>::operator()(ComplexNormArgument param) {
     if constexpr(std::is_same_v<InputFloat, float>) {
-        QCU_CHECK_CUBLAS (
-            cublasScnrm2(param.handle,
-                        param.single_vec_len,
-                        reinterpret_cast<cuComplex*>(param.input), 
-                        param.stride,
-                        reinterpret_cast<float*>(param.resArr))
-        );
+        for (int i = 0; i < param.stride; ++i) {
+            QCU_CHECK_CUBLAS (
+                cublasScnrm2(param.handle,
+                            param.single_vec_len,
+                            reinterpret_cast<cuComplex*>(param.input) + i,
+                            param.stride,
+                            reinterpret_cast<float*>(param.resArr) + i)
+            );
+        }
     }
     else if constexpr(std::is_same_v<InputFloat, double>) {
-        QCU_CHECK_CUBLAS (
-            cublasDznrm2(param.handle, 
-                        param.single_vec_len,
-                        reinterpret_cast<cuDoubleComplex*>(param.input), 
-                        param.stride, 
-                        reinterpret_cast<double*>(param.resArr))
-        );
+        for (int i = 0; i < param.stride; ++i) {
+            QCU_CHECK_CUBLAS (
+                cublasDznrm2(param.handle,
+                            param.single_vec_len,
+                            reinterpret_cast<cuDoubleComplex*>(param.input) + i,
+                            param.stride,
+                            reinterpret_cast<double*>(param.resArr) + i)
+            );
+        }
     }
     else {
         int threads_per_block            = std::min(512, maxThreadsPerBlock);
