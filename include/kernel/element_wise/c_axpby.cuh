@@ -1,44 +1,57 @@
 #pragma once
 #include "complex/qcu_complex.cuh"
 // #include "qcu_float_float2_wrapper.h"
-#include "base/datatype/qcu_float2.cuh"
-#include <type_traits>
 #include <cuda_fp16.h>
 
+#include <kernel/shift_data_type.cuh>
+#include <type_traits>
+
+#include "base/datatype/qcu_float2.cuh"
+
 namespace qcu::device::kernel {
-
-template <typename _Tp, std::enable_if_t <std::is_same_v<_Tp, double> ||
-                                          std::is_same_v<_Tp, float>  || 
-                                          std::is_same_v<_Tp, half>
-                                         >* = nullptr>
+// scale 精度更高
+template <
+    typename ComputeFloat_,
+    typename ScaleFloat_ = ComputeFloat_,
+    std::enable_if_t <std::is_same_v<ComputeFloat_, double> || std::is_same_v<ComputeFloat_, float> || std::is_same_v<ComputeFloat_, half>>* = nullptr
+>
 __global__ static   // res = ax + by
-void caxpby_stride_kernel ( Complex<_Tp>* res, 
-                            Complex<_Tp>*  a,   Complex<_Tp>* x, 
-                            Complex<_Tp>*  b,   Complex<_Tp>* y, 
-                            int single_vec_len, int inc_idx,
-                            int start_idx = 0)
+void caxpby_stride_kernel (
+    Complex<ComputeFloat_>* res,
+    Complex<ComputeFloat_>*  a,
+    Complex<ComputeFloat_>* x,
+    Complex<ComputeFloat_>*  b,
+    Complex<ComputeFloat_>* y,
+    int single_vec_len,
+    int inc_idx,
+    int start_idx = 0)
 {
-  using Float2       = typename qcu::Float2_t<_Tp>;
-  int   global_id    = blockDim.x * blockIdx.x + threadIdx.x;
-  int   total_thread = blockDim.x * gridDim.x;
+    using ComputeFloat2 = typename qcu::Float2_t<ComputeFloat_>;
+    using ScaleFloat2   = typename qcu::Float2_t<ScaleFloat_>;
+    int   global_id     = blockDim.x * blockIdx.x + threadIdx.x;
+    int   total_thread  = blockDim.x * gridDim.x;
 
-  Complex<_Tp> in_a = Complex<_Tp>(*reinterpret_cast<Float2*>(a + start_idx));
-  Complex<_Tp> in_b = Complex<_Tp>(*reinterpret_cast<Float2*>(b + start_idx));
-  Complex<_Tp> in_x;
-  Complex<_Tp> in_y;
-  Float2       float2_res;
-  Complex<_Tp> res_val;
-  
-  for (int i = global_id; i < single_vec_len; i += total_thread) {
-    in_x = Complex<_Tp>(*reinterpret_cast<Float2*>(x + start_idx + i * inc_idx)); 
-    in_y = Complex<_Tp>(*reinterpret_cast<Float2*>(y + start_idx + i * inc_idx));
+    // load scale
+    Complex<ScaleFloat_> in_a = Complex<ScaleFloat_>(*reinterpret_cast<ScaleFloat2*>(a + start_idx));
+    Complex<ScaleFloat_> in_b = Complex<ScaleFloat_>(*reinterpret_cast<ScaleFloat2*>(b + start_idx));
 
-    res_val = in_a * in_x + in_b * in_y;
+    ComputeFloat2 in_x;
+    ComputeFloat2 in_y;
+    ComputeFloat2 float2_res;
+    ComputeFloat2 res_val;
 
-    float2_res.x = res_val.real();
-    float2_res.y = res_val.imag();
+    for (int i = global_id; i < single_vec_len; i += total_thread) {
+        in_x = *reinterpret_cast<ComputeFloat2*>(x + start_idx + i * inc_idx);
+        in_y = *reinterpret_cast<ComputeFloat2*>(y + start_idx + i * inc_idx);
 
-    *reinterpret_cast<Float2*>(res + start_idx + i * inc_idx) = float2_res;
-  }
+        Complex<ScaleFloat_> high_precision_in_x = shiftDataType<ScaleFloat2, ComputeFloat2>(in_x);
+        Complex<ScaleFloat_> high_precision_in_y = shiftDataType<ScaleFloat2, ComputeFloat2>(in_y);
+        Complex<ScaleFloat_> high_precision_res_val
+            = in_a * high_precision_in_x + in_b * high_precision_in_y;
+
+        res_val.x = shiftDataType<ComputeFloat_, ScaleFloat_>(high_precision_res_val.real());
+        res_val.y = shiftDataType<ComputeFloat_, ScaleFloat_>(high_precision_res_val.imag());
+        *reinterpret_cast<ComputeFloat2*>(res + start_idx + i * inc_idx) = res_val;
+    }
 }
 }  // namespace qcu::device::kernel
