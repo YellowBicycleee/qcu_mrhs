@@ -147,9 +147,7 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
     if (nullptr == dslash_) {
         errorQcu("Dslash is not initialized\n");
     }
-    if (fermion_in_vec_.size() != m_input_ || fermion_out_vec_.size() != m_input_) {
-        errorQcu("Fermion queue is not full\n");
-    }
+
 
     dslash_param_->staggered_phase = staggered_phase_;
     dslash_param_->parity = parity;
@@ -464,6 +462,9 @@ void Qcu::begin_scatter() {
 }
 // 启动gather
 void Qcu::begin_gather() {
+    if (fermion_in_vec_.size() != m_input_ || fermion_out_vec_.size() != m_input_) {
+        errorQcu("Fermion queue is not full\n");
+    }
     cudaStream_t stream = config::get_qcu_streams()[8];
     CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermion_in_vec_.data(), sizeof(void*) * fermion_in_vec_.size(), cudaMemcpyHostToDevice));
     CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(), sizeof(void*) * fermion_in_vec_.size(), cudaMemcpyHostToDevice));
