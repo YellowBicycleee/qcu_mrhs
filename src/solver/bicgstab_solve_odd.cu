@@ -38,7 +38,7 @@ static inline bool isConverged ( const std::vector<_Float>& norm_r_array,
         std::cout << "target = %e " << (double)target_diff
             << ", norm r = " <<  norm_r_array[i]
             << ", norm b = " << norm_b_array[i]
-            << ", real = " << (double)(norm_r_array[i] / norm_b_array[i]) << std::endl;
+            << ", real = " << (double)(norm_r_array[i]) / (double)(norm_b_array[i]) << std::endl;
         if (norm_r_array[i] / norm_b_array[i] > target_diff) {
             return false;
         }
@@ -74,6 +74,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
     }
     std::vector<ReduceFloat> norm_r_array  (num_residuals, 1.0);
     std::vector<ReduceFloat> norm_b_array  (num_residuals, 1.0);  // 计算b的模长
+
+
 
     cudaStream_t stream1 = param_.streams[8]; // param_.stream1;
     cudaStream_t stream2 = param_.streams[7]; // param_.stream2;
@@ -128,7 +130,6 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
     interior_operator_.output_norm(output_norm_arg);
     // 计算norm，一次性保存到host端
     CHECK_CUDA(cudaMemcpyAsync(norm_b_array.data(), output_new_b_even_norm, sizeof(ReduceFloat) * num_residuals, cudaMemcpyDeviceToHost, stream1));
-    // store norm of b in norm_b_array (host)
     CHECK_CUDA(cudaStreamSynchronize(stream1));
 
     // R = b - A * x = b - Dslash * x, x可以初始化为0
@@ -205,11 +206,11 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
 
     // prelogue
     // x = 0
-    CHECK_CUDA(cudaMemsetAsync(x_new, vol / 2 * complex_vec_len, 0, stream1));
+    CHECK_CUDA(cudaMemsetAsync(x_new, sizeof(Complex<ComputeFloat>) * vol / 2 * complex_vec_len, 0, stream1));
     // rj = pj = r0 = b - Ax = b
-    CHECK_CUDA(cudaMemcpyAsync(rj, b, sizeof(Complex<ReduceFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
-    CHECK_CUDA(cudaMemcpyAsync(r0, b, sizeof(Complex<ReduceFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
-    CHECK_CUDA(cudaMemcpyAsync(pj, b, sizeof(Complex<ReduceFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
+    CHECK_CUDA(cudaMemcpyAsync(rj, b, sizeof(Complex<ComputeFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
+    CHECK_CUDA(cudaMemcpyAsync(r0, b, sizeof(Complex<ComputeFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
+    CHECK_CUDA(cudaMemcpyAsync(pj, b, sizeof(Complex<ComputeFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
     CHECK_CUDA(cudaStreamSynchronize(stream1));
 
     // begin iteration
@@ -223,7 +224,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
         interior_operator_.output_dotc(outputDotArg);
 
         // vj = Ap = Ap_{j} = Doe Deo * p_{j} ----> outputBuffer_[1];
-        fused_x_sub_Doe_Deo_x<ReduceFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
+        fused_x_sub_Doe_Deo_x<ComputeFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
         cudaStreamSynchronize(stream1);
         cudaStreamSynchronize(stream2);
 
@@ -248,7 +249,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
         interior_operator_.output_xsay(output_xsay_arg);
 
         // t = A sj = Doe Deo * sj
-        fused_x_sub_Doe_Deo_x<ReduceFloat>(t, sj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
+        fused_x_sub_Doe_Deo_x<ComputeFloat>(t, sj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
 
         // omega = <As, s> / <As, As> = t_dot_sj / t_dot_t
         // step1:  t_dot_sj = <As, s> = <t, sj>
@@ -295,7 +296,6 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
                                 sizeof(ReduceFloat) * num_residuals,
                                 cudaMemcpyDeviceToHost, stream1));
             CHECK_CUDA(cudaStreamSynchronize(stream1));
-
             if (bool is_converged = isConverged<ReduceFloat>(norm_r_array, norm_b_array, maxPrec_)) {
                 CHECK_CUDA(cudaMemcpyAsync(x_o, x_new, sizeof(ReduceFloat) * vol / 2 * complex_vec_len * 2,
                                 cudaMemcpyDeviceToDevice, stream1)); // res_x = x_new = x_{j + 1}
@@ -349,7 +349,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
         std::swap(rj, r_new);  // rj = r_new
         std::swap(pj, p_new);  // pj = p_new
     }
-
+    printf("Now, bicg ends\n");
     return currentIteration_ < maxIteration_ && isConverged(norm_r_array, norm_b_array, maxPrec_);
 }
 // donnot use HALF to be the output precision
