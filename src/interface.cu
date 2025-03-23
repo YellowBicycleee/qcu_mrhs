@@ -82,7 +82,7 @@ void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision
     assert(prec_gauge != non_prec_gauge);
     std::vector<int> total_latt_desc = qcu::config::get_latt_desc();
     std::vector<int> mpi_desc = qcu::config::get_mpi_desc();
-    std::vector<int> local_latt_desc;
+    std::vector<int> local_latt_desc(total_latt_desc.size());
 
 #pragma unroll
     for (int i = X_DIM; i < Nd; ++i) {
@@ -110,18 +110,26 @@ void gauge_eo_precondition(void *prec_gauge, void *non_prec_gauge, int precision
 
 void gauge_reverse_eo_precondition(void *non_prec_gauge, void *prec_gauge, int precision) {
     check_qcu_ptr();
+
     assert(prec_gauge != non_prec_gauge);
 
     std::vector<int> total_latt_desc = qcu::config::get_latt_desc();
     std::vector<int> mpi_desc = qcu::config::get_mpi_desc();
 
-    std::vector<int> local_latt_desc;
+    std::vector<int> local_latt_desc(total_latt_desc.size());
 #pragma unroll
     for (int i = X_DIM; i < Nd; ++i) {
         local_latt_desc[i] = total_latt_desc[i] / mpi_desc[i];
     }
-
+    // printf("\n, non_prec_gauge = %p, prec_gauge = %p\n", non_prec_gauge, prec_gauge);
+    // printf("qcu_ptr = %p\n", qcu_ptr);
+    // printf("qcu_ptr->color = %d\n", qcu_ptr->color());
     int site_vec_len = qcu_ptr->color() * qcu_ptr->color();
+    std::cout << "local_latt_desc: ";
+    for (auto i : local_latt_desc) {
+        std::cout << i << " ";
+    }
+    // printf("\n, non_prec_gauge = %p, prec_gauge = %p, site_vec_len = %d\n", non_prec_gauge, prec_gauge, site_vec_len);
 
     if (precision == QcuPrecision::kPrecisionDouble) {
         qcu::GaugeEOPreconditioner<double> preconditioner;
