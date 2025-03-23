@@ -164,7 +164,7 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
 
   std::shared_ptr<DslashParam> param = std::make_shared<DslashParam> (
     /*param.daggerFlag      */   false,
-    /*param.precision       */   OutputPrecision,
+    /*param.precision       */   IteratePrecision,
     /*param.staggered_phase */   param_.staggered_phase,
     /*param.t_boundary      */   param_.t_boudary,
     /*param.nColor          */   param_.nColor,
@@ -176,8 +176,6 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
     /*param.gauge           */   param_.gauge,
     /*param.lattDesc        */   param_.lattDesc,
     /*param.procDesc        */   param_.procDesc,
-    // /*param.stream1         */   param_.stream1,
-    // /*param.stream2         */   param_.stream2,
     param_.streams,
     param_.fermion_ghost_
   );
@@ -187,11 +185,11 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
   void* output_prec_kappa = output_scala_array_[0]; // this array stores kappa
 
   // batch new_b{e} = b_{o} + kappa D_{oe} b_{e}
-  using XpayArgument = typename InteriorOperator::template Complex_xpay<ComputeFloat>::Complex_xpayArgument;
+  using XpayArgument = typename InteriorOperator::template Complex_xpay<ComputeFloat, ReduceFloat>::Complex_xpayArgument;
   XpayArgument output_xpay_arg (
     static_cast<Complex<ComputeFloat>*>(new_even_b),        // res = new_even_b = x + ay = x + kappa new_even_b
     static_cast<Complex<ComputeFloat>*>(origin_odd_b),      // x = origin_odd_b
-    static_cast<Complex<ComputeFloat>*>(output_prec_kappa), // a = output_prec_kappa
+    static_cast<Complex<ReduceFloat>*>(output_prec_kappa), // a = output_prec_kappa
     static_cast<Complex<ComputeFloat>*>(new_even_b),        // y = new_even_b = D_{oe} b_{e}
     single_vec_len * vol / 2,
     param->m_input,

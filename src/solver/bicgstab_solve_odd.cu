@@ -35,6 +35,10 @@ static inline bool isConverged ( const std::vector<_Float>& norm_r_array,
     // calculate the relative error
     const int size = norm_r_array.size();
     for (int i = 0; i < size; ++i) {
+        std::cout << "target = %e " << (double)target_diff
+            << ", norm r = " <<  norm_r_array[i]
+            << ", norm b = " << norm_b_array[i]
+            << ", real = " << (double)(norm_r_array[i] / norm_b_array[i]) << std::endl;
         if (norm_r_array[i] / norm_b_array[i] > target_diff) {
             return false;
         }
@@ -49,8 +53,8 @@ template <
 >
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
     std::cout << "POLICY1 BICGStab: separated residual" << std::endl;
-    std::vector<ReduceFloat> norm_r_array  (param_.mInput, 1.0);
-    std::vector<ReduceFloat> norm_b_array  (param_.mInput, 1.0);  // 计算b的模长
+    // std::vector<ReduceFloat> norm_r_array  (param_.mInput, 1.0);
+    // std::vector<ReduceFloat> norm_b_array  (param_.mInput, 1.0);  // 计算b的模长
     // diff_array = [r1, r2, r3, ...] / [b1, b2, b3, ...]
     const int mInput = param_.mInput;
     const int vol = param_.lattDesc->lattice_volume();
@@ -58,6 +62,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
     const int complex_vec_len =   param_.mInput * single_complex_vec_len; // m-rhs on single point
     int vector_len = vol * single_complex_vec_len / 2;
     int stride = mInput;
+    int& num_residuals = stride;
 
     if (param_.use_combined_residual) {
         stride = 1;
@@ -67,7 +72,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
     else {
         printf("Use separated residual\n");
     }
-
+    std::vector<ReduceFloat> norm_r_array  (num_residuals, 1.0);
+    std::vector<ReduceFloat> norm_b_array  (num_residuals, 1.0);  // 计算b的模长
 
     cudaStream_t stream1 = param_.streams[8]; // param_.stream1;
     cudaStream_t stream2 = param_.streams[7]; // param_.stream2;
@@ -121,16 +127,14 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
 
     interior_operator_.output_norm(output_norm_arg);
     // 计算norm，一次性保存到host端
-    CHECK_CUDA(cudaMemcpyAsync( norm_b_array.data(), output_new_b_even_norm,
-                                sizeof(ReduceFloat) * mInput,
-                                cudaMemcpyDeviceToHost, stream1));
+    CHECK_CUDA(cudaMemcpyAsync(norm_b_array.data(), output_new_b_even_norm, sizeof(ReduceFloat) * num_residuals, cudaMemcpyDeviceToHost, stream1));
     // store norm of b in norm_b_array (host)
     CHECK_CUDA(cudaStreamSynchronize(stream1));
 
     // R = b - A * x = b - Dslash * x, x可以初始化为0
     std::shared_ptr<DslashParam> dslashParam = std::make_shared<DslashParam>(
         false,                      // daggerFlag,
-        OutputPrecision,            // dslash precision
+        IteratePrecision,            // dslash precision
         param_.staggered_phase,
         param_.t_boudary,
         param_.nColor,              // nColor,
@@ -142,14 +146,12 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
         param_.gauge,               // gauge,
         param_.lattDesc,            // lattDesc,
         param_.procDesc,            // procDesc,
-        // stream1,                    // stream1 = NULL,
-        // stream2,                     // stream2 = NULL
         param_.streams,
         param_.fermion_ghost_
     );
 
     using Output_xsayArgument =
-        typename InteriorOperator::template Complex_xsay<ComputeFloat>::Complex_xsayArgument;
+        typename InteriorOperator::template Complex_xsay<ComputeFloat, ReduceFloat>::Complex_xsayArgument;
 
     Output_xsayArgument output_xsay_arg { nullptr, nullptr, nullptr, nullptr,
         vector_len,                   // int single_vec_len,
@@ -183,7 +185,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
     OutputElementwiseMulArgument output_elementwise_mul_arg { nullptr, nullptr, nullptr, mInput /* vec_len */ };
 
     using OutputAxpbypczArgument =
-        typename InteriorOperator::template Complex_axpbypcz<ComputeFloat>::Complex_axpbypczArgument;
+        typename InteriorOperator::template Complex_axpbypcz<ComputeFloat, ReduceFloat>::Complex_axpbypczArgument;
 
     OutputAxpbypczArgument output_axpbypcz_arg {
         nullptr, nullptr, nullptr,nullptr, nullptr, nullptr, nullptr,
@@ -193,7 +195,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
     };
 
     using Output_xpayArgument =
-        typename InteriorOperator::template Complex_xpay<ComputeFloat>::Complex_xpayArgument;
+        typename InteriorOperator::template Complex_xpay<ComputeFloat, ReduceFloat>::Complex_xpayArgument;
 
     Output_xpayArgument output_xpay_arg {
         nullptr, nullptr, nullptr, nullptr,
@@ -241,7 +243,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
         // sj = rj - alpha_{j} * vj = rj - alpha_{j} * A pj
         output_xsay_arg.res = static_cast<Complex<ComputeFloat>*>(sj);
         output_xsay_arg.x   = static_cast<Complex<ComputeFloat>*>(rj);
-        output_xsay_arg.a   = static_cast<Complex<ComputeFloat>*>(alpha_array);
+        output_xsay_arg.a   = static_cast<Complex<ReduceFloat>*>(alpha_array);
         output_xsay_arg.y   = static_cast<Complex<ComputeFloat>*>(vj);
         interior_operator_.output_xsay(output_xsay_arg);
 
@@ -266,11 +268,11 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
 
         // x_new = x + alpha * pj + omega * sj
         output_axpbypcz_arg.res = static_cast<Complex<ComputeFloat>*>(x_new);
-        output_axpbypcz_arg.a   = static_cast<Complex<ComputeFloat>*>(one_array);
+        output_axpbypcz_arg.a   = static_cast<Complex<ReduceFloat>*>(one_array);
         output_axpbypcz_arg.x   = static_cast<Complex<ComputeFloat>*>(x_new);
-        output_axpbypcz_arg.b   = static_cast<Complex<ComputeFloat>*>(alpha_array);
+        output_axpbypcz_arg.b   = static_cast<Complex<ReduceFloat>*>(alpha_array);
         output_axpbypcz_arg.y   = static_cast<Complex<ComputeFloat>*>(pj);
-        output_axpbypcz_arg.c   = static_cast<Complex<ComputeFloat>*>(omega_array);
+        output_axpbypcz_arg.c   = static_cast<Complex<ReduceFloat>*>(omega_array);
         output_axpbypcz_arg.z   = static_cast<Complex<ComputeFloat>*>(sj);
         output_axpbypcz_arg.stream = stream1;
         interior_operator_.output_axpbypcz(output_axpbypcz_arg); // x_new = x + alpha * pj + omega * sj
@@ -278,7 +280,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
         // r_new = s - omega * As = s - omega t
         output_xsay_arg.res = static_cast<Complex<ComputeFloat>*>(r_new);
         output_xsay_arg.x   = static_cast<Complex<ComputeFloat>*>(sj);
-        output_xsay_arg.a   = static_cast<Complex<ComputeFloat>*>(omega_array);
+        output_xsay_arg.a   = static_cast<Complex<ReduceFloat>*>(omega_array);
         output_xsay_arg.y   = static_cast<Complex<ComputeFloat>*>(t);
         interior_operator_.output_xsay(output_xsay_arg);
 
@@ -290,7 +292,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
             output_norm_arg.resArr = static_cast<ReduceFloat*>(r_new_norm);
             interior_operator_.output_norm(output_norm_arg); // 计算norm，一次性保存到host端
             CHECK_CUDA(cudaMemcpyAsync(norm_r_array.data(), r_new_norm,
-                                sizeof(ReduceFloat) * mInput,
+                                sizeof(ReduceFloat) * num_residuals,
                                 cudaMemcpyDeviceToHost, stream1));
             CHECK_CUDA(cudaStreamSynchronize(stream1));
 
@@ -332,14 +334,14 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
         // first step: p_new = pj - omega * A pj
         output_xsay_arg.res = static_cast<Complex<ComputeFloat>*>(p_new);
         output_xsay_arg.x   = static_cast<Complex<ComputeFloat>*>(pj);
-        output_xsay_arg.a   = static_cast<Complex<ComputeFloat>*>(omega_array);
+        output_xsay_arg.a   = static_cast<Complex<ReduceFloat>*>(omega_array);
         output_xsay_arg.y   = static_cast<Complex<ComputeFloat>*>(vj);
         interior_operator_.output_xsay(output_xsay_arg); // s = pj - omega * Ap
 
         // second step: p_new = r_new + beta * p_new
         output_xpay_arg.res = static_cast<Complex<ComputeFloat>*>(p_new);
         output_xpay_arg.x   = static_cast<Complex<ComputeFloat>*>(r_new);
-        output_xpay_arg.a   = static_cast<Complex<ComputeFloat>*>(beta_array);
+        output_xpay_arg.a   = static_cast<Complex<ReduceFloat>*>(beta_array);
         output_xpay_arg.y   = static_cast<Complex<ComputeFloat>*>(p_new);
         output_xpay_arg.stream = stream1;
         interior_operator_.output_xpay(output_xpay_arg); // p_new = r_new + beta * p_new

@@ -75,7 +75,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
     // D_{eo} x_{o} ----> x_e
     std::shared_ptr<DslashParam> dslashParam = std::make_shared<DslashParam>(
         false,                      // bool p_daggerFlag,
-        OutputPrecision,            // QCU_PRECISION p_precision,
+        IteratePrecision,            // QCU_PRECISION p_precision,
         param_.staggered_phase,     // int p_staggered_phase,
         param_.t_boudary,           // int p_t_boundary,
         param_.nColor,              // int p_nColor,
@@ -99,11 +99,11 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
     //     = b_e + kappa x_e
     // using Output_xpayArgument = typename InteriorOperator::Output_xpayAruArgument;
     using Output_xpayArgument =
-        typename InteriorOperator::template Complex_xpay<ComputeFloat>::template Complex_xpayArgument;
+        typename InteriorOperator::template Complex_xpay<ComputeFloat, ReduceFloat>::template Complex_xpayArgument;
     Output_xpayArgument output_xpay_arg {
         static_cast<Complex<ComputeFloat>*>(x_e),          // Complex<_Float>* res,
         static_cast<Complex<ComputeFloat>*>(b_e_origin),          // Complex<_Float>* x,
-        static_cast<Complex<ComputeFloat>*>(kappa_array),  // Complex<_Float>* a,
+        static_cast<Complex<ReduceFloat>*>(kappa_array),  // Complex<_Float>* a,
         static_cast<Complex<ComputeFloat>*>(x_e),          // Complex<_Float>* y,
         vol / 2 * single_complex_vec_len,                 // int single_vec_len,
         mInput,                                           // int inc_idx,
