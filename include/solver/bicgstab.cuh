@@ -57,7 +57,7 @@ public:
         const int vol = qcu::config::lattice_volume_local();
         const int m_input = param->m_input;
         const int n_color = param->n_color;
-        const int single_vec_len = Nd * n_color;
+        // const int single_vec_len = Nd * n_color;
 
         cudaStream_t stream1 = param->streams[8];
         cudaStream_t stream2 = param->streams[7];
@@ -78,14 +78,24 @@ public:
         CHECK_CUDA(cudaStreamSynchronize(stream1));
         CHECK_CUDA(cudaStreamSynchronize(stream2));
 
+        const int single_complex_vec_len = param_.nColor * param_.Nspin;
+        // const int complex_vec_len =   param_.mInput * single_complex_vec_len;
+        int vector_len = vol * single_complex_vec_len / 2;
+        int stride = param_.mInput;
+        // int& num_residuals = stride;
+        if (param_.use_combined_residual) {
+            stride = 1;
+            vector_len *= param_.mInput;
+            printf("Use combined residual\n");
+        }
         typename qcu::qcu_blas::Complex_xsay<_Float>::template Complex_xsayArgument
             xsay_argument {
                 static_cast<Complex<_Float>*>(output),
                 static_cast<Complex<_Float>*>(input),   // Complex<_Float>* x,
                 static_cast<Complex<_Float>*>(a),       // Complex<_Float>* a,
                 static_cast<Complex<_Float>*>(output),  // Complex<_Float>* y,
-                single_vec_len * vol / 2,               // int single_vec_len,
-                m_input,                                 // int inc_idx,
+                vector_len,               // int single_vec_len,
+                stride,                                 // int inc_idx,
                 stream1                                 // cudaStream_t stream = nullptr
             };
         qcu::qcu_blas::Complex_xsay<_Float> xsay_op;
