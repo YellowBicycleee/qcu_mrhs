@@ -9,26 +9,42 @@
 
 
 namespace qcu::solver {
-template <typename _Float,
+// template <typename _Float,
+//     std::enable_if_t<std::is_same_v<_Float, float> || std::is_same_v<_Float, double>>* = nullptr
+// >
+// inline bool isConverged_policy2 (const _Float norm_r, const _Float norm_b, _Float target_diff) {
+//     std::cout
+//         << "norm_r = " << norm_r << ", norm_b = " << norm_b
+//         << ", cur = " << norm_r / norm_b
+//         << ", required = " << target_diff << "\n";
+//     return norm_r / norm_b <= target_diff;
+// }
+template <
+    typename _Float,
     std::enable_if_t<std::is_same_v<_Float, float> || std::is_same_v<_Float, double>>* = nullptr
 >
-inline bool isConverged_policy2 (const _Float norm_r, const _Float norm_b, _Float target_diff) {
-    std::cout
-        << "norm_r = " << norm_r << ", norm_b = " << norm_b
-        << ", cur = " << norm_r / norm_b
-        << ", required = " << target_diff << "\n";
-    return norm_r / norm_b <= target_diff;
+inline bool isConverged ( const std::vector<_Float>& norm_r_array,
+    const std::vector<_Float>& norm_b_array, _Float target_diff, bool log = false)
+{
+    // calculate the relative error
+    const int size = norm_r_array.size();
+    for (int i = 0; i < size; ++i) {
+        if (norm_r_array[i] / norm_b_array[i] > target_diff) {
+            return false;
+        }
+    }
+    return true;
 }
-
 template <
     QcuPrecision OutputPrecision,
     QcuPrecision IteratePrecision
 >
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_combined_residual() {
   std::cout << "POLICY2 BICGStab: Combined Residual" << std::endl;
-  ReduceFloat norm_r = ReduceFloat(1.0);
-  ReduceFloat norm_b = ReduceFloat(1.0);
-
+  // ReduceFloat norm_r = ReduceFloat(1.0);
+  // ReduceFloat norm_b = ReduceFloat(1.0);
+    std::vector<ReduceFloat> norm_r_array  (1, 1.0);
+    std::vector<ReduceFloat> norm_b_array  (1, 1.0);  // 计算b的模长
   // diff_array = [r1, r2, r3, ...] / [b1, b2, b3, ...]
 
   const int mInput = param_.mInput;
@@ -90,7 +106,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_combined_residua
   // 计算norm，一次性保存到host端
     printf("compute precision: %d, reduction precision: %d===========\n", OutputPrecision, IteratePrecision);
 
-  CHECK_CUDA(cudaMemcpyAsync(&norm_b, output_new_b_even_norm, sizeof(ReduceFloat), cudaMemcpyDeviceToHost, stream1));
+  CHECK_CUDA(cudaMemcpyAsync(norm_b_array.data(), output_new_b_even_norm, sizeof(ReduceFloat), cudaMemcpyDeviceToHost, stream1));
   CHECK_CUDA(cudaStreamSynchronize(stream1));
 
   // R = b - A * x = b - Dslash * x, x可以初始化为0
@@ -245,12 +261,12 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_combined_residua
       output_norm_arg.input  = static_cast<Complex<ComputeFloat>*>(r_new);
       output_norm_arg.resArr = static_cast<ReduceFloat*>(r_new_norm);
       interior_operator_.output_norm(output_norm_arg); // 计算norm，一次性保存到host端
-      CHECK_CUDA(cudaMemcpyAsync(&norm_r, r_new_norm, sizeof(ReduceFloat), cudaMemcpyDeviceToHost, stream1));
+      CHECK_CUDA(cudaMemcpyAsync(norm_r_array.data(), r_new_norm, sizeof(ReduceFloat), cudaMemcpyDeviceToHost, stream1));
       CHECK_CUDA(cudaStreamSynchronize(stream1));
 // #ifdef DEBUG
 //       std::printf("DEBUG, currentIteration = %d\n", currentIteration_);
 // #endif
-      if (bool is_converged = isConverged_policy2<ReduceFloat>(norm_r, norm_b, maxPrec_ /*/ std::sqrt(ReduceFloat(mInput))*/)) {
+      if (bool is_converged = isConverged<ReduceFloat>(norm_r_array, norm_b_array, maxPrec_)) {
         CHECK_CUDA(cudaMemcpyAsync(x_o, x_new, sizeof(ReduceFloat) * vol / 2 * complex_vec_len * 2,
                               cudaMemcpyDeviceToDevice, stream1)); // res_x = x_new = x_{j + 1}
         CHECK_CUDA(cudaStreamSynchronize(stream1));
@@ -304,7 +320,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_combined_residua
     std::swap(pj, p_new);  // pj = p_new
   }
 
-  return currentIteration_ < maxIteration_ && isConverged_policy2(norm_r, norm_b, maxPrec_);
+  return currentIteration_ < maxIteration_ && isConverged(norm_r_array, norm_b_array, maxPrec_);
 }
 // donnot use HALF to be the output precision
 template class BiCGStabImpl<QcuPrecision::kPrecisionDouble, QcuPrecision::kPrecisionDouble>;
