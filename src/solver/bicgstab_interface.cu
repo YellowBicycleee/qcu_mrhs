@@ -45,10 +45,12 @@ void ApplyBicgStab (BiCGStabParam& param,  QcuPrecision outputPrecision, QcuPrec
         bicgstab.solve();
     }
     else if (outputPrecision == QcuPrecision::kPrecisionSingle && iteratePrecision == QcuPrecision::kPrecisionHalf) {
+        // 半精度使用双精度reduce
         BiCGStabImpl<kPrecisionSingle, kPrecisionHalf> bicgstab(param, max_iteration, max_precision);
         bicgstab.solve();
     }
     else {
+        std::printf("outputPrecision = %d, iteratePrecision = %d\n", outputPrecision, iteratePrecision);
         std::printf("error happened: wrong outputPrecision, outputPrecision must be float or double\n");
         exit(1);
     }
