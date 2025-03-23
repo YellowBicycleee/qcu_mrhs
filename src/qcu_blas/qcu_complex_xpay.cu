@@ -24,7 +24,8 @@ void Complex_xpay<ComputeFloat_,ScaleFloat_,
     }
 }
 
-template struct Complex_xpay<half>;
-template struct Complex_xpay<float>;
-template struct Complex_xpay<double>;
+template struct Complex_xpay<half, half>;
+template struct Complex_xpay<half, float>;
+template struct Complex_xpay<float, float>;
+template struct Complex_xpay<double, double>;
 }

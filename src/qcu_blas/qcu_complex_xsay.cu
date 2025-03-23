@@ -24,7 +24,8 @@ void Complex_xsay<ComputeFloat_,ScaleFloat_,
     }
 }
 
-template struct Complex_xsay<half>;
-template struct Complex_xsay<float>;
-template struct Complex_xsay<double>;
+template struct Complex_xsay<half, half>;
+template struct Complex_xsay<half, float>;
+template struct Complex_xsay<float, float>;
+template struct Complex_xsay<double, double>;
 }
