@@ -114,25 +114,25 @@ private:
         using ComplexNorm        = typename qcu::qcu_blas::ComplexNorm<ReduceFloat_, ComputeFloat_>;
         ComplexNorm<ReduceFloat, ComputeFloat>  output_norm;
 
-        // xpay 运算符
-        template<typename ComputeFloat_>
-        using Complex_xpay        = typename qcu::qcu_blas::Complex_xpay<ComputeFloat_>;
-        Complex_xpay<ComputeFloat>  output_xpay;
+        // xpay 运算符，注意，右侧为高精度（内积左侧为高精度）
+        template<typename ComputeFloat_, typename ReduceFloat_>
+        using Complex_xpay        = typename qcu::qcu_blas::Complex_xpay<ComputeFloat_, ReduceFloat_>;
+        Complex_xpay<ComputeFloat, ReduceFloat>  output_xpay;
 
         // xsay 运算符
-        template <typename ComputeFloat_>
-        using Complex_xsay = typename qcu::qcu_blas::Complex_xsay<ComputeFloat_>;
-        Complex_xsay<ComputeFloat>  output_xsay;
+        template <typename ComputeFloat_, typename ReduceFloat_>
+        using Complex_xsay = typename qcu::qcu_blas::Complex_xsay<ComputeFloat_, ReduceFloat_>;
+        Complex_xsay<ComputeFloat, ReduceFloat>  output_xsay;
 
         // axpby运算符
-        template <typename ComputeFloat_>
-        using Complex_axpby = typename qcu::qcu_blas::Complex_axpby<ComputeFloat_>;
-        Complex_axpby<ComputeFloat>  output_axpby;
+        template <typename ComputeFloat_, typename ReduceFloat_>
+        using Complex_axpby = typename qcu::qcu_blas::Complex_axpby<ComputeFloat_, ReduceFloat_>;
+        Complex_axpby<ComputeFloat, ReduceFloat>  output_axpby;
 
         // axpbypcz运算符
-        template <typename ComputeFloat_>
-        using Complex_axpbypcz       = typename qcu::qcu_blas::Complex_axpbypcz<ComputeFloat_>;
-        Complex_axpbypcz<ComputeFloat>  output_axpbypcz;
+        template <typename ComputeFloat_, typename ReduceFloat_>
+        using Complex_axpbypcz       = typename qcu::qcu_blas::Complex_axpbypcz<ComputeFloat_, ReduceFloat_>;
+        Complex_axpbypcz<ComputeFloat, ReduceFloat>  output_axpbypcz;
 
         // elementwise_div 运算符
         template <typename Tp_>
