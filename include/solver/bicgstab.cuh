@@ -94,8 +94,8 @@ public:
     }
 private:
     bool solve_odd();
-    bool solve_odd_separated_residual(); // 单独计算norm和内积
-    bool solve_odd_combined_residual(); // 所有残差按一个计算
+    // bool solve_odd_separated_residual(); // 单独计算norm和内积
+    // bool solve_odd_combined_residual(); // 所有残差按一个计算
     bool solve_even();
     using ReduceFloat  = typename qcu::Float2WrapperFromPrecision<ReducePrecision>::Float;
     using ReduceFloat2 = typename qcu::Float2_t<ReduceFloat>;
