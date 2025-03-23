@@ -30,8 +30,8 @@ struct BiCGStabParam {
 // OutputPrecision     既表示输入又表示输出精度，
 // IteratePrecision    表示迭代精度
 template <
-    QcuPrecision OutputPrecision,
-    QcuPrecision IteratePrecision
+    QcuPrecision ReducePrecision,
+    QcuPrecision ComputePrecision
 >
 class BiCGStabImpl {
 public:
@@ -39,7 +39,7 @@ public:
     BiCGStabImpl (BiCGStabParam& param, int max_iteration = 1000, double max_precision = 1e-6)
         : param_(param)
         , maxIteration_(max_iteration)
-        , maxPrec_(OutputFloat(double(max_precision)))
+        , maxPrec_(ReduceFloat(max_precision))
     {
         tempBufferAllocate();
     }
@@ -97,65 +97,56 @@ private:
     bool solve_odd_separated_residual(); // 单独计算norm和内积
     bool solve_odd_combined_residual(); // 所有残差按一个计算
     bool solve_even();
-    using OutputFloat  = typename qcu::Float2WrapperFromPrecision<OutputPrecision>::Float;
-    using OutputFloat2 = typename qcu::Float2_t<OutputFloat>;
-    using IterateFloat = typename qcu::Float2WrapperFromPrecision<IteratePrecision>::Float;
-    using IterateFloat2= typename qcu::Float2_t<IterateFloat>;
+    using ReduceFloat  = typename qcu::Float2WrapperFromPrecision<ReducePrecision>::Float;
+    using ReduceFloat2 = typename qcu::Float2_t<ReduceFloat>;
+    using ComputeFloat = typename qcu::Float2WrapperFromPrecision<ComputePrecision>::Float;
+    using ComputeFloat2= typename qcu::Float2_t<ComputeFloat>;
 
     struct InteriorOperator {
         // operator
         // 复数内积运算符
-        template <typename _OutputFloat, typename _InputFloat>
-        using ComplexDotc         = typename qcu::qcu_blas::ComplexDotc<_OutputFloat, _InputFloat>;
-        ComplexDotc<OutputFloat, IterateFloat> iter_dotc;    // 迭代 内积运算符
-        ComplexDotc<OutputFloat, OutputFloat> output_dotc;  // 双精度内积运算符
+        template <typename ReduceFloat_, typename ComputeFloat_>
+        using ComplexDotc         = typename qcu::qcu_blas::ComplexDotc<ReduceFloat_, ComputeFloat_>;
+        ComplexDotc<ReduceFloat, ComputeFloat> output_dotc;
 
         // norm2 运算符
-        template <typename _OutputFloat, typename _InputFloat>
-        using ComplexNorm        = typename qcu::qcu_blas::ComplexNorm<_OutputFloat, _InputFloat>;
-        ComplexNorm<OutputFloat, IterateFloat>  iter_norm;      // 迭代  norm2 运算符
-        ComplexNorm<OutputFloat, OutputFloat>  output_norm;    // 高精度norm2 运算符
+        template <typename ReduceFloat_, typename ComputeFloat_>
+        using ComplexNorm        = typename qcu::qcu_blas::ComplexNorm<ReduceFloat_, ComputeFloat_>;
+        ComplexNorm<ReduceFloat, ComputeFloat>  output_norm;
 
         // xpay 运算符
-        template<typename _Float>
-        using Complex_xpay        = typename qcu::qcu_blas::Complex_xpay<_Float>;
-        Complex_xpay<IterateFloat> iter_xpay;              // 迭代 xpay 运算符
-        Complex_xpay<OutputFloat>  output_xpay;    // 高精度 xpay 运算符
+        template<typename ComputeFloat_>
+        using Complex_xpay        = typename qcu::qcu_blas::Complex_xpay<ComputeFloat_>;
+        Complex_xpay<ComputeFloat>  output_xpay;
 
         // xsay 运算符
-        template <typename _Float>
-        using Complex_xsay = typename qcu::qcu_blas::Complex_xsay<_Float>;
-        Complex_xsay<IterateFloat>   iter_xsay;              // 迭代 xsay 运算符
-        Complex_xsay<OutputFloat>  output_xsay;    // 高精度 xsay 运算符
+        template <typename ComputeFloat_>
+        using Complex_xsay = typename qcu::qcu_blas::Complex_xsay<ComputeFloat_>;
+        Complex_xsay<ComputeFloat>  output_xsay;
 
         // axpby运算符
-        template <typename _Float>
-        using Complex_axpby = typename qcu::qcu_blas::Complex_axpby<_Float>;
-        Complex_axpby<IterateFloat>   iter_axpby;             // 迭代 axpby 运算符
-        Complex_axpby<OutputFloat>  output_axpby;   // 高精度 axpby 运算符
+        template <typename ComputeFloat_>
+        using Complex_axpby = typename qcu::qcu_blas::Complex_axpby<ComputeFloat_>;
+        Complex_axpby<ComputeFloat>  output_axpby;
 
         // axpbypcz运算符
-        template <typename _Float>
-        using Complex_axpbypcz       = typename qcu::qcu_blas::Complex_axpbypcz<_Float>;
-        Complex_axpbypcz<IterateFloat> iter_axpbypcz;   // 迭代 axpbypcz 运算符
-        Complex_axpbypcz<OutputFloat>  output_axpbypcz; // 高精度 axpbypcz 运算符
+        template <typename ComputeFloat_>
+        using Complex_axpbypcz       = typename qcu::qcu_blas::Complex_axpbypcz<ComputeFloat_>;
+        Complex_axpbypcz<ComputeFloat>  output_axpbypcz;
 
         // elementwise_div 运算符
-        template <typename _Tp>
-        using ElementwiseDiv                   = typename qcu::qcu_blas::ElementwiseDiv<_Tp>;
-        ElementwiseDiv<Complex<IterateFloat>>  iter_elementwise_div;   // 迭代 elementwise_div 运算符
-        ElementwiseDiv<Complex<OutputFloat>>   output_elementwise_div;   // 迭代 elementwise_div 运算符
+        template <typename Tp_>
+        using ElementwiseDiv                   = typename qcu::qcu_blas::ElementwiseDiv<Tp_>;
+        ElementwiseDiv<Complex<ReduceFloat>>   output_elementwise_div;
 
         // elementwise_mul 运算符
-        template <typename _Tp>
-        using ElementwiseMul                   = typename qcu::qcu_blas::ElementwiseMul<_Tp>;
-        ElementwiseMul<Complex<IterateFloat>>  iter_elementwise_mul;   // 迭代 elementwise_div 运算符
-        ElementwiseMul<Complex<OutputFloat>>   output_elementwise_mul;   // 迭代 elementwise_div 运算符
+        template <typename Tp_>
+        using ElementwiseMul                   = typename qcu::qcu_blas::ElementwiseMul<Tp_>;
+        ElementwiseMul<Complex<ReduceFloat>>   output_elementwise_mul;   // 迭代 elementwise_div 运算符
 
         // elementwise_init 运算符
-        template <typename _Tp> using ElementwiseInit = typename qcu::qcu_blas::ElementwiseInit<_Tp>;
-        ElementwiseInit<Complex<IterateFloat>> iter_elementwise_init;           // 迭代 elementwise_init 运算符
-        ElementwiseInit<Complex<OutputFloat>>  output_elementwise_init; // 高精度 elementwise_init 运算符
+        template <typename Tp_> using ElementwiseInit = typename qcu::qcu_blas::ElementwiseInit<Tp_>;
+        ElementwiseInit<Complex<ReduceFloat>>  output_elementwise_init; // 高精度 elementwise_init 运算符
 
         InteriorOperator() = default;
     };
@@ -170,11 +161,9 @@ private:
     static constexpr int MaxOutputPrecisionFermion_ = 12;  // 输出精度的fermion个数
     int          maxIteration_     = 1000; // 最大迭代次数
     int          currentIteration_ = 0; // 当前迭代次数
-    OutputFloat  maxPrec_          = 1e-6;
+    ReduceFloat  maxPrec_          = 1e-6;
 
-    // Dslash*      dslash_operator_oe_      = nullptr;
     std::shared_ptr<Dslash>  dslash_operator_      = nullptr;
-    // Dslash*      dslash_operator_eo_   = nullptr;
 
     // 计算中间需要的临时buffer
     bool  bufferAllocated_      = false;   // 内存是否已经分配
@@ -187,7 +176,6 @@ private:
 
     void* iter_scala_array_[3];
     void* output_scala_array_[9]; // [0]存放Complex(kappa, 0)，[1]存放Complex(1, 0) [5]存放Complex(kappa * kappa, 0)
-
 
     void* alpha_array;
     void* beta_array;

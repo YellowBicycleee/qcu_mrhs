@@ -33,8 +33,8 @@ template <
 >
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residual() {
     std::cout << "POLICY1 BICGStab: separated residual" << std::endl;
-    std::vector<OutputFloat> norm_r_array  (param_.mInput, 1.0);
-    std::vector<OutputFloat> norm_b_array  (param_.mInput, 1.0);  // 计算b的模长
+    std::vector<ReduceFloat> norm_r_array  (param_.mInput, 1.0);
+    std::vector<ReduceFloat> norm_b_array  (param_.mInput, 1.0);  // 计算b的模长
     // diff_array = [r1, r2, r3, ...] / [b1, b2, b3, ...]
     const int mInput = param_.mInput;
     const int vol = param_.lattDesc->lattice_volume();
@@ -49,7 +49,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
     reCalculate_b_even ();
 
     // calculate norm of b and store them
-    using IterNormArgument   = typename InteriorOperator::template ComplexNorm<OutputFloat, IterateFloat>::template ComplexNormArgument;
+    using IterNormArgument   = typename InteriorOperator::template ComplexNorm<ReduceFloat, ComputeFloat>::template ComplexNormArgument;
 
     void* b = new_b_output_prec_;
     void* output_new_b_even_norm = output_scala_array_[2];
@@ -68,7 +68,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
     void* x_new        = outputBuffer_[6];
     void* p_new        = outputBuffer_[7];
     // void* x            = outputBuffer_[8];
-    void* x_o          = static_cast<Complex<OutputFloat>*>(result_x_output_prec_) + vol / 2 * complex_vec_len;
+    void* x_o          = static_cast<Complex<ReduceFloat>*>(result_x_output_prec_) + vol / 2 * complex_vec_len;
     void* temp_buffer  = outputBuffer_[9];
 
     void* kappa_square_array = output_scala_array_[5];
@@ -80,14 +80,14 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
     void* t_dot_t            = output_scala_array_[6]; // t_dot_t = <As, As>
     void* r_new_norm         = output_scala_array_[7];
     using OutputNormArgument =
-        typename InteriorOperator::template ComplexNorm<OutputFloat, OutputFloat>::template ComplexNormArgument;
+        typename InteriorOperator::template ComplexNorm<ReduceFloat, ComputeFloat>::template ComplexNormArgument;
 
     OutputNormArgument output_norm_arg {
         vol * single_complex_vec_len / 2,                      // single_vec_len;
         mInput,                                                // stride;
-        static_cast<OutputFloat*>(temp_buffer),                // tmpBuffer
-        static_cast<Complex<OutputFloat>*>(b),                 // input
-        static_cast<OutputFloat*>(output_new_b_even_norm),     // resArr
+        static_cast<ReduceFloat*>(temp_buffer),                // tmpBuffer
+        static_cast<Complex<ComputeFloat>*>(b),                 // input
+        static_cast<ReduceFloat*>(output_new_b_even_norm),     // resArr
         stream1,
         cublasHandle_
     };
@@ -95,7 +95,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
     interior_operator_.output_norm(output_norm_arg);
     // 计算norm，一次性保存到host端
     CHECK_CUDA(cudaMemcpyAsync( norm_b_array.data(), output_new_b_even_norm,
-                                sizeof(OutputFloat) * mInput,
+                                sizeof(ReduceFloat) * mInput,
                                 cudaMemcpyDeviceToHost, stream1));
     // store norm of b in norm_b_array (host)
     CHECK_CUDA(cudaStreamSynchronize(stream1));
@@ -109,7 +109,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
         param_.nColor,              // nColor,
         param_.mInput,              // mInput,
         EVEN_PARITY,                // parity,
-        OutputFloat(param_.kappa),  // kappa,
+        ReduceFloat(param_.kappa),  // kappa,
         b,    // fermionIn_MRHS
         outputBuffer_[1],           // fermionOut_MRHS,
         param_.gauge,               // gauge,
@@ -122,7 +122,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
     );
 
     using Output_xsayArgument =
-        typename InteriorOperator::template Complex_xsay<OutputFloat>::template Complex_xsayArgument;
+        typename InteriorOperator::template Complex_xsay<ComputeFloat>::template Complex_xsayArgument;
 
     Output_xsayArgument output_xsay_arg { nullptr, nullptr, nullptr, nullptr,
         vol * single_complex_vec_len / 2,                   // int single_vec_len,
@@ -132,7 +132,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
 
     // InnerProduct Param
     using OutputDotcArgument =
-        typename InteriorOperator::template ComplexDotc<OutputFloat, OutputFloat>::template DotcArgument;
+        typename InteriorOperator::template ComplexDotc<ReduceFloat, ComputeFloat>::template DotcArgument;
 
     OutputDotcArgument outputDotArg {
         vol * single_complex_vec_len / 2, // single_vec_len;
@@ -146,17 +146,17 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
     };
     // ElementwiseDiv Param
     using OutputElementwiseDivArgument =
-        typename InteriorOperator::template ElementwiseDiv<Complex<OutputFloat>>::template ElementwiseDivArgument;
+        typename InteriorOperator::template ElementwiseDiv<Complex<ReduceFloat>>::template ElementwiseDivArgument;
 
     OutputElementwiseDivArgument output_elementwise_div_arg { nullptr, nullptr, nullptr, mInput /* vec_len */ };
 
     // ElementwiseMul Param
     using OutputElementwiseMulArgument =
-        typename InteriorOperator::template ElementwiseMul<Complex<OutputFloat>>::template ElementwiseMulArgument;
+        typename InteriorOperator::template ElementwiseMul<Complex<ReduceFloat>>::template ElementwiseMulArgument;
     OutputElementwiseMulArgument output_elementwise_mul_arg { nullptr, nullptr, nullptr, mInput /* vec_len */ };
 
     using OutputAxpbypczArgument =
-        typename InteriorOperator::template Complex_axpbypcz<OutputFloat>::template Complex_axpbypczArgument;
+        typename InteriorOperator::template Complex_axpbypcz<ComputeFloat>::template Complex_axpbypczArgument;
 
     OutputAxpbypczArgument output_axpbypcz_arg {
         nullptr, nullptr, nullptr,nullptr, nullptr, nullptr, nullptr,
@@ -166,7 +166,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
     };
 
     using Output_xpayArgument =
-        typename InteriorOperator::template Complex_xpay<OutputFloat>::template Complex_xpayArgument;
+        typename InteriorOperator::template Complex_xpay<ComputeFloat>::template Complex_xpayArgument;
 
     Output_xpayArgument output_xpay_arg {
         nullptr, nullptr, nullptr, nullptr,
@@ -178,97 +178,97 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
     // x = 0
     CHECK_CUDA(cudaMemsetAsync(x_new, vol / 2 * complex_vec_len, 0, stream1));
     // rj = pj = r0 = b - Ax = b
-    CHECK_CUDA(cudaMemcpyAsync(rj, b, sizeof(Complex<OutputFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
-    CHECK_CUDA(cudaMemcpyAsync(r0, b, sizeof(Complex<OutputFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
-    CHECK_CUDA(cudaMemcpyAsync(pj, b, sizeof(Complex<OutputFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
+    CHECK_CUDA(cudaMemcpyAsync(rj, b, sizeof(Complex<ReduceFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
+    CHECK_CUDA(cudaMemcpyAsync(r0, b, sizeof(Complex<ReduceFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
+    CHECK_CUDA(cudaMemcpyAsync(pj, b, sizeof(Complex<ReduceFloat>) * complex_vec_len * vol / 2, cudaMemcpyDeviceToDevice, stream1));
     CHECK_CUDA(cudaStreamSynchronize(stream1));
 
     // begin iteration
     // 开始迭代，达到最大迭代次数不收敛则返回false
     for (currentIteration_ = 0; currentIteration_ < maxIteration_; ++ currentIteration_) {
         // rho_j = <r0, r_j>
-        outputDotArg.input1    = static_cast<Complex<OutputFloat>*>(r0);
-        outputDotArg.input2    = static_cast<Complex<OutputFloat>*>(rj);
-        outputDotArg.resArr    = static_cast<Complex<OutputFloat>*>(rho_j);
-        outputDotArg.tmpBuffer = static_cast<Complex<OutputFloat>*>(reduceBuffer);
+        outputDotArg.input1    = static_cast<Complex<ComputeFloat>*>(r0);
+        outputDotArg.input2    = static_cast<Complex<ComputeFloat>*>(rj);
+        outputDotArg.resArr    = static_cast<Complex<ReduceFloat>*>(rho_j);
+        outputDotArg.tmpBuffer = static_cast<Complex<ReduceFloat>*>(reduceBuffer);
         interior_operator_.output_dotc(outputDotArg);
 
         // vj = Ap = Ap_{j} = Doe Deo * p_{j} ----> outputBuffer_[1];
-        fused_x_sub_Doe_Deo_x<OutputFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
+        fused_x_sub_Doe_Deo_x<ReduceFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
         cudaStreamSynchronize(stream1);
         cudaStreamSynchronize(stream2);
 
         // r0_dot_vj = <r0, vj> = <r0, Ap_j>
         // , norm <r0, Ap>
-        outputDotArg.input2    = static_cast<Complex<OutputFloat>*>(vj);
-        outputDotArg.resArr    = static_cast<Complex<OutputFloat>*>(r0_dot_vj);
+        outputDotArg.input2    = static_cast<Complex<ComputeFloat>*>(vj);
+        outputDotArg.resArr    = static_cast<Complex<ReduceFloat>*>(r0_dot_vj);
         interior_operator_.output_dotc(outputDotArg);
 
         // alpha = <r0, r_i> / <r0, A pj> = rho_i / r0_dot_vj
-        output_elementwise_div_arg.res     = static_cast<Complex<OutputFloat>*>(alpha_array);
-        output_elementwise_div_arg.x       = static_cast<Complex<OutputFloat>*>(rho_j);
-        output_elementwise_div_arg.y       = static_cast<Complex<OutputFloat>*>(r0_dot_vj);
+        output_elementwise_div_arg.res     = static_cast<Complex<ReduceFloat>*>(alpha_array);
+        output_elementwise_div_arg.x       = static_cast<Complex<ReduceFloat>*>(rho_j);
+        output_elementwise_div_arg.y       = static_cast<Complex<ReduceFloat>*>(r0_dot_vj);
         interior_operator_.output_elementwise_div(output_elementwise_div_arg);
         CHECK_CUDA(cudaStreamSynchronize(output_elementwise_div_arg.stream));
 
         // sj = rj - alpha_{j} * vj = rj - alpha_{j} * A pj
-        output_xsay_arg.res = static_cast<Complex<OutputFloat>*>(sj);
-        output_xsay_arg.x   = static_cast<Complex<OutputFloat>*>(rj);
-        output_xsay_arg.a   = static_cast<Complex<OutputFloat>*>(alpha_array);
-        output_xsay_arg.y   = static_cast<Complex<OutputFloat>*>(vj);
+        output_xsay_arg.res = static_cast<Complex<ComputeFloat>*>(sj);
+        output_xsay_arg.x   = static_cast<Complex<ComputeFloat>*>(rj);
+        output_xsay_arg.a   = static_cast<Complex<ComputeFloat>*>(alpha_array);
+        output_xsay_arg.y   = static_cast<Complex<ComputeFloat>*>(vj);
         interior_operator_.output_xsay(output_xsay_arg);
 
         // t = A sj = Doe Deo * sj
-        fused_x_sub_Doe_Deo_x<OutputFloat>(t, sj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
+        fused_x_sub_Doe_Deo_x<ReduceFloat>(t, sj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
 
         // omega = <As, s> / <As, As> = t_dot_sj / t_dot_t
         // step1:  t_dot_sj = <As, s> = <t, sj>
-        outputDotArg.input1 = static_cast<Complex<OutputFloat>*>(t);
-        outputDotArg.input2 = static_cast<Complex<OutputFloat>*>(sj);
-        outputDotArg.resArr = static_cast<Complex<OutputFloat>*>(t_dot_sj);
+        outputDotArg.input1 = static_cast<Complex<ComputeFloat>*>(t);
+        outputDotArg.input2 = static_cast<Complex<ComputeFloat>*>(sj);
+        outputDotArg.resArr = static_cast<Complex<ReduceFloat>*>(t_dot_sj);
         interior_operator_.output_dotc(outputDotArg);
         // step2: <As, As>     -----> output_scala_array_[3]
-        outputDotArg.input2  = static_cast<Complex<OutputFloat>*>(t);
-        outputDotArg.resArr  = static_cast<Complex<OutputFloat>*>(t_dot_t);
+        outputDotArg.input2  = static_cast<Complex<ComputeFloat>*>(t);
+        outputDotArg.resArr  = static_cast<Complex<ReduceFloat>*>(t_dot_t);
         interior_operator_.output_dotc(outputDotArg);
         // step3: omega = <As, s> / <As, As>
-        output_elementwise_div_arg.res = static_cast<Complex<OutputFloat>*>(omega_array);
-        output_elementwise_div_arg.x   = static_cast<Complex<OutputFloat>*>(t_dot_sj);
-        output_elementwise_div_arg.y   = static_cast<Complex<OutputFloat>*>(t_dot_t);
+        output_elementwise_div_arg.res = static_cast<Complex<ReduceFloat>*>(omega_array);
+        output_elementwise_div_arg.x   = static_cast<Complex<ReduceFloat>*>(t_dot_sj);
+        output_elementwise_div_arg.y   = static_cast<Complex<ReduceFloat>*>(t_dot_t);
         interior_operator_.output_elementwise_div(output_elementwise_div_arg);
 
         // x_new = x + alpha * pj + omega * sj
-        output_axpbypcz_arg.res = static_cast<Complex<OutputFloat>*>(x_new);
-        output_axpbypcz_arg.a   = static_cast<Complex<OutputFloat>*>(one_array);
-        output_axpbypcz_arg.x   = static_cast<Complex<OutputFloat>*>(x_new);
-        output_axpbypcz_arg.b   = static_cast<Complex<OutputFloat>*>(alpha_array);
-        output_axpbypcz_arg.y   = static_cast<Complex<OutputFloat>*>(pj);
-        output_axpbypcz_arg.c   = static_cast<Complex<OutputFloat>*>(omega_array);
-        output_axpbypcz_arg.z   = static_cast<Complex<OutputFloat>*>(sj);
+        output_axpbypcz_arg.res = static_cast<Complex<ComputeFloat>*>(x_new);
+        output_axpbypcz_arg.a   = static_cast<Complex<ComputeFloat>*>(one_array);
+        output_axpbypcz_arg.x   = static_cast<Complex<ComputeFloat>*>(x_new);
+        output_axpbypcz_arg.b   = static_cast<Complex<ComputeFloat>*>(alpha_array);
+        output_axpbypcz_arg.y   = static_cast<Complex<ComputeFloat>*>(pj);
+        output_axpbypcz_arg.c   = static_cast<Complex<ComputeFloat>*>(omega_array);
+        output_axpbypcz_arg.z   = static_cast<Complex<ComputeFloat>*>(sj);
         output_axpbypcz_arg.stream = stream1;
         interior_operator_.output_axpbypcz(output_axpbypcz_arg); // x_new = x + alpha * pj + omega * sj
 
         // r_new = s - omega * As = s - omega t
-        output_xsay_arg.res = static_cast<Complex<OutputFloat>*>(r_new);
-        output_xsay_arg.x   = static_cast<Complex<OutputFloat>*>(sj);
-        output_xsay_arg.a   = static_cast<Complex<OutputFloat>*>(omega_array);
-        output_xsay_arg.y   = static_cast<Complex<OutputFloat>*>(t);
+        output_xsay_arg.res = static_cast<Complex<ComputeFloat>*>(r_new);
+        output_xsay_arg.x   = static_cast<Complex<ComputeFloat>*>(sj);
+        output_xsay_arg.a   = static_cast<Complex<ComputeFloat>*>(omega_array);
+        output_xsay_arg.y   = static_cast<Complex<ComputeFloat>*>(t);
         interior_operator_.output_xsay(output_xsay_arg);
 
         // if converge ?
         {   // converge return true
             // calculate norm of r_new and store them
             // void* r_new_norm = output_scala_array_[3];
-            output_norm_arg.input  = static_cast<Complex<OutputFloat>*>(r_new);
-            output_norm_arg.resArr = static_cast<OutputFloat*>(r_new_norm);
+            output_norm_arg.input  = static_cast<Complex<ComputeFloat>*>(r_new);
+            output_norm_arg.resArr = static_cast<ReduceFloat*>(r_new_norm);
             interior_operator_.output_norm(output_norm_arg); // 计算norm，一次性保存到host端
             CHECK_CUDA(cudaMemcpyAsync(norm_r_array.data(), r_new_norm,
-                                sizeof(OutputFloat) * mInput,
+                                sizeof(ReduceFloat) * mInput,
                                 cudaMemcpyDeviceToHost, stream1));
             CHECK_CUDA(cudaStreamSynchronize(stream1));
 
-            if (bool is_converged = isConverged<OutputFloat>(norm_r_array, norm_b_array, maxPrec_)) {
-                CHECK_CUDA(cudaMemcpyAsync(x_o, x_new, sizeof(OutputFloat) * vol / 2 * complex_vec_len * 2,
+            if (bool is_converged = isConverged<ReduceFloat>(norm_r_array, norm_b_array, maxPrec_)) {
+                CHECK_CUDA(cudaMemcpyAsync(x_o, x_new, sizeof(ReduceFloat) * vol / 2 * complex_vec_len * 2,
                                 cudaMemcpyDeviceToDevice, stream1)); // res_x = x_new = x_{j + 1}
                 CHECK_CUDA(cudaStreamSynchronize(stream1));
                 return true;
@@ -277,43 +277,43 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd_separated_residu
         // beta =  (alpha / omega)(<r0, r_new> / <r0, rj>) = (alpha / omega) (rho_new / rho_i)
         // we now have <r, r0> in rho_i
         // now calculate <r0, r_new> and store it in rho_new
-        outputDotArg.input1 = static_cast<Complex<OutputFloat>*>(r0);
-        outputDotArg.input2 = static_cast<Complex<OutputFloat>*>(r_new);
-        outputDotArg.resArr = static_cast<Complex<OutputFloat>*>(rho_new);
+        outputDotArg.input1 = static_cast<Complex<ComputeFloat>*>(r0);
+        outputDotArg.input2 = static_cast<Complex<ComputeFloat>*>(r_new);
+        outputDotArg.resArr = static_cast<Complex<ReduceFloat>*>(rho_new);
         interior_operator_.output_dotc(outputDotArg);
 
         // beta_temp = alpha * rho_new / omega / rho_i
         // step 1 : beta = alpha * <r0, r_new> = alpha * rho_new
-        output_elementwise_mul_arg.res     = static_cast<Complex<OutputFloat>*>(beta_array);
-        output_elementwise_mul_arg.x       = static_cast<Complex<OutputFloat>*>(alpha_array);
-        output_elementwise_mul_arg.y       = static_cast<Complex<OutputFloat>*>(rho_new);
+        output_elementwise_mul_arg.res     = static_cast<Complex<ReduceFloat>*>(beta_array);
+        output_elementwise_mul_arg.x       = static_cast<Complex<ReduceFloat>*>(alpha_array);
+        output_elementwise_mul_arg.y       = static_cast<Complex<ReduceFloat>*>(rho_new);
         interior_operator_.output_elementwise_mul(output_elementwise_mul_arg);
 
         // step 2 : beta = beta / omega = alpha * rho_new / omega
-        output_elementwise_div_arg.res     = static_cast<Complex<OutputFloat>*>(beta_array);
-        output_elementwise_div_arg.x       = static_cast<Complex<OutputFloat>*>(beta_array);
-        output_elementwise_div_arg.y       = static_cast<Complex<OutputFloat>*>(omega_array);
+        output_elementwise_div_arg.res     = static_cast<Complex<ReduceFloat>*>(beta_array);
+        output_elementwise_div_arg.x       = static_cast<Complex<ReduceFloat>*>(beta_array);
+        output_elementwise_div_arg.y       = static_cast<Complex<ReduceFloat>*>(omega_array);
         interior_operator_.output_elementwise_div(output_elementwise_div_arg);
 
         // third step : beta = beta / rho_i
-        output_elementwise_div_arg.res     = static_cast<Complex<OutputFloat>*>(beta_array);
-        output_elementwise_div_arg.x       = static_cast<Complex<OutputFloat>*>(beta_array);
-        output_elementwise_div_arg.y       = static_cast<Complex<OutputFloat>*>(rho_j);
+        output_elementwise_div_arg.res     = static_cast<Complex<ReduceFloat>*>(beta_array);
+        output_elementwise_div_arg.x       = static_cast<Complex<ReduceFloat>*>(beta_array);
+        output_elementwise_div_arg.y       = static_cast<Complex<ReduceFloat>*>(rho_j);
         interior_operator_.output_elementwise_div(output_elementwise_div_arg);
 
         // p_new = r_new + beta * (pj - omega * Ap)
         // first step: p_new = pj - omega * A pj
-        output_xsay_arg.res = static_cast<Complex<OutputFloat>*>(p_new);
-        output_xsay_arg.x   = static_cast<Complex<OutputFloat>*>(pj);
-        output_xsay_arg.a   = static_cast<Complex<OutputFloat>*>(omega_array);
-        output_xsay_arg.y   = static_cast<Complex<OutputFloat>*>(vj);
+        output_xsay_arg.res = static_cast<Complex<ComputeFloat>*>(p_new);
+        output_xsay_arg.x   = static_cast<Complex<ComputeFloat>*>(pj);
+        output_xsay_arg.a   = static_cast<Complex<ComputeFloat>*>(omega_array);
+        output_xsay_arg.y   = static_cast<Complex<ComputeFloat>*>(vj);
         interior_operator_.output_xsay(output_xsay_arg); // s = pj - omega * Ap
 
         // second step: p_new = r_new + beta * p_new
-        output_xpay_arg.res = static_cast<Complex<OutputFloat>*>(p_new);
-        output_xpay_arg.x   = static_cast<Complex<OutputFloat>*>(r_new);
-        output_xpay_arg.a   = static_cast<Complex<OutputFloat>*>(beta_array);
-        output_xpay_arg.y   = static_cast<Complex<OutputFloat>*>(p_new);
+        output_xpay_arg.res = static_cast<Complex<ComputeFloat>*>(p_new);
+        output_xpay_arg.x   = static_cast<Complex<ComputeFloat>*>(r_new);
+        output_xpay_arg.a   = static_cast<Complex<ComputeFloat>*>(beta_array);
+        output_xpay_arg.y   = static_cast<Complex<ComputeFloat>*>(p_new);
         output_xpay_arg.stream = stream1;
         interior_operator_.output_xpay(output_xpay_arg); // p_new = r_new + beta * p_new
 

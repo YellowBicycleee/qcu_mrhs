@@ -52,7 +52,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
     // x_e = b_e + kappa D_{eo} x_{o}
     // now we get x_{o} and b_{e}
     void* x_e = result_x_output_prec_;
-    void* x_o = static_cast<Complex<OutputFloat>*>(x_e) + vol / 2 * mrhs_complex_vec_len;
+    void* x_o = static_cast<Complex<ComputeFloat>*>(x_e) + vol / 2 * mrhs_complex_vec_len;
     void* b_e_origin = param_.input_b_mrhs;;
     void* kappa_array = output_scala_array_[0];
 
@@ -65,7 +65,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
         param_.nColor,              // int p_nColor,
         param_.mInput,              // int p_mInput,
         EVEN_PARITY,                // int p_parity,
-        OutputFloat(param_.kappa),  // double p_kappa,
+        ReduceFloat(param_.kappa),  // double p_kappa,
         x_o,                        // void* p_fermionIn_MRHS
         x_e,                        // void* p_fermionOut_MRHS,
         param_.gauge,               // void* p_gauge,
@@ -83,12 +83,12 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
     //     = b_e + kappa x_e
     // using Output_xpayArgument = typename InteriorOperator::Output_xpayAruArgument;
     using Output_xpayArgument =
-        typename InteriorOperator::template Complex_xpay<OutputFloat>::template Complex_xpayArgument;
+        typename InteriorOperator::template Complex_xpay<ComputeFloat>::template Complex_xpayArgument;
     Output_xpayArgument output_xpay_arg {
-        static_cast<Complex<OutputFloat>*>(x_e),          // Complex<_Float>* res,
-        static_cast<Complex<OutputFloat>*>(b_e_origin),          // Complex<_Float>* x,
-        static_cast<Complex<OutputFloat>*>(kappa_array),  // Complex<_Float>* a,
-        static_cast<Complex<OutputFloat>*>(x_e),          // Complex<_Float>* y,
+        static_cast<Complex<ComputeFloat>*>(x_e),          // Complex<_Float>* res,
+        static_cast<Complex<ComputeFloat>*>(b_e_origin),          // Complex<_Float>* x,
+        static_cast<Complex<ComputeFloat>*>(kappa_array),  // Complex<_Float>* a,
+        static_cast<Complex<ComputeFloat>*>(x_e),          // Complex<_Float>* y,
         vol / 2 * single_complex_vec_len,                 // int single_vec_len,
         mInput,                                           // int inc_idx,
         param_.streams[8]

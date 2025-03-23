@@ -78,24 +78,24 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::tempBufferAllocate () {
     void* output_prec_kappa_square = output_scala_array_[5];
 
     // init multiple-Mrhs kappa s
-    using InitArgument = typename InteriorOperator::template ElementwiseInit<Complex<OutputFloat>>::ElementwiseInitArgument;
+    using InitArgument = typename InteriorOperator::template ElementwiseInit<Complex<ReduceFloat>>::ElementwiseInitArgument;
     InitArgument output_elementwise_init_arg (
-        static_cast<Complex<OutputFloat>*>(output_prec_kappa),
-        Complex<OutputFloat>{static_cast<OutputFloat>(param_.kappa), 0},
+        static_cast<Complex<ReduceFloat>*>(output_prec_kappa),
+        Complex<ReduceFloat>{static_cast<ReduceFloat>(param_.kappa), 0},
         param_.mInput, param_.streams[8]
     );
     interior_operator_.output_elementwise_init(output_elementwise_init_arg);
 
 
     // init mrhs 1 s
-    output_elementwise_init_arg.res = static_cast<Complex<OutputFloat>*>(output_prec_ones);
-    output_elementwise_init_arg.val = Complex<OutputFloat>{1, 0};
+    output_elementwise_init_arg.res = static_cast<Complex<ReduceFloat>*>(output_prec_ones);
+    output_elementwise_init_arg.val = Complex<ReduceFloat>{1, 0};
     interior_operator_.output_elementwise_init(output_elementwise_init_arg);
     // sync
     // init mrhs kappa * kappa s
-    output_elementwise_init_arg.res = static_cast<Complex<OutputFloat>*>(output_prec_kappa_square);
-    output_elementwise_init_arg.val = Complex<OutputFloat>{static_cast<OutputFloat>(param_.kappa)
-                                                        * static_cast<OutputFloat>(param_.kappa), 0};
+    output_elementwise_init_arg.res = static_cast<Complex<ReduceFloat>*>(output_prec_kappa_square);
+    output_elementwise_init_arg.val = Complex<ReduceFloat>{static_cast<ReduceFloat>(param_.kappa)
+                                                        * static_cast<ReduceFloat>(param_.kappa), 0};
     interior_operator_.output_elementwise_init(output_elementwise_init_arg);
 
     CHECK_CUDA(cudaStreamSynchronize(param_.streams[8]));
@@ -158,7 +158,7 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
 
   // copy origin_even_b to new_b_ first, with correct precision
   void* origin_even_b = param_.input_b_mrhs;
-  void* origin_odd_b  = static_cast<Complex<OutputFloat>*>(origin_even_b) + vol / 2 * complex_vec_len;
+  void* origin_odd_b  = static_cast<Complex<ComputeFloat>*>(origin_even_b) + vol / 2 * complex_vec_len;
   // then, regenerate new_b on right hand side of equation. by new_even_b = \kappa D_{oe} b_{e} + b_{o}
   void* new_even_b = new_b_output_prec_;
 
@@ -187,12 +187,12 @@ void* BiCGStabImpl<OutputPrecision, IteratePrecision>::reCalculate_b_even () {
   void* output_prec_kappa = output_scala_array_[0]; // this array stores kappa
 
   // batch new_b{e} = b_{o} + kappa D_{oe} b_{e}
-  using XpayArgument = typename InteriorOperator::template Complex_xpay<OutputFloat>::Complex_xpayArgument;
+  using XpayArgument = typename InteriorOperator::template Complex_xpay<ComputeFloat>::Complex_xpayArgument;
   XpayArgument output_xpay_arg (
-    static_cast<Complex<OutputFloat>*>(new_even_b),        // res = new_even_b = x + ay = x + kappa new_even_b
-    static_cast<Complex<OutputFloat>*>(origin_odd_b),      // x = origin_odd_b
-    static_cast<Complex<OutputFloat>*>(output_prec_kappa), // a = output_prec_kappa
-    static_cast<Complex<OutputFloat>*>(new_even_b),        // y = new_even_b = D_{oe} b_{e}
+    static_cast<Complex<ComputeFloat>*>(new_even_b),        // res = new_even_b = x + ay = x + kappa new_even_b
+    static_cast<Complex<ComputeFloat>*>(origin_odd_b),      // x = origin_odd_b
+    static_cast<Complex<ComputeFloat>*>(output_prec_kappa), // a = output_prec_kappa
+    static_cast<Complex<ComputeFloat>*>(new_even_b),        // y = new_even_b = D_{oe} b_{e}
     single_vec_len * vol / 2,
     param->m_input,
     param->streams[8]
