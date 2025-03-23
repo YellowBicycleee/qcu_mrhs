@@ -95,6 +95,12 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
 
     CHECK_CUDA(cudaDeviceSynchronize());
 
+    int vector_len = vol * single_complex_vec_len / 2;
+    int stride = param_.mInput;
+    if (param_.use_combined_residual) {
+        stride = 1;
+        vector_len *= param_.mInput;
+    }
     // x_e = b_e + kappa D_{eo} x_{o}
     //     = b_e + kappa x_e
     // using Output_xpayArgument = typename InteriorOperator::Output_xpayAruArgument;
@@ -105,8 +111,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
         static_cast<Complex<ComputeFloat>*>(b_e_origin),          // Complex<_Float>* x,
         static_cast<Complex<ReduceFloat>*>(kappa_array),  // Complex<_Float>* a,
         static_cast<Complex<ComputeFloat>*>(x_e),          // Complex<_Float>* y,
-        vol / 2 * single_complex_vec_len,                 // int single_vec_len,
-        mInput,                                           // int inc_idx,
+        vector_len,                 // int single_vec_len,
+        stride,                                           // int inc_idx,
         param_.streams[8]
     };
     interior_operator_.output_xpay(output_xpay_arg); // x_e = b_e + kappa x_e

@@ -86,7 +86,7 @@ public:
         if (param_.use_combined_residual) {
             stride = 1;
             vector_len *= param_.mInput;
-            printf("Use combined residual\n");
+            // printf("Use combined residual\n");
         }
         typename qcu::qcu_blas::Complex_xsay<ComputeFloat_, ScaleFloat_>::template Complex_xsayArgument
             xsay_argument {

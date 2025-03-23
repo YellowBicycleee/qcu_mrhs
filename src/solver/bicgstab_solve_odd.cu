@@ -35,10 +35,10 @@ static inline bool isConverged ( const std::vector<_Float>& norm_r_array,
     // calculate the relative error
     const int size = norm_r_array.size();
     for (int i = 0; i < size; ++i) {
-        std::cout << "target = %e " << (double)target_diff
-            << ", norm r = " <<  norm_r_array[i]
-            << ", norm b = " << norm_b_array[i]
-            << ", real = " << (double)(norm_r_array[i]) / (double)(norm_b_array[i]) << std::endl;
+        // std::cout << "target = %e " << (double)target_diff
+        //     << ", norm r = " <<  norm_r_array[i]
+        //     << ", norm b = " << norm_b_array[i]
+        //     << ", real = " << (double)(norm_r_array[i]) / (double)(norm_b_array[i]) << std::endl;
         if (norm_r_array[i] / norm_b_array[i] > target_diff) {
             return false;
         }
@@ -103,7 +103,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
     void* x_new        = outputBuffer_[6];
     void* p_new        = outputBuffer_[7];
     // void* x            = outputBuffer_[8];
-    void* x_o          = static_cast<Complex<ReduceFloat>*>(result_x_output_prec_) + vol / 2 * complex_vec_len;
+    void* x_o          = static_cast<Complex<ComputeFloat>*>(result_x_output_prec_) + vol / 2 * complex_vec_len;
     void* temp_buffer  = outputBuffer_[9];
 
     void* kappa_square_array = output_scala_array_[5];
@@ -300,6 +300,13 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
                 CHECK_CUDA(cudaMemcpyAsync(x_o, x_new, sizeof(ReduceFloat) * vol / 2 * complex_vec_len * 2,
                                 cudaMemcpyDeviceToDevice, stream1)); // res_x = x_new = x_{j + 1}
                 CHECK_CUDA(cudaStreamSynchronize(stream1));
+
+                // // DEBUG
+                // Complex<ComputeFloat> first_elem;
+                // CHECK_CUDA(cudaMemcpy(&first_elem, x_o, sizeof(Complex<ComputeFloat>), cudaMemcpyDeviceToHost));
+                // std::cout << "first element of x_o = (" << double(first_elem.real())
+                //     << ", " << (double)(first_elem.imag()) <<  std::endl;
+
                 return true;
             }
         }
