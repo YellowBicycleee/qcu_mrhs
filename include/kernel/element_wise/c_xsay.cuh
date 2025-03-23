@@ -32,7 +32,7 @@ void cxsay_stride_kernel (
     ComputeFloat2  float2_res;
 
     // Complex<ComputeFloat_> res_val;
-    Complex<ScaleFloat_> in_a = Complex<ScaleFloat_>(*reinterpret_cast<ComputeFloat2*>(a + start_idx));
+    Complex<ScaleFloat_> in_a = Complex<ScaleFloat_>(*reinterpret_cast<ScaleFloat2*>(a + start_idx));
     ComputeFloat2 in_x;
     ComputeFloat2 in_y;
 
