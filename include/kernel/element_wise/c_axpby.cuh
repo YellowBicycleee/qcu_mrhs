@@ -1,9 +1,8 @@
 #pragma once
 #include "complex/qcu_complex.cuh"
-// #include "qcu_float_float2_wrapper.h"
 #include <cuda_fp16.h>
 
-#include <kernel/shift_data_type.cuh>
+#include "kernel/shift_data_type.cuh"
 #include <type_traits>
 
 #include "base/datatype/qcu_float2.cuh"
@@ -18,9 +17,9 @@ template <
 __global__ static   // res = ax + by
 void caxpby_stride_kernel (
     Complex<ComputeFloat_>* res,
-    Complex<ComputeFloat_>*  a,
+    Complex<ScaleFloat_>*   a,
     Complex<ComputeFloat_>* x,
-    Complex<ComputeFloat_>*  b,
+    Complex<ScaleFloat_>*   b,
     Complex<ComputeFloat_>* y,
     int single_vec_len,
     int inc_idx,
@@ -37,7 +36,6 @@ void caxpby_stride_kernel (
 
     ComputeFloat2 in_x;
     ComputeFloat2 in_y;
-    ComputeFloat2 float2_res;
     ComputeFloat2 res_val;
 
     for (int i = global_id; i < single_vec_len; i += total_thread) {

@@ -26,7 +26,8 @@ void Complex_axpby<
     }
 }
 
-template struct Complex_axpby<half>;
-template struct Complex_axpby<float>;
-template struct Complex_axpby<double>;
+template struct Complex_axpby<half, half>;
+template struct Complex_axpby<half, float>;
+template struct Complex_axpby<float, float>;
+template struct Complex_axpby<double, double>;
 }
