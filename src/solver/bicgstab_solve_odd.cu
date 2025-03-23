@@ -224,7 +224,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
         interior_operator_.output_dotc(outputDotArg);
 
         // vj = Ap = Ap_{j} = Doe Deo * p_{j} ----> outputBuffer_[1];
-        fused_x_sub_Doe_Deo_x<ComputeFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
+        fused_x_sub_Doe_Deo_x<ComputeFloat, ReduceFloat>(vj, pj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
         cudaStreamSynchronize(stream1);
         cudaStreamSynchronize(stream2);
 
@@ -249,7 +249,7 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
         interior_operator_.output_xsay(output_xsay_arg);
 
         // t = A sj = Doe Deo * sj
-        fused_x_sub_Doe_Deo_x<ComputeFloat>(t, sj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
+        fused_x_sub_Doe_Deo_x<ComputeFloat, ReduceFloat>(t, sj, temp_buffer, kappa_square_array, dslash_operator_, dslashParam);
 
         // omega = <As, s> / <As, As> = t_dot_sj / t_dot_t
         // step1:  t_dot_sj = <As, s> = <t, sj>

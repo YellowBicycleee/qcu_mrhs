@@ -48,7 +48,7 @@ public:
     }
     bool solve();  // return true if converged
     // out = in - a DoeDeo in
-    template <typename _Float>
+    template <typename ComputeFloat_, typename ScaleFloat_>
     inline void fused_x_sub_Doe_Deo_x (
         void* output, void* input, void* temp, void* a,
         std::shared_ptr<qcu::Dslash> dslash,
@@ -88,17 +88,17 @@ public:
             vector_len *= param_.mInput;
             printf("Use combined residual\n");
         }
-        typename qcu::qcu_blas::Complex_xsay<_Float>::template Complex_xsayArgument
+        typename qcu::qcu_blas::Complex_xsay<ComputeFloat_, ScaleFloat_>::template Complex_xsayArgument
             xsay_argument {
-                static_cast<Complex<_Float>*>(output),
-                static_cast<Complex<_Float>*>(input),   // Complex<_Float>* x,
-                static_cast<Complex<_Float>*>(a),       // Complex<_Float>* a,
-                static_cast<Complex<_Float>*>(output),  // Complex<_Float>* y,
+                static_cast<Complex<ComputeFloat_>*>(output),
+                static_cast<Complex<ComputeFloat_>*>(input),   // Complex<_Float>* x,
+                static_cast<Complex<ScaleFloat_>*>(a),       // Complex<_Float>* a,
+                static_cast<Complex<ComputeFloat_>*>(output),  // Complex<_Float>* y,
                 vector_len,               // int single_vec_len,
                 stride,                                 // int inc_idx,
                 stream1                                 // cudaStream_t stream = nullptr
             };
-        qcu::qcu_blas::Complex_xsay<_Float> xsay_op;
+        qcu::qcu_blas::Complex_xsay<ComputeFloat_, ScaleFloat_> xsay_op;
         xsay_op(xsay_argument);
         CHECK_CUDA(cudaStreamSynchronize(stream1));
     }
