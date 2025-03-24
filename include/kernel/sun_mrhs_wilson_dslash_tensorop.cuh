@@ -52,6 +52,8 @@ public:
         __shared__ Float_ B_tile_real[2][BlockShape_::kKN]; // Ns / 2
         __shared__ Float_ B_tile_imag[2][BlockShape_::kKN];
 
+        __shared__ Float_ C_tile_store_buf_real[CTileShape::kMN];
+        __shared__ Float_ C_tile_store_buf_imag[CTileShape::kMN];
         // Complex_ ldg_A, ldg_B;
         Complex_ result[4][kElemsPerThread];// = {0}; // Nspin
         for (int i = 0; i < 4; i++) {
@@ -85,8 +87,11 @@ public:
             for (int loop_blk_n = blockIdx.x; loop_blk_n < blocks_n; loop_blk_n += gridDim.x) {
 
                 int block_row = loop_blk_m * BlockShape_::kM, block_col = loop_blk_n * BlockShape_::kN;
-                for (int dim = X_DIM; dim < Nd; ++dim) {
 
+                wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_r[2];
+                wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_i[2];
+
+                for (int dim = X_DIM; dim < Nd; ++dim) {
 #pragma unroll
                     for (int dir = 0; dir < DIRECTIONS; ++dir) {
                         // for boundary check
@@ -114,8 +119,8 @@ public:
                         Float2_* glb_B = reinterpret_cast<Float2_ *>(move_coord.getGatheredColorSpinorAddr(arg.in_half, latt_half_desc, arg.n_color, arg.m_rhs));
 
 
-                        wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_r[2];
-                        wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_i[2];
+                        // wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_r[2];
+                        // wmma::fragment<wmma::accumulator, WarpShape_::kM, WarpShape_::kN, WarpShape_::kK, Float_> temp_i[2];
                         for (int pos = 0; pos < 2; ++pos) {
                             wmma::fill_fragment(temp_r[pos], 0.0f);
                             wmma::fill_fragment(temp_i[pos], 0.0f);
@@ -203,32 +208,50 @@ public:
                 // store thread result to global memory
                 for (int i = 0; i < Nspin_; ++i) { // store global memory
                     Float2_* start = reinterpret_cast<Float2_*>(glb_out) + i * arg.n_color * arg.m_rhs;
-                    // using F4 = Float4::Float4_t<Float_>;
-
-                    int groupId = (lane_id >> 2);
-                    int threadID_in_group = lane_id % 4;
-                    //
-                    int row, col;
                     for (int idx = 0; idx < kElemsPerThread; ++idx) {
-                    // for (int idx = 0; idx < kElemsPerThread; idx += 2) {
-                        if (idx < 2 || (idx >= 4 && idx < 6)) {
-                            row = groupId;
-                        } else {
-                            row = groupId + 8;
-                        }
-                        if (idx < 4) {
-                            col = (threadID_in_group * 2) + (idx & 0x1);
-                        }
-                        else {
-                            col = (threadID_in_group * 2) + (idx & 0x1) + 8;
-                        }
-                        int row_in_global = block_row + warp_row_offset + row;
-                        int col_in_global = block_col + warp_col_offset + col;
-                        if (row_in_global < arg.n_color && col_in_global < arg.m_rhs) {
-                            start[row_in_global * arg.m_rhs + col_in_global]
-                                    = reinterpret_cast<Float2_*>(&(result[i][0]))[idx];
-                        }
+                        // 借助temp_r和temp_i来存储结果到smem，再从smem合并存储到glb
+                        temp_r[0].x[idx] = result[i][idx].real();
+                        temp_i[0].x[idx] = result[i][idx].imag();
+
+                        // if (arg.coord_1dim == 0 && arg.parity == 0 && threadIdx.x == 0 && threadIdx.y == 0) {
+                        //     // std::cout << "(" <<  << ", " <<  << ")" <;
+                        //     printf("(%e,%e)", (double)(temp_r[0].x[idx]), (double)(temp_i[0].x[idx]));
+                        // }
+
                     }
+                    wmma::store_matrix_sync(&C_tile_store_buf_real[warp_row_offset * CTileShape::kN + warp_col_offset], temp_r[0], BlockShape_::kN, wmma::mem_row_major);
+                    wmma::store_matrix_sync(&C_tile_store_buf_imag[warp_row_offset * CTileShape::kN + warp_col_offset], temp_i[0], BlockShape_::kN, wmma::mem_row_major);
+                    __syncthreads();
+                    store_matrix_from_smem<Float_, CTileShape>(start, block_row, block_col, arg.n_color, arg.m_rhs, C_tile_store_buf_real, C_tile_store_buf_imag);
+                    __syncthreads();
+
+                    // Float2_* start = reinterpret_cast<Float2_*>(glb_out) + i * arg.n_color * arg.m_rhs;
+                    // // using F4 = Float4::Float4_t<Float_>;
+                    //
+                    // int groupId = (lane_id >> 2);
+                    // int threadID_in_group = lane_id % 4;
+                    // //
+                    // int row, col;
+                    // for (int idx = 0; idx < kElemsPerThread; ++idx) {
+                    // // for (int idx = 0; idx < kElemsPerThread; idx += 2) {
+                    //     if (idx < 2 || (idx >= 4 && idx < 6)) {
+                    //         row = groupId;
+                    //     } else {
+                    //         row = groupId + 8;
+                    //     }
+                    //     if (idx < 4) {
+                    //         col = (threadID_in_group * 2) + (idx & 0x1);
+                    //     }
+                    //     else {
+                    //         col = (threadID_in_group * 2) + (idx & 0x1) + 8;
+                    //     }
+                    //     int row_in_global = block_row + warp_row_offset + row;
+                    //     int col_in_global = block_col + warp_col_offset + col;
+                    //     if (row_in_global < arg.n_color && col_in_global < arg.m_rhs) {
+                    //         start[row_in_global * arg.m_rhs + col_in_global]
+                    //                 = reinterpret_cast<Float2_*>(&(result[i][0]))[idx];
+                    //     }
+                    // }
                 }
             }
         }
@@ -242,6 +265,8 @@ public:
 private:
     using GaugeMatShape = gemm::MatShape<BlockShape_::kM, BlockShape_::kK>;
     using FermionMatShape = gemm::MatShape<BlockShape_::kK, BlockShape_::kN>;
+    using CTileShape = gemm::MatShape<BlockShape_::kM, BlockShape_::kN>;
+
     static constexpr int A_Shape = GaugeMatShape::kMN;
     static constexpr int B_Shape = FermionMatShape::kMN;
 

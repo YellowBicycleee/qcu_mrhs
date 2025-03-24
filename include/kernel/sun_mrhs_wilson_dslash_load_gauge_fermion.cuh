@@ -102,7 +102,7 @@ template <typename Float_,
     typename Complex_ = qcu::Complex<Float_>
 >
 QCU_DEVICE
-void store_matrix_sts (
+void store_matrix_from_smem (
     Float2_* glb,
     int start_m, int start_n,
     int M, int N,
@@ -124,7 +124,7 @@ void store_matrix_sts (
                 Float_ imag = smem_b_imag[v_tid];
                 Float2_ temp;
                 temp.x = real;
-                temp.y = real;
+                temp.y = imag;
                 glb[glb_idx] = temp;
             }
         }
