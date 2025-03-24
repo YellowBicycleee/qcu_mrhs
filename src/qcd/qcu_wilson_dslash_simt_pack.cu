@@ -92,23 +92,6 @@ void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
         break;
     }
 
-
-    // std::vector<void*> send_buf(Nd * 2); // 只支持4维
-    //
-    // // 确定发送缓冲区为设备端还是主机端
-    // for (int mu = 0; mu < Nd; ++mu) {
-    //     int byte_size = dslash_param->fermion_ghost->ghost_len[mu] * type_size;
-    //
-    //     if (qcu::config::cuda_aware_mpi_supported()) {
-    //         send_buf[mu * 2 + FWD] = dslash_param->fermion_ghost->get_pack_buf_at(mu, FWD);
-    //         send_buf[mu * 2 + BWD] = dslash_param->fermion_ghost->get_pack_buf_at(mu, BWD);
-    //     }
-    //     else {
-    //         send_buf[mu * 2 + FWD] = dslash_param->fermion_ghost->get_host_pack_buf_at(mu, FWD);
-    //         send_buf[mu * 2 + BWD] = dslash_param->fermion_ghost->get_host_pack_buf_at(mu, BWD);
-    //     }
-    // }
-
     // Launch Kernel and MemcpyAsync (if donnot support cuda-aware MPI)
     for (int mu = 0; mu < Nd; ++mu) {
         if (dslash_param->proc_desc->at(mu) > 1) {
@@ -181,6 +164,10 @@ void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
                     &config::get_mpi_request_pack(mu, FWD)
                 )
             );
+        }
+        else {
+            config::get_mpi_request_pack(mu, FWD) = MPI_REQUEST_NULL;
+            config::get_mpi_request_pack(mu, BWD) = MPI_REQUEST_NULL;
         }
     }
 
