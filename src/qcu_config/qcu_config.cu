@@ -13,6 +13,7 @@
 #include "qcu_config/qcu_config.h"
 
 namespace qcu::config {
+static bool cuda_aware_mpi_supported_flag = false;
 
 constexpr int kQcuCudaStreamNum = 9;  // 4 dim * 2 dir (0 ~ 7) + 1 central stream (8)
 static std::vector<cudaStream_t> stream_pack;
@@ -188,4 +189,7 @@ void destroy_streams() {
     stream_pack.clear();
 }
 
+bool cuda_aware_mpi_supported () {
+    return cuda_aware_mpi_supported_flag; // todo: get this flag from system
+}
 }

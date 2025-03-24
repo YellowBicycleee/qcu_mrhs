@@ -35,4 +35,5 @@ cudaStream_t get_qcu_default_stream() noexcept;
 void init_streams();
 void destroy_streams();
 
+bool cuda_aware_mpi_supported ();
 }
