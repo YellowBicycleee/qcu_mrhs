@@ -28,7 +28,7 @@ private:
 
     void apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim);
 
-    void apply_ghost_pack(DslashParam& dslash_param, int ghost_dim);
+    // void apply_ghost_pack(DslashParam& dslash_param, int ghost_dim);
 
 
 };
