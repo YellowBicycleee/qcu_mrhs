@@ -60,7 +60,7 @@ template <
 >
 bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_even() {
 
-    const int mInput = param_.mInput;
+    // const int mInput = param_.mInput;
     const int vol = param_.lattDesc->lattice_volume();
     const int single_complex_vec_len = param_.nColor * param_.Nspin;
     const int mrhs_complex_vec_len = param_.mInput * single_complex_vec_len;
@@ -147,8 +147,8 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve() {
     const cudaStream_t cuda_stream = param_.streams[8];
     // copy x to outputBuffer
     copyComplexVector_interface(
-        param_.output_x_mrhs, OutputPrecision,
-        result_x_output_prec_, OutputPrecision,
+        param_.output_x_mrhs, IteratePrecision,
+        result_x_output_prec_, IteratePrecision,
         vol * mrhs_vec_len, cuda_stream);
 
     CHECK_CUDA(cudaDeviceSynchronize());

@@ -301,12 +301,6 @@ bool BiCGStabImpl<OutputPrecision, IteratePrecision>::solve_odd() {
                                 cudaMemcpyDeviceToDevice, stream1)); // res_x = x_new = x_{j + 1}
                 CHECK_CUDA(cudaStreamSynchronize(stream1));
 
-                // // DEBUG
-                // Complex<ComputeFloat> first_elem;
-                // CHECK_CUDA(cudaMemcpy(&first_elem, x_o, sizeof(Complex<ComputeFloat>), cudaMemcpyDeviceToHost));
-                // std::cout << "first element of x_o = (" << double(first_elem.real())
-                //     << ", " << (double)(first_elem.imag()) <<  std::endl;
-
                 return true;
             }
         }
