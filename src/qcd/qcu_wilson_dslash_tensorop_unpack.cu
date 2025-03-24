@@ -18,17 +18,40 @@ namespace qcu::tensorop {
 template <typename Float_>
 inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int ghost_dim) {
 #ifdef COMPILE_TENSOR_CORE_CODE
+    cudaStream_t fwd_stream = dslash_param.streams[8];
+    cudaStream_t bwd_stream = dslash_param.streams[8];
+    void* d_fwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, FWD);
+    void* d_bwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, BWD);
+
+    if (!config::cuda_aware_mpi_supported()) {
+        size_t type_size = 0;
+        switch (dslash_param.dslash_precision) {
+            case kPrecisionDouble:
+                type_size = sizeof(double) * 2;
+            break;
+            case kPrecisionSingle:
+                type_size = sizeof(float) * 2;
+            break;
+            case kPrecisionHalf:
+                type_size = sizeof(half) * 2;
+            break;
+            default:
+                type_size = 0;
+            break;
+        }
+        void* h_fwd_unpack_buf = dslash_param.fermion_ghost->get_host_unpack_buf_at(ghost_dim, FWD);
+        void* h_bwd_unpack_buf = dslash_param.fermion_ghost->get_host_unpack_buf_at(ghost_dim, BWD);
+
+        int byte_size = dslash_param.fermion_ghost->ghost_len[ghost_dim] * type_size;
+        CHECK_CUDA(cudaMemcpyAsync(d_fwd_unpack_buf, h_fwd_unpack_buf, byte_size, cudaMemcpyHostToDevice, fwd_stream));
+        CHECK_CUDA(cudaMemcpyAsync(d_bwd_unpack_buf, h_bwd_unpack_buf, byte_size, cudaMemcpyHostToDevice, bwd_stream));
+    }
+
     unsigned int multiprocess = config::get_mpi_separated_mask();
     const qcu::QcuLattDesc& latt_desc = *(dslash_param.latt_desc);
 
     int half_vol = config::lattice_volume_local() / 2;
     int num_threads = half_vol / latt_desc.at(ghost_dim);
-
-    void* fwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, FWD);
-    void* bwd_unpack_buf = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, BWD);
-
-    cudaStream_t fwd_stream = dslash_param.streams[8];
-    cudaStream_t bwd_stream = dslash_param.streams[8];
 
     if constexpr (std::is_same_v<Float_, double>) {
         using BlockShape = gemm::GemmShape<8, 8, 4>;
@@ -41,7 +64,7 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, fwd_stream>>> (
                 static_cast<Float_*>(dslash_param.fermion_out_MRHS),
-                static_cast<Float_*>(fwd_unpack_buf),
+                static_cast<Float_*>(d_fwd_unpack_buf),
                 static_cast<Float_*>(dslash_param.gauge),
                 ghost_dim, latt_desc, multiprocess,
                 dslash_param.parity, dslash_param.dagger_flag,
@@ -52,7 +75,7 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, bwd_stream>>> (
                 static_cast<Float_*>(dslash_param.fermion_out_MRHS),
-                static_cast<Float_*>(bwd_unpack_buf),
+                static_cast<Float_*>(d_bwd_unpack_buf),
                 static_cast<Float_*>(dslash_param.gauge),
                 ghost_dim, latt_desc, multiprocess,
                 dslash_param.parity, dslash_param.dagger_flag,
@@ -69,7 +92,7 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, fwd_stream>>> (
                 static_cast<Float_*>(dslash_param.fermion_out_MRHS),
-                static_cast<Float_*>(fwd_unpack_buf),
+                static_cast<Float_*>(d_fwd_unpack_buf),
                 static_cast<Float_*>(dslash_param.gauge),
                 ghost_dim, latt_desc, multiprocess,
                 dslash_param.parity, dslash_param.dagger_flag,
@@ -79,7 +102,7 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
         <Float_, BlockShape, WarpShape>
             <<<grid_size, block_size, 0, bwd_stream>>> (
                 static_cast<Float_*>(dslash_param.fermion_out_MRHS),
-                static_cast<Float_*>(bwd_unpack_buf),
+                static_cast<Float_*>(d_bwd_unpack_buf),
                 static_cast<Float_*>(dslash_param.gauge),
                 ghost_dim, latt_desc, multiprocess,
                 dslash_param.parity, dslash_param.dagger_flag,
@@ -91,71 +114,116 @@ inline void apply_sun_mrhs_dslash_ghost_unpack ( DslashParam& dslash_param, int 
 #endif // COMPILE_TENSOR_CORE_CODE
 }
 
-void WilsonDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) {
-
-    QcuProcDesc proc_desc = *(dslash_param.proc_desc);
-    qcu::FourDimCoordinate mpi_coord_forward = config::get_mpi_coord();
-    mpi_coord_forward.data[ghost_dim] = (mpi_coord_forward.data[ghost_dim] + 1) % proc_desc.data[ghost_dim];
-
-    qcu::FourDimCoordinate mpi_coord_backward = config::get_mpi_coord();
-    mpi_coord_backward.data[ghost_dim] = (mpi_coord_backward.data[ghost_dim] - 1 + proc_desc.data[ghost_dim]) % proc_desc.data[ghost_dim];
-
+void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
     size_t type_size = 0;
-    switch (dslash_param.dslash_precision) {
+    switch (dslash_param->dslash_precision) {
         case kPrecisionDouble:
             type_size = sizeof(double) * 2;
-            break;
+        break;
         case kPrecisionSingle:
             type_size = sizeof(float) * 2;
-            break;
+        break;
         case kPrecisionHalf:
             type_size = sizeof(half) * 2;
-            break;
+        break;
         default:
             type_size = 0;
-            break;
-    }
-
-    FourDimDesc mpi_desc {proc_desc.data[X_DIM], proc_desc.data[Y_DIM], proc_desc.data[Z_DIM], proc_desc.data[T_DIM]};
-
-    const int byte_size = dslash_param.fermion_ghost->ghost_len[ghost_dim] * type_size;
-
-    void* device_unpack_buf_fwd = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, FWD);
-    void* device_unpack_buf_bwd = dslash_param.fermion_ghost->get_unpack_buf_at(ghost_dim, BWD);
-    void* host_unpack_buf_fwd = dslash_param.fermion_ghost->get_host_unpack_buf_at(ghost_dim, FWD);
-    void* host_unpack_buf_bwd = dslash_param.fermion_ghost->get_host_unpack_buf_at(ghost_dim, BWD);
-
-    CHECK_MPI(
-        MPI_Irecv(host_unpack_buf_fwd, byte_size, MPI_BYTE, mpi_coord_forward.getReversedIdx1D(mpi_desc),
-            FWD, MPI_COMM_WORLD, &config::get_mpi_request_unpack(ghost_dim, FWD))
-    );
-
-    CHECK_MPI(
-        MPI_Irecv(host_unpack_buf_bwd, byte_size, MPI_BYTE, mpi_coord_backward.getReversedIdx1D(mpi_desc),
-            BWD, MPI_COMM_WORLD, &config::get_mpi_request_unpack(ghost_dim, BWD))
-    );
-
-    CHECK_MPI(MPI_Wait(&config::get_mpi_request_pack(ghost_dim, FWD), MPI_STATUS_IGNORE));
-    CHECK_MPI(MPI_Wait(&config::get_mpi_request_pack(ghost_dim, BWD), MPI_STATUS_IGNORE));
-    CHECK_MPI(MPI_Wait(&config::get_mpi_request_unpack(ghost_dim, FWD), MPI_STATUS_IGNORE));
-    CHECK_MPI(MPI_Wait(&config::get_mpi_request_unpack(ghost_dim, BWD), MPI_STATUS_IGNORE));
-    CHECK_CUDA(cudaMemcpy(device_unpack_buf_fwd, host_unpack_buf_fwd, byte_size, cudaMemcpyHostToDevice));
-    CHECK_CUDA(cudaMemcpy(device_unpack_buf_bwd, host_unpack_buf_bwd, byte_size, cudaMemcpyHostToDevice));
-
-    switch (dslash_param.dslash_precision) {
-        case QcuPrecision::kPrecisionHalf:
-            {   apply_sun_mrhs_dslash_ghost_unpack<half>(dslash_param, ghost_dim);  }
-            break;
-        case QcuPrecision::kPrecisionSingle:
-            {   apply_sun_mrhs_dslash_ghost_unpack<float>(dslash_param, ghost_dim); }
         break;
-        case QcuPrecision::kPrecisionDouble:
-            {   apply_sun_mrhs_dslash_ghost_unpack<double>(dslash_param, ghost_dim); }
-            break;
-        default:
-            {   errorQcu("Precision must be one of {half, single, double}\n"); }
-            break;
     }
-    CHECK_CUDA(cudaStreamSynchronize(dslash_param.streams[8]));
+
+    // Wait MPI
+    QcuProcDesc proc_desc = *(dslash_param->proc_desc);
+
+    FourDimDesc mpi_desc {proc_desc.data[X_DIM], proc_desc.data[Y_DIM],proc_desc.data[Z_DIM], proc_desc.data[T_DIM]};
+
+    for (int mu = 0; mu < Nd; ++mu) {
+
+        qcu::FourDimCoordinate mpi_coord_forward = config::get_mpi_coord();
+        mpi_coord_forward.data[mu] = (mpi_coord_forward.data[mu] + 1) % proc_desc.data[mu];
+
+        qcu::FourDimCoordinate mpi_coord_backward = config::get_mpi_coord();
+        mpi_coord_backward.data[mu] = (mpi_coord_backward.data[mu] - 1 + proc_desc.data[mu]) % proc_desc.data[mu];
+
+        int byte_size = dslash_param->fermion_ghost->ghost_len[mu] * type_size;
+
+        void* fwd_recvbuf = nullptr;
+        void* bwd_recvbuf = nullptr;
+        if (config::cuda_aware_mpi_supported()) {
+            fwd_recvbuf = dslash_param->fermion_ghost->get_unpack_buf_at(mu, FWD);
+            bwd_recvbuf = dslash_param->fermion_ghost->get_unpack_buf_at(mu, BWD);
+        }
+        else {
+            fwd_recvbuf = dslash_param->fermion_ghost->get_host_unpack_buf_at(mu, FWD);
+            bwd_recvbuf = dslash_param->fermion_ghost->get_host_unpack_buf_at(mu, BWD);
+        }
+
+        if (dslash_param->proc_desc->at(mu) > 1) {
+            CHECK_MPI(
+                MPI_Irecv(
+                    fwd_recvbuf,
+                    byte_size, MPI_BYTE,
+                    mpi_coord_forward.getReversedIdx1D(mpi_desc),
+                    FWD,
+                    MPI_COMM_WORLD,
+                    &config::get_mpi_request_unpack(mu, FWD))
+            );
+            CHECK_MPI(
+                MPI_Irecv(
+                    bwd_recvbuf,
+                    byte_size,
+                    MPI_BYTE,
+                    mpi_coord_backward.getReversedIdx1D(mpi_desc),
+                    BWD,
+                    MPI_COMM_WORLD,
+                    &config::get_mpi_request_unpack(mu, BWD))
+            );
+        }
+        else {
+            config::get_mpi_request_unpack(mu, BWD) = MPI_REQUEST_NULL;
+            config::get_mpi_request_unpack(mu, FWD) = MPI_REQUEST_NULL;
+        }
+    }
+
+    // Barrier
+    std::vector<MPI_Request>& mpi_unpack_vec = config::get_mpi_request_unpack_vec();
+
+    CHECK_MPI(
+        MPI_Waitall(
+            mpi_unpack_vec.size(),
+            mpi_unpack_vec.data(),
+            MPI_STATUSES_IGNORE
+        )
+    );
+
+    for (int mu = 0; mu < Nd; ++mu) {
+        if (dslash_param->proc_desc->at(mu) > 1) {
+            switch (dslash_param->dslash_precision) {
+                case QcuPrecision::kPrecisionHalf:
+                {   apply_sun_mrhs_dslash_ghost_unpack<half>(*dslash_param, mu);    }
+                break;
+                case QcuPrecision::kPrecisionSingle:
+                {   apply_sun_mrhs_dslash_ghost_unpack<float>(*dslash_param, mu);   }
+                break;
+                case QcuPrecision::kPrecisionDouble:
+                {   apply_sun_mrhs_dslash_ghost_unpack<double>(*dslash_param, mu); }
+                break;
+                default:
+                {   errorQcu("Not implemented yet\n"); }
+                break;
+            }
+        }
+    }
+
+    // Barrier send
+    std::vector<MPI_Request>& mpi_pack_vec = config::get_mpi_request_pack_vec();
+    CHECK_MPI(
+            MPI_Waitall(
+            mpi_pack_vec.size(),
+            mpi_pack_vec.data(),
+            MPI_STATUSES_IGNORE
+        )
+    );
+    CHECK_CUDA(cudaDeviceSynchronize());
 }
+
 }
