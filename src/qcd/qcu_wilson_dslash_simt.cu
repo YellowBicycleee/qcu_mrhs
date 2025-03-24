@@ -80,13 +80,7 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
     double time = timer_.lap_ms();
     time_ += time;
 }
-void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
-    for (int i = 0; i < Nd; ++i) {
-        if (dslash_param->proc_desc->at(i) > 1) {
-            apply_ghost_pack(*dslash_param, i);
-        }
-    }
-}
+
 void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
     for (int i = 0; i < Nd; ++i) {
         if (dslash_param->proc_desc->at(i) > 1) {
