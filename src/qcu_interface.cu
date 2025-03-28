@@ -82,6 +82,7 @@ void Qcu::get_dslash(DslashType dslashType, double mass, bool anti_periodic_t) {
         errorQcu("Unsupported dslash type\n");
         break;
     }
+    freeMemory();
     allocateMemory();
     void* gauge;
     switch (underlying_args_.compute_float_precision) {

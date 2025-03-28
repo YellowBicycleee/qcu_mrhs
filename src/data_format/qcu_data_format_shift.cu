@@ -23,7 +23,7 @@ static void copyVector_Complex(void* __restrict__ dst, void* __restrict__ src,
     int block_size = 256;
     int grid_size = complex_vector_length / block_size;
     device::copyComplexVector<DestFloat2, SrcFloat2>
-        <<<grid_size, block_size>>>(static_cast<DestFloat2*>(dst), static_cast<SrcFloat2*>(src), complex_vector_length);
+        <<<grid_size, block_size, 0, stream>>>(static_cast<DestFloat2*>(dst), static_cast<SrcFloat2*>(src), complex_vector_length);
     CHECK_CUDA(cudaGetLastError());
     CHECK_CUDA(cudaStreamSynchronize(stream));
 }
