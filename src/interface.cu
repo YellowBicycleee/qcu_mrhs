@@ -156,9 +156,9 @@ void read_gauge_from_file (void* gauge, const char* file_path_prefix) {
     else if (qcu_ptr->io_precision() == kPrecisionSingle) {
         qcu_ptr->read_gauge_from_file<float>(file_path_prefix, gauge);
     }
-    else if (qcu_ptr->io_precision() == kPrecisionHalf) {
-        qcu_ptr->read_gauge_from_file<half>(file_path_prefix, gauge);
-    }
+    // else if (qcu_ptr->io_precision() == kPrecisionHalf) {
+    //     qcu_ptr->read_gauge_from_file<half>(file_path_prefix, gauge);
+    // }
     else {
         errorQcu("Unkown precision\n");
     }

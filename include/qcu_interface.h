@@ -76,7 +76,7 @@ private:
     // template<typename OutputFloat>
     // void solve_fermions_template_function (int max_iteration, double p_max_prec);
 
-    template <typename OutputFloat>
+    template <typename ComputeFloat_, typename ReduceFloat_>
     void mat_qcu_template_function (bool dagger_flag);
 public:
     Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt,
@@ -120,6 +120,7 @@ public:
 
     void solve_fermions (int max_iteration, double p_max_prec);
     // IO
+    // template <typename Float_>
     template <typename Float_>
     void read_gauge_from_file (const char* file_path, void* data_ptr);
 
