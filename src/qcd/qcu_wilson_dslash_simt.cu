@@ -39,7 +39,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
             latt_desc, multiprocess_mask,
             dslash_param.parity, dslash_param.dagger_flag,
             dslash_param.n_color, dslash_param.m_input);
-
+    CHECK_CUDA(cudaGetLastError());
     CHECK_CUDA(cudaDeviceSynchronize());
     // printf("SIMT dslash Ending, config = grid(%d, %d, %d), block(%d, %d, %d)\n", grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z);
 }

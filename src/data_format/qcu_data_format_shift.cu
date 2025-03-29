@@ -22,6 +22,8 @@ static void copyVector_Complex(void* __restrict__ dst, void* __restrict__ src,
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
     int block_size = 256;
     int grid_size = complex_vector_length / block_size;
+    grid_size = std::min(1024, grid_size);
+
     device::copyComplexVector<DestFloat2, SrcFloat2>
         <<<grid_size, block_size, 0, stream>>>(static_cast<DestFloat2*>(dst), static_cast<SrcFloat2*>(src), complex_vector_length);
     CHECK_CUDA(cudaGetLastError());
@@ -36,6 +38,7 @@ static void copyVector_Complex_Async(void* __restrict__ dst, void* __restrict__ 
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
     int block_size = 256;
     int grid_size = complex_vector_length / block_size;
+    grid_size = std::min(1024, grid_size);
     device::copyComplexVector<DestFloat2, SrcFloat2>
         <<<grid_size, block_size, 0, stream>>>(static_cast<DestFloat2*>(dst), static_cast<SrcFloat2*>(src), complex_vector_length);
     CHECK_CUDA(cudaGetLastError());
@@ -49,7 +52,7 @@ void colorSpinorScatterKernel(void* __restrict__ global_dst_array, void* __restr
     using SrcFloat2 = typename qcu::Float2Wrapper<SrcFloat>::Float2;
     int block_size = 256;
     int grid_size = (qcu::config::lattice_volume_local() / 2 + block_size - 1) / block_size;
-
+    grid_size = std::min(1024, grid_size);
     device::color_spinor_scatter_kernel<DstFloat2, SrcFloat2>
         <<<grid_size, block_size, 0, stream>>>(static_cast<DstFloat2**>(global_dst_array), static_cast<SrcFloat2*>(global_src_ptr),
             latt_desc.X(), latt_desc.Y(), latt_desc.Z(), latt_desc.T(), n_color, m_input, nspin);
@@ -66,7 +69,7 @@ void colorSpinorGatherKernel(void* __restrict__ global_dst_ptr, void* __restrict
     int block_size = 256;
     // int grid_size = (Lx * Ly * Lz * Lt / 2 + block_size - 1) / block_size;
     int grid_size = (qcu::config::lattice_volume_local() / 2 + block_size - 1) / block_size;
-
+    grid_size = std::min(1024, grid_size);
     // printf("DEBUG file %s, line %d, global_src_array = %p, global_dst_ptr = %p\n", __FILE__, __LINE__,global_src_array, global_dst_ptr);
     device::color_spinor_gather_kernel<DstFloat2, SrcFloat2>
         <<<grid_size, block_size>>>(static_cast<DstFloat2*>(global_dst_ptr), static_cast<SrcFloat2**>(global_src_array),

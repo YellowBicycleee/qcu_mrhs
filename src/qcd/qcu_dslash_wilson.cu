@@ -71,6 +71,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
             false,
             1);
     }
+    CHECK_CUDA(cudaGetLastError());
 #else
     errorQcu("Tensor Op not supported\n");
 #endif // COMPILE_TENSOR_CORE_CODE
