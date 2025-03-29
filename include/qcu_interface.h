@@ -73,11 +73,6 @@ private:
 
     void freeMemory();
 
-    // template<typename OutputFloat>
-    // void solve_fermions_template_function (int max_iteration, double p_max_prec);
-
-    template <typename ComputeFloat_, typename ReduceFloat_>
-    void mat_qcu_template_function (bool dagger_flag);
 public:
     Qcu(int Lx, int Ly, int Lz, int Lt, int Gx, int Gy, int Gz, int Gt,
         QcuPrecision outputFloatPrecision,

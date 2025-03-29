@@ -163,9 +163,7 @@ void Qcu::start_dslash(int parity, bool dagger_flag) {
     // begin_scatter();
 }
 
-
-template <typename ComputeFloat_, typename ScaleFloat_ = ComputeFloat_>
-void Qcu::mat_qcu_template_function (bool dagger_flag) {
+void Qcu::mat_qcu (bool dagger_flag) {
     if (nullptr == dslash_) {
         errorQcu("Dslash is not initialized\n");
     }
@@ -173,27 +171,31 @@ void Qcu::mat_qcu_template_function (bool dagger_flag) {
         errorQcu("Fermion queue is not full\n");
     }
 
-    // dslash_param_->parity = parity;
     dslash_param_->dagger_flag = dagger_flag;
     dslash_param_->fermion_in_MRHS = fermion_in_mrhs_;
     dslash_param_->fermion_out_MRHS = fermion_out_mrhs_;
-
-    Complex<ScaleFloat_> host_kappa = Complex<ScaleFloat_>(kappa_, 0);
-    CHECK_CUDA(cudaMalloc(&device_kappa_, sizeof(Complex<ScaleFloat_>) ));
-    CHECK_CUDA(cudaMemcpy(device_kappa_, &host_kappa, sizeof(Complex<ScaleFloat_>), cudaMemcpyHostToDevice));
 
     std::vector<void*> fermion_in_half (m_input_);
     std::vector<void*> fermion_out_half (m_input_);
     const int vol = underlying_args_.lattice_desc_ptr.lattice_volume();
     const int fermion_half_len = (vol / 2) * n_spin_ * n_colors_ * m_input_;
-    // mat_qcu = fermionIn - kappa fermionOut   
-    qcu::qcu_blas::Complex_xsay<ComputeFloat_, ScaleFloat_> xsay_op;
+
+    size_t float_size;
+    if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionHalf) {
+        float_size = sizeof(half);
+    } else if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionSingle) {
+        float_size = sizeof(float);
+    } else if (underlying_args_.out_float_precision == QcuPrecision::kPrecisionDouble) {
+        float_size = sizeof(double);
+    } else {
+        errorQcu("Unsupported float precision\n");
+    };
 
     for (int parity = 0; parity < 2; ++parity) {
         dslash_param_->parity = parity;
         for (int i = 0; i < m_input_; ++i) {
-            fermion_out_half[i] = static_cast<Complex<ComputeFloat_>*>(fermion_out_vec_[i]) + parity * vol / 2 * n_spin_ * n_colors_;
-            fermion_in_half[i] = static_cast<Complex<ComputeFloat_>*>(fermion_in_vec_[i]) + (1 - parity) * vol / 2 * n_spin_ * n_colors_;
+            fermion_out_half[i] = static_cast<char*>(fermion_out_vec_[i]) + parity       * vol / 2 * n_spin_ * n_colors_ * (float_size * 2);
+            fermion_in_half[i]  = static_cast<char*>(fermion_in_vec_[i])  + (1 - parity) * vol / 2 * n_spin_ * n_colors_ * (float_size * 2);
         }
         CHECK_CUDA(
             cudaMemcpy(d_lookup_table_in_, fermion_in_half.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
@@ -201,8 +203,10 @@ void Qcu::mat_qcu_template_function (bool dagger_flag) {
         CHECK_CUDA(
             cudaMemcpy(d_lookup_table_out_, fermion_out_half.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
         );
-        colorSpinorGather(fermion_in_mrhs_, underlying_args_.compute_float_precision, d_lookup_table_in_,
-                underlying_args_.out_float_precision, *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_);
+        colorSpinorGather(
+                fermion_in_mrhs_, underlying_args_.compute_float_precision,
+                d_lookup_table_in_, underlying_args_.out_float_precision,
+                *qcu::config::get_lattice_desc_ptr(), n_colors_, m_input_, NULL, n_spin_);
         CHECK_CUDA(cudaDeviceSynchronize());
 
         dslash_->apply(dslash_param_);
@@ -214,50 +218,80 @@ void Qcu::mat_qcu_template_function (bool dagger_flag) {
         CHECK_CUDA(cudaDeviceSynchronize());
     }
 
-    CHECK_CUDA(
-        cudaMemcpy(d_lookup_table_in_, fermion_in_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
-    );
-    CHECK_CUDA(
-        cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice)
-    );
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_in_, fermion_in_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
+
+    CHECK_CUDA(cudaMemcpy(d_lookup_table_out_, fermion_out_vec_.data(), sizeof(void*) * m_input_, cudaMemcpyHostToDevice));
+
     QcuLattDesc latt_desc_temp = *qcu::config::get_lattice_desc_ptr();
     latt_desc_temp.data[X_DIM] *= 2;
 
-    colorSpinorGather(fermion_in_mrhs_, underlying_args_.compute_float_precision,
+    colorSpinorGather(
+        fermion_in_mrhs_, underlying_args_.compute_float_precision,
         d_lookup_table_in_, underlying_args_.out_float_precision,
-            latt_desc_temp, n_colors_, m_input_, nullptr, n_spin_);
-    colorSpinorGather(fermion_out_mrhs_, underlying_args_.compute_float_precision,
-        d_lookup_table_out_, underlying_args_.out_float_precision,
-            latt_desc_temp, n_colors_, m_input_, nullptr, n_spin_);
-    typename qcu_blas::Complex_xsay<ComputeFloat_, ScaleFloat_>::Complex_xsayArgument arg (
-        static_cast<Complex<ComputeFloat_>*>(fermion_out_mrhs_),   // Complex<_Float>* res,
-        static_cast<Complex<ComputeFloat_>*>(fermion_in_mrhs_),    // Complex<_Float>* x,
-        static_cast<Complex<ScaleFloat_>*>(device_kappa_),      // Complex<_Float>* a,
-        static_cast<Complex<ComputeFloat_>*>(fermion_out_mrhs_),   // Complex<_Float>* y,
-        fermion_half_len * 2,                                       // int single_vec_len,
-        1,                                                      // int inc_idx,
-        nullptr                                                 // cudaStream_t stream = nullptr
-    );
-    xsay_op(arg);
-
-    colorSpinorScatter(d_lookup_table_out_, underlying_args_.out_float_precision,
+        latt_desc_temp, n_colors_, m_input_, nullptr, n_spin_);
+    colorSpinorGather(
         fermion_out_mrhs_, underlying_args_.compute_float_precision,
-            latt_desc_temp, n_colors_, m_input_, NULL, n_spin_);
-    
+        d_lookup_table_out_, underlying_args_.out_float_precision,
+        latt_desc_temp, n_colors_, m_input_, nullptr, n_spin_);
+    {
+        if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionDouble) {
+            Complex<double> host_kappa = Complex<double>(kappa_, 0);
+            CHECK_CUDA(cudaMalloc(&device_kappa_, sizeof(Complex<double>) ));
+            CHECK_CUDA(cudaMemcpy(device_kappa_, &host_kappa, sizeof(Complex<double>), cudaMemcpyHostToDevice));
+            qcu::qcu_blas::Complex_xsay<double, double> xsay_op;
+            typename qcu_blas::Complex_xsay<double, double>::Complex_xsayArgument arg (
+                static_cast<Complex<double>*>(fermion_out_mrhs_),   // Complex<_Float>* res,
+                static_cast<Complex<double>*>(fermion_in_mrhs_),    // Complex<_Float>* x,
+                static_cast<Complex<double>*>(device_kappa_),      // Complex<_Float>* a,
+                static_cast<Complex<double>*>(fermion_out_mrhs_),   // Complex<_Float>* y,
+                fermion_half_len * 2,                                       // int single_vec_len,
+                1,                                                      // int inc_idx,
+                nullptr                                                 // cudaStream_t stream = nullptr
+            );
+            xsay_op(arg);
+
+        } else if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionSingle) {
+            Complex<float> host_kappa = Complex<float>(kappa_, 0);
+            CHECK_CUDA(cudaMalloc(&device_kappa_, sizeof(Complex<float>) ));
+            CHECK_CUDA(cudaMemcpy(device_kappa_, &host_kappa, sizeof(Complex<float>), cudaMemcpyHostToDevice));
+            qcu::qcu_blas::Complex_xsay<float, float> xsay_op;
+            typename qcu_blas::Complex_xsay<float, float>::Complex_xsayArgument arg (
+                static_cast<Complex<float>*>(fermion_out_mrhs_),   // Complex<_Float>* res,
+                static_cast<Complex<float>*>(fermion_in_mrhs_),    // Complex<_Float>* x,
+                static_cast<Complex<float>*>(device_kappa_),      // Complex<_Float>* a,
+                static_cast<Complex<float>*>(fermion_out_mrhs_),   // Complex<_Float>* y,
+                fermion_half_len * 2,                                       // int single_vec_len,
+                1,                                                      // int inc_idx,
+                nullptr                                                 // cudaStream_t stream = nullptr
+            );
+            xsay_op(arg);
+        } else if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionHalf) {
+            Complex<float> host_kappa = Complex<float>(kappa_, 0);
+            CHECK_CUDA(cudaMalloc(&device_kappa_, sizeof(Complex<float>) ));
+            CHECK_CUDA(cudaMemcpy(device_kappa_, &host_kappa, sizeof(Complex<float>), cudaMemcpyHostToDevice));
+            qcu::qcu_blas::Complex_xsay<half, float> xsay_op;
+            typename qcu_blas::Complex_xsay<half, float>::Complex_xsayArgument arg (
+                static_cast<Complex<half>*>(fermion_out_mrhs_),   // Complex<_Float>* res,
+                static_cast<Complex<half>*>(fermion_in_mrhs_),    // Complex<_Float>* x,
+                static_cast<Complex<float>*>(device_kappa_),      // Complex<_Float>* a,
+                static_cast<Complex<half>*>(fermion_out_mrhs_),   // Complex<_Float>* y,
+                fermion_half_len * 2,                                       // int single_vec_len,
+                1,                                                      // int inc_idx,
+                nullptr                                                 // cudaStream_t stream = nullptr
+            );
+            xsay_op(arg);
+        } else {
+            errorQcu("Unsupported float precision\n");
+        }
+    }
+    colorSpinorScatter(
+        d_lookup_table_out_, underlying_args_.out_float_precision,
+        fermion_out_mrhs_, underlying_args_.compute_float_precision,
+        latt_desc_temp, n_colors_, m_input_, NULL, n_spin_);
+
     CHECK_CUDA(cudaFree(device_kappa_));
     fermion_in_vec_.clear();
     fermion_out_vec_.clear();
-}
-void Qcu::mat_qcu (bool dagger_flag) {
-    if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionDouble) {
-        mat_qcu_template_function<double, double>(dagger_flag);
-    } else if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionSingle) {
-        mat_qcu_template_function<float, float>(dagger_flag);
-    } else if (underlying_args_.compute_float_precision == QcuPrecision::kPrecisionHalf) {
-        mat_qcu_template_function<half, float>(dagger_flag);
-    } else {
-        errorQcu("Unsupported float precision\n");
-    }
 }
 
 void Qcu::load_gauge(void* gauge, QcuPrecision floatPrecision) {
