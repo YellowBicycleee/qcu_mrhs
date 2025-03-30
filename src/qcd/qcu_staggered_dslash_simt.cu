@@ -77,20 +77,16 @@ void StaggeredDslash::apply(const std::shared_ptr<DslashParam> dslash_param) {
 //     return 0.0;
 // }
 
-void StaggeredDslash::pre_apply(const std::shared_ptr<DslashParam>) {
-    errorQcu("Not implemented yet\n");
-}
 
-void StaggeredDslash::post_apply(const std::shared_ptr<DslashParam>) {
-    errorQcu("Not implemented yet\n");
-}
 
-void StaggeredDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) {
-    errorQcu("Not implemented yet\n");
-}
 
-void StaggeredDslash::apply_ghost_pack(DslashParam& dslash_param, int ghost_dim) {
-    errorQcu("Not implemented yet\n");
-}
+
+// void StaggeredDslash::apply_ghost_unpack(DslashParam& dslash_param, int ghost_dim) {
+//     errorQcu("Not implemented yet\n");
+// }
+//
+// void StaggeredDslash::apply_ghost_pack(DslashParam& dslash_param, int ghost_dim) {
+//     errorQcu("Not implemented yet\n");
+// }
 
 }
