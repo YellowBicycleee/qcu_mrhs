@@ -120,11 +120,8 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
             }
             break;
     }
-    CHECK_CUDA(cudaStreamSynchronize(dslash_param->streams[8]));
-
-
     post_apply(dslash_param);
-
+    CHECK_CUDA(cudaStreamSynchronize(dslash_param->streams[8]));
 }
 
 // void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
