@@ -8,22 +8,22 @@
 #include "qcu_public.h"
 using namespace qcu;
 using namespace std;
-QcuGrid initGridSize(int Nx, int Ny, int Nz, int Nt) {
-    QcuGrid grid;
-    grid.grid_size[X_DIM] = Nx;
-    grid.grid_size[Y_DIM] = Ny;
-    grid.grid_size[Z_DIM] = Nz;
-    grid.grid_size[T_DIM] = Nt;
-    return grid;
-}
-QcuParam initQcuParam(int Lx, int Ly, int Lz, int Lt) {
-    QcuParam param;
-    param.lattice_size[X_DIM] = Lx;
-    param.lattice_size[Y_DIM] = Ly;
-    param.lattice_size[Z_DIM] = Lz;
-    param.lattice_size[T_DIM] = Lt;
-    return param;
-}
+// QcuGrid initGridSize(int Nx, int Ny, int Nz, int Nt) {
+//     QcuGrid grid;
+//     grid.grid_size[X_DIM] = Nx;
+//     grid.grid_size[Y_DIM] = Ny;
+//     grid.grid_size[Z_DIM] = Nz;
+//     grid.grid_size[T_DIM] = Nt;
+//     return grid;
+// }
+// QcuParam initQcuParam(int Lx, int Ly, int Lz, int Lt) {
+//     QcuParam param;
+//     param.lattice_size[X_DIM] = Lx;
+//     param.lattice_size[Y_DIM] = Ly;
+//     param.lattice_size[Z_DIM] = Lz;
+//     param.lattice_size[T_DIM] = Lt;
+//     return param;
+// }
 
 void allocateFermion(std::vector<void*>& fermionArr, int mInput, int colorSpinor_vlen) {
     // memory alloaction
@@ -61,8 +61,8 @@ int main() {
     // double kappa = 1.0;
     bool daggerFlag = false;
 
-    QcuGrid process_grid = initGridSize(Nx, Ny, Nz, Nt);
-    QcuParam qcu_latt_param = initQcuParam(Lx, Ly, Lz, Lt);
+    // QcuGrid process_grid = initGridSize(Nx, Ny, Nz, Nt);
+    // QcuParam qcu_latt_param = initQcuParam(Lx, Ly, Lz, Lt);
     int inputFloatPrecision = DslashType::kDslashWilson;
     int dslashFloatPrecision = QcuPrecision::kPrecisionHalf;
 
@@ -79,7 +79,7 @@ int main() {
     allocateFermion(fermionOut_arr, mInput, colorSpinor_vlen);
 
     // begin
-    initGridSize(&process_grid, &qcu_latt_param, nColor, mInput, inputFloatPrecision, dslashFloatPrecision);
+    initGridSize(Lx, Ly, Lz, Lt, 1, 1, 1, 1, nColor, mInput, inputFloatPrecision, dslashFloatPrecision);
     getDslash(DslashType::kDslashWilson, -3.5, 0);
     loadQcuGauge(gauge, inputFloatPrecision);
 

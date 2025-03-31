@@ -14,10 +14,10 @@ struct QcuLattDesc {
 
     QCU_HOST_DEVICE QcuLattDesc(int x = 0, int y = 1, int z = 1, int t = 1) : data {x, y, z, t} {}
 
-    QCU_HOST_DEVICE QcuLattDesc(QcuParam *param)
-        : data {param->lattice_size[X_DIM], param->lattice_size[Y_DIM],
-                param->lattice_size[Z_DIM], param->lattice_size[T_DIM]}
-    {}
+    // QCU_HOST_DEVICE QcuLattDesc(int Lx, int Ly, int Lz, int Lt) : data {Lx, Ly, Lz, Lt} {}
+        // : data {param->lattice_size[X_DIM], param->lattice_size[Y_DIM],
+        //         param->lattice_size[Z_DIM], param->lattice_size[T_DIM]}
+    // {}
 
     QCU_HOST_DEVICE int& at(int dim) {
         assert(dim >= 0 && dim < Nd);
@@ -46,11 +46,11 @@ struct QcuProcDesc {  // process description, how many process in each dimension
     int data[kMaxDim];
 
     QcuProcDesc(int x = 1, int y = 1, int z = 1, int t = 1) : data {x, y, z, t} {}
-
-    QcuProcDesc(QcuGrid *grid)
-        : data {grid->grid_size[X_DIM], grid->grid_size[Y_DIM]
-            , grid->grid_size[Z_DIM], grid->grid_size[T_DIM] }
-    {}
+    // QcuProcDesc(int Gx, int Gy, int Gz, int Gt) : data {Gx, Gy, Gz, Gt} {}
+    // QcuProcDesc(QcuGrid *grid)
+    //     : data {grid->grid_size[X_DIM], grid->grid_size[Y_DIM]
+    //         , grid->grid_size[Z_DIM], grid->grid_size[T_DIM] }
+    // {}
 
     QCU_HOST_DEVICE int& at(int dim) {
         assert(dim >= 0 && dim < Nd);

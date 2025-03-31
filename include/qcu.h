@@ -4,14 +4,19 @@
 extern "C" {
 #endif
 
-typedef struct QcuParam_s {
-    int lattice_size[4];
-} QcuParam;
+// typedef struct QcuParam_s {
+//     int lattice_size[4];
+// } QcuParam;
+//
+// typedef struct QcuGrid_t {
+//     int grid_size[4];
+// } QcuGrid;
+// void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int inputFloatPrecision, int dslashFloatPrecision);
+void initGridSize( // QcuGrid *grid, QcuParam *param,
+    int Lx, int Ly, int Lz, int Lt,
+    int Gx, int Gy, int Gz, int Gt,
+    int n_color, int m_rhs, int inputFloatPrecision, int dslashFloatPrecision);
 
-typedef struct QcuGrid_t {
-    int grid_size[4];
-} QcuGrid;
-void initGridSize(QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int inputFloatPrecision, int dslashFloatPrecision);
 void pushBackFermions(void *fermionOut, void *fermionIn);
 void loadQcuGauge(void *gauge, int floatPrecision);  // double precision
 void getDslash(int dslashType, double mass, int anti_periodic_t);  // dslash precision

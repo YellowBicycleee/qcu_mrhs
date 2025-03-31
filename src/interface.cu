@@ -17,17 +17,19 @@ static void check_qcu_ptr() {
     }
 }
 
-void initGridSize(
-    QcuGrid *grid, QcuParam *param, int n_color, int m_rhs, int inputFloatPrecision, int dslashFloatPrecision)
+void initGridSize( // QcuGrid *grid, QcuParam *param,
+    int Lx, int Ly, int Lz, int Lt,
+    int Gx, int Gy, int Gz, int Gt,
+    int n_color, int m_rhs, int inputFloatPrecision, int dslashFloatPrecision)
 {
-    int Lx = param->lattice_size[X_DIM];
-    int Ly = param->lattice_size[Y_DIM];
-    int Lz = param->lattice_size[Z_DIM];
-    int Lt = param->lattice_size[T_DIM];
-    int Gx = grid->grid_size[X_DIM];
-    int Gy = grid->grid_size[Y_DIM];
-    int Gz = grid->grid_size[Z_DIM];
-    int Gt = grid->grid_size[T_DIM];
+    // int Lx = param->lattice_size[X_DIM];
+    // int Ly = param->lattice_size[Y_DIM];
+    // int Lz = param->lattice_size[Z_DIM];
+    // int Lt = param->lattice_size[T_DIM];
+    // int Gx = grid->grid_size[X_DIM];
+    // int Gy = grid->grid_size[Y_DIM];
+    // int Gz = grid->grid_size[Z_DIM];
+    // int Gt = grid->grid_size[T_DIM];
 
     qcu::config::set_config(Lx, Ly, Lz, Lt, Gx, Gy, Gz, Gt);
     qcu_ptr = new qcu::Qcu(
