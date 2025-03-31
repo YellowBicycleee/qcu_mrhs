@@ -11,7 +11,7 @@
 #include "qcu_config/qcu_config.h"
 #include "check_error/check_cuda.cuh"
 #include "check_error/check_mpi.h"
-
+#include <nvToolsExt.h>
 namespace qcu::simt {
 // unpack走8流
 template <typename Float_>
@@ -83,16 +83,21 @@ void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
         // Barrier
         std::vector<MPI_Request>& mpi_unpack_vec = config::get_mpi_request_unpack_vec();
 
-        CHECK_MPI(
-            MPI_Waitall(
-                mpi_unpack_vec.size(),
-                mpi_unpack_vec.data(),
-                MPI_STATUSES_IGNORE
-            )
-        );
+        // CHECK_MPI(
+        //     MPI_Waitall(
+        //         mpi_unpack_vec.size(),
+        //         mpi_unpack_vec.data(),
+        //         MPI_STATUSES_IGNORE
+        //     )
+        // );
 
         for (int mu = 0; mu < Nd; ++mu) {
             if (dslash_param->proc_desc->at(mu) > 1) {
+                // 标记 send 请求
+                nvtxRangePushA("Wait MPI_Irecv");
+                CHECK_MPI(MPI_Wait(&config::get_mpi_request_unpack(mu, FWD), MPI_STATUS_IGNORE));
+                CHECK_MPI(MPI_Wait(&config::get_mpi_request_unpack(mu, BWD), MPI_STATUS_IGNORE));
+                nvtxRangePop();
                 switch (dslash_param->dslash_precision) {
                     case QcuPrecision::kPrecisionHalf:
                     {   apply_sun_mrhs_dslash_ghost_unpack<half>(*dslash_param, mu);    }
@@ -112,6 +117,7 @@ void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
 
         // Barrier send
         std::vector<MPI_Request>& mpi_pack_vec = config::get_mpi_request_pack_vec();
+        nvtxRangePushA("Waitall MPI_Isend");
         CHECK_MPI(
                 MPI_Waitall(
                 mpi_pack_vec.size(),
@@ -119,8 +125,10 @@ void WilsonDslash::post_apply(const std::shared_ptr<DslashParam> dslash_param) {
                 MPI_STATUSES_IGNORE
             )
         );
+        nvtxRangePop();
     }
     CHECK_CUDA(cudaStreamSynchronize(dslash_param->streams[8]));
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 }
 
 }

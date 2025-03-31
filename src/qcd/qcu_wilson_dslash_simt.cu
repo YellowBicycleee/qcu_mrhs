@@ -40,7 +40,7 @@ inline void ApplyWilsonDslash_Mrhs( DslashParam& dslash_param)
             dslash_param.parity, dslash_param.dagger_flag,
             dslash_param.n_color, dslash_param.m_input);
     CHECK_CUDA(cudaGetLastError());
-    CHECK_CUDA(cudaDeviceSynchronize());
+    // CHECK_CUDA(cudaDeviceSynchronize());
     // printf("SIMT dslash Ending, config = grid(%d, %d, %d), block(%d, %d, %d)\n", grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z);
 }
 
@@ -74,8 +74,9 @@ void WilsonDslash::apply(std::shared_ptr<DslashParam> dslash_param) {
             }
             break;
     }
-    CHECK_CUDA(cudaStreamSynchronize(dslash_param->streams[8]));
     post_apply(dslash_param);
+    CHECK_CUDA(cudaStreamSynchronize(dslash_param->streams[8]));
+
 
     double time = timer_.lap_ms();
     time_ += time;

@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.16)
 project(QCU LANGUAGES C CXX CUDA) # project name = ${PROJECT_NAME}
 find_package(MPI REQUIRED)
 find_package(CUDA REQUIRED)
+#find_library(NVTX_LIBRARY nvToolsExt REQUIRED)
+#target_link_libraries(your_target PRIVATE ${NVTX_LIBRARY})
+
 # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --ptxas-options=-v --keep") #保留ptx
 # include_directories(/usr/lib/x86_64-linux-gnu/openmpi/include)  
 include_directories(${MPI_INCLUDE_PATH})
@@ -48,8 +51,11 @@ target_link_libraries(qcu
 	cudart
 	cudadevrt
     cublas
+	nvToolsExt
 	${MPI_LIBRARIES}
 )
+#target_link_libraries(qcu PRIVATE -lnvToolsExt)
+
 
 message("MPI_INCLUDE_PATH: ${MPI_INCLUDE_PATH}")
 add_subdirectory(tests)
