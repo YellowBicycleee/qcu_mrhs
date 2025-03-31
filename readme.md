@@ -6,9 +6,10 @@ This is a repo with `SU(N)` dslash BiCGStab Solver.
 
 ## 2. Supported Function
 
-- SU(N) Dslash
+- SU(N) MRHS Wilson Dslash
   - Now supported  Nvidia GPUS with compute capablity 8.x (TensorOp Used)
-  - **TODO:** SIMT version
+  - SIMT for general GPUs
+  - Using cuda12 and above is safe, cuda under 11.6 may result in compiling failure. 
 - BiCGStab Based on SU(N) dslash
 
 ## 3. Compile
@@ -34,6 +35,14 @@ Then compile qcu_mrhs. Assume you are in `qcu_mrhs` directory.
     cmake .. -DCMAKE_CUDA_COMPILER=xxx # (xxx is your path)
     make -j 12
     ```
+
+### 3.3 MPI required
+If your environment supports CUDA-aware MPI, you can use it by changing `src/qcu_config/qcu_config.cu` 
+set cuda_aware_mpi_supported_flag = true.
+
+If not, you can use `src/qcu_config/qcu_config.cu` set cuda_aware_mpi_supported_flag = false.
+Then you can use `mpirun` to run your program.
+
    
 ## 4. Developing
     At the beginning of developing, I used `clang-format`. But recently,
