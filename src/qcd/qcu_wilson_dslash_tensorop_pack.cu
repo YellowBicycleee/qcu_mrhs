@@ -185,28 +185,6 @@ void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
 
             if (dslash_param->proc_desc->at(mu) > 1) {
                 CHECK_MPI(
-                    MPI_Isend(
-                        bwd_sendbuf,
-                        byte_size,
-                        MPI_BYTE,
-                        mpi_coord_backward.getReversedIdx1D(mpi_desc),
-                        FWD,
-                        MPI_COMM_WORLD,
-                        &config::get_mpi_request_pack(mu, BWD)
-                    )
-                );
-                CHECK_MPI(
-                    MPI_Isend(
-                        fwd_sendbuf,
-                        byte_size,
-                        MPI_BYTE,
-                        mpi_coord_backward.getReversedIdx1D(mpi_desc),
-                        BWD,
-                        MPI_COMM_WORLD,
-                        &config::get_mpi_request_pack(mu, FWD)
-                    )
-                );
-                CHECK_MPI(
                     MPI_Irecv(
                         fwd_recvbuf,
                         byte_size, MPI_BYTE,
@@ -224,6 +202,28 @@ void WilsonDslash::pre_apply(const std::shared_ptr<DslashParam> dslash_param) {
                         BWD,
                         MPI_COMM_WORLD,
                         &config::get_mpi_request_unpack(mu, BWD))
+                );
+                CHECK_MPI(
+                    MPI_Isend(
+                        bwd_sendbuf,
+                        byte_size,
+                        MPI_BYTE,
+                        mpi_coord_backward.getReversedIdx1D(mpi_desc),
+                        FWD,
+                        MPI_COMM_WORLD,
+                        &config::get_mpi_request_pack(mu, BWD)
+                    )
+                );
+                CHECK_MPI(
+                    MPI_Isend(
+                        fwd_sendbuf,
+                        byte_size,
+                        MPI_BYTE,
+                        mpi_coord_forward.getReversedIdx1D(mpi_desc),
+                        BWD,
+                        MPI_COMM_WORLD,
+                        &config::get_mpi_request_pack(mu, FWD)
+                    )
                 );
             }
             else {
